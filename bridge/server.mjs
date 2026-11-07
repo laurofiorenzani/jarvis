@@ -1169,9 +1169,9 @@ wss.on('connection', (socket) => {
       if (saveRequest) {
         try {
           const saved = await memoryStore.save({ content: saveRequest[1] })
-          memoryNotice = \`\n\n[Memory operation: saved user-approved memory \${saved.id}. Confirm this briefly to the user.]\`
+          memoryNotice = '\n\n[Memory operation: saved user-approved memory ' + saved.id + '. Confirm this briefly to the user.]'
         } catch (error) {
-          memoryNotice = \`\n\n[Memory operation failed: \${String(error?.message ?? error)}. Do not claim the memory was saved.]\`
+          memoryNotice = '\n\n[Memory operation failed: ' + String(error?.message ?? error) + '. Do not claim the memory was saved.]'
         }
       }
 
