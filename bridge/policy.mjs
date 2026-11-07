@@ -154,6 +154,11 @@ export function decideTool(name, allowWrites = false) {
     if (server === 'jarvis_eyes') return true
 
     const tool = mcpToolOf(name)
+    // Memory writes need turn-scoped user authorization, not merely the global
+    // --writes switch. Until that authorization is enforced server-side, keep
+    // MCP mutations unavailable. Explicit 'remember that' requests are handled
+    // by the bridge's current-message parser before the model sees the turn.
+    if (server === 'jarvis_memory' && /^memory_(save|update|delete)$/.test(tool)) return false
     if (EFFECTFUL_VERB.test(tool) && !VETO_EXEMPT.has(`${server}__${tool}`)) {
       return allowWrites
     }
