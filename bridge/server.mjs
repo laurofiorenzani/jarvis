@@ -1165,7 +1165,7 @@ wss.on('connection', (socket) => {
       let memoryNotice = ''
       // Saving is intentionally explicit. A normal conversation is never
       // silently promoted into persistent personal data.
-      const saveRequest = text.match(/^\s*(?:please\s+)?remember that\s+(.+)$/i)
+      const saveRequest = text.match(/^\s*(?:(?:please\s+)?remember that|lembre(?:-se)?(?: de que)?|guarde(?: que)?)\s+(.+)$/i)
       if (saveRequest) {
         try {
           const saved = await memoryStore.save({ content: saveRequest[1] })
