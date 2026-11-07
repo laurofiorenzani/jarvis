@@ -28,6 +28,7 @@ import { isAbsolute, join, relative, resolve as resolvePath } from 'node:path'
 import { openRemote, proxyError, vetTarget, PROXY_UA } from './net.mjs'
 import { probeUrl, renderPage } from './page.mjs'
 import { createMemoryStore } from './memory.mjs'
+import { memoryServer } from './memory-tools.mjs'
 import {
   builtinTools,
   checkToolUse,
@@ -1337,6 +1338,7 @@ wss.on('connection', (socket) => {
       // connection rather than once.
       mcpServers: {
         ...MCP_SERVERS,
+        jarvis_memory: memoryServer(memoryStore),
         jarvis: displayServer(
           (panel) => send({ type: 'panel', panel }),
           (blade) => send({ type: 'blade', blade }),
