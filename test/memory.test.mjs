@@ -43,8 +43,8 @@ test('updates and deletes records by id', async (t) => {
 
 test('rejects secrets and oversized content', async (t) => {
   const { store } = await fixture(t)
-  await assert.rejects(store.save({ content: 'api_key=super-secret-value' }), /secret/)
-  await assert.rejects(store.save({ content: 'x'.repeat(2001) }), /at most/)
+  assert.throws(() => store.save({ content: 'api_key=super-secret-value' }), /secret/)
+  assert.throws(() => store.save({ content: 'x'.repeat(2001) }), /at most/)
   assert.deepEqual(await store.list(), [])
 })
 
