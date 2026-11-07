@@ -16,7 +16,7 @@ export function memoryServer(store) {
     alwaysLoad: true,
     tools: [
       tool(
-        'memory_search',
+        'search',
         'Search saved user-approved memories by words. Read-only.',
         { query: z.string().min(1).max(200) },
         async ({ query }) => ({
@@ -24,7 +24,7 @@ export function memoryServer(store) {
         }),
       ),
       tool(
-        'memory_list',
+        'list',
         'List saved user-approved memories. Read-only.',
         {},
         async () => ({
