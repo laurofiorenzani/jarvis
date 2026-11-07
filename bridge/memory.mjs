@@ -1,9 +1,9 @@
 /**
  * JARVIS persistent memory store.
  *
- * Local-only JSON storage for user-approved facts. This module deliberately
- * does not capture conversations automatically and is not wired to model
- * tools yet. Callers must obtain user approval before save/update operations.
+ * Local-only JSON storage for user-approved facts. The bridge only saves from
+ * an explicit request in the current user message; model-facing mutation tools
+ * remain blocked until turn-scoped authorization is enforced server-side.
  */
 
 import { randomUUID } from 'node:crypto'
