@@ -12,18 +12,20 @@ to Supabase's current quotas, inactivity/pause policy and regional availability.
 - Row-level security isolates records by `auth.uid()`.
 - The `jarvis-api` Edge Function validates the bearer token, derives the
   authenticated user from Supabase Auth, and performs scoped server-side writes.
-- Anthropic credentials remain an Edge Function secret; they never enter Vite
-  environment variables or the iOS bundle.
+- Model-provider credentials remain Edge Function secrets; they never enter Vite
+  environment variables or the iOS bundle. The router only calls explicitly
+  configured HTTPS OpenAI-compatible endpoints.
 - Windows/local tools remain outside this cloud function.
 
 ## Setup required before deployment
 
 1. Create a Supabase project on the free plan; do not select a paid compute tier.
 2. Apply `supabase/migrations/20261109000100_jarvis_cloud_v1.sql`.
-3. Deploy `supabase/functions/jarvis-api` with JWT verification enabled.
+3. Deploy `supabase/functions/jarvis-api`. The function performs explicit
+   Supabase Auth bearer-token validation itself; see the JWT note below.
 4. Set Edge Function secrets: `SUPABASE_ANON_KEY`,
-   `SUPABASE_SERVICE_ROLE_KEY`, `ANTHROPIC_API_KEY`,
-   and optionally `JARVIS_MODEL` and `JARVIS_ALLOWED_ORIGIN`.
+   `SUPABASE_SERVICE_ROLE_KEY`, `JARVIS_MODEL_PROVIDERS`, each provider's
+   API-key secret (if required), and optionally `JARVIS_ALLOWED_ORIGIN`.
    Supabase supplies `SUPABASE_URL`; never put the service-role key in client
    config. Do not use `VITE_*` for any secret.
 5. Configure an Auth provider and allowed redirect URLs. Start with email
@@ -107,13 +109,49 @@ The repository does not deploy automatically. After creating the free project:
    link the project with `supabase link --project-ref YOUR_PROJECT_REF`, then
    deploy with `supabase functions deploy jarvis-api`.
 3. In the Supabase Dashboard, add Edge Function secrets
-   `ANTHROPIC_API_KEY`, `JARVIS_ALLOWED_ORIGIN`, and optionally
-   `JARVIS_MODEL=claude-sonnet-5-5`. Do not paste secret values into ChatGPT,
-   source code, Vite environment variables or GitHub commits.
+   `JARVIS_MODEL_PROVIDERS` and `JARVIS_ALLOWED_ORIGIN`, plus the API-key
+   secrets referenced by the provider configuration. Never paste secret values
+   into ChatGPT, source code, Vite environment variables or GitHub commits.
 4. Verify `GET /functions/v1/jarvis-api/v1/health` returns
    `{"version":1,"status":"ok"}` and test with two separate Auth users before
    enabling the mobile client.
 
-The Anthropic API key is a separately billed credential; a Claude app
-subscription does not include API usage. Do not create or add one until its
-usage billing is explicitly approved.
+### Free model provider routing
+
+The cloud function uses `supabase/functions/jarvis-api/model-router.ts`.
+It rotates through a server-side ordered list of OpenAI-compatible endpoints
+and retries the next endpoint when a provider is unreachable, rate-limited,
+or returns a server error before streaming starts. It does not switch models
+mid-answer after text has been delivered, because doing so could duplicate or
+contradict the response. Provider keys are resolved from Supabase secrets and
+never sent to the client.
+
+Set `JARVIS_MODEL_PROVIDERS` to a JSON array in preferred order. Example shape
+(use real endpoint/model names from each provider's current documentation):
+
+```json
+[
+  {"name":"FreeLLMAPI","baseUrl":"https://YOUR_ROUTER_HOST/v1","model":"YOUR_FREE_MODEL","apiKeyEnv":"FREELLMAPI_API_KEY"},
+  {"name":"Groq","baseUrl":"https://api.groq.com/openai/v1","model":"YOUR_AVAILABLE_FREE_MODEL","apiKeyEnv":"GROQ_API_KEY"},
+  {"name":"OpenRouter-Free","baseUrl":"https://openrouter.ai/api/v1","model":"YOUR_CURRENT_FREE_MODEL_ID","apiKeyEnv":"OPENROUTER_API_KEY"}
+]
+```
+
+For each `apiKeyEnv`, create a Supabase Edge Function secret with that exact
+name. Entries without `apiKeyEnv` are allowed only for endpoints that genuinely
+permit unauthenticated access. The router rejects non-HTTPS endpoints and
+URL-embedded credentials. It tries only configured entries; it cannot create
+accounts, mint credits, or turn paid API access into free access.
+
+Free quotas, model IDs, regional eligibility and provider terms change. Verify
+that each configured account/model is currently free for your account and
+region before adding it. DeepSeek, xAI/Grok, OpenAI and Anthropic APIs must not
+be assumed free merely because their consumer chat products have free plans.
+Do not add a paid API key or paid endpoint. The router intentionally has no
+implicit paid-provider fallback. FreeLLMAPI can serve as one endpoint if it is
+hosted and reachable over HTTPS; its self-hosted router still needs compute,
+so do not deploy it to a paid host under this project.
+
+The first provider may be FreeLLMAPI, followed by direct free-tier endpoints.
+This allows the router to benefit from FreeLLMAPI's own quota-aware routing
+while retaining a second line of fallback if that service is unavailable.
