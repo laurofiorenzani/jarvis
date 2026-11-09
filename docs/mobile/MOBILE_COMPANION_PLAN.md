@@ -8,7 +8,7 @@ The JARVIS product is **cloud-first**. The iPhone app connects directly to the c
 
 The iPhone deliverable is a real installable signed iOS app, initially built with Capacitor around the existing React/Vite interface. A PWA is not the final product.
 
-Working branch: `work/mobile-companion`. Do not merge to `main` without an explicit release decision.
+Working branch: `work/memory-integration-ready`. Do not merge to `main` without an explicit release decision.
 
 ## Required iPhone experience
 
@@ -31,12 +31,12 @@ Working branch: `work/mobile-companion`. Do not merge to `main` without an expli
 
 ## Implementation sequence
 
-1. **Audit current coupling:** map browser bridge calls, bridge-owned sessions, memory, tools, secrets, and local-only assumptions.
-2. **Define cloud contracts:** provider-neutral API, identity, authorization, conversation/session, tool capability, and memory interfaces.
-3. **Build cloud backend foundation:** implement and test locally first; choose hosting/database/provider based on security, cost, portability, and operational fit. Production provisioning and paid services require explicit approval.
-4. **Move core memory and integrations:** server-side secrets, per-user isolation, encryption, recovery, revocation, export, retention, deletion, and confirmation gates.
-5. **Migrate clients:** point web client to cloud API; add Capacitor iOS target and iOS-specific audio/lifecycle adapters.
-6. **Verify independence:** prove core chat and memory work with Windows completely powered off/disconnected.
+1. **Audit current coupling:** complete. The existing bridge, local memory, MCP tools and browser-direct path are documented; the bridge remains local-only.
+2. **Define cloud contracts:** initial v1 API, auth, conversation and streaming contracts are implemented.
+3. **Build cloud backend foundation:** Supabase schema, RLS, rate limits and the `jarvis-api` Edge Function are deployed. The provider router is implemented, but provider credentials and a real authenticated model turn are not yet verified.
+4. **Move core memory and integrations:** pending. Cloud memory, device enrollment and cloud tool registry are not implemented; no personal memory has been migrated.
+5. **Migrate clients:** cloud API, auth and cloud-brain adapters exist but are not yet wired into the running HUD. Capacitor iOS target and native audio/Keychain adapters are pending.
+6. **Verify independence:** pending. Core chat must be proven with Windows powered off before calling the mobile path ready.
 7. **Release:** physical-device testing, macOS/Xcode signing, TestFlight, privacy disclosures, then App Store readiness.
 
 ## iOS constraints
@@ -59,4 +59,4 @@ Working branch: `work/mobile-companion`. Do not merge to `main` without an expli
 
 ## Current status
 
-Planning and architecture decision only. Cloud provider selection, backend implementation, production resources, memory migration, Capacitor integration, Xcode signing, and TestFlight have not yet been completed.
+Architecture and cloud backend foundation implemented. Supabase schema and API are deployed; cloud auth/API/brain adapters and regression tests exist. The running HUD still uses the local bridge by default. Cloud memory, verified provider invocation, client wiring, Capacitor, native Keychain/audio adapters, physical-device testing, Xcode signing and TestFlight remain pending.
