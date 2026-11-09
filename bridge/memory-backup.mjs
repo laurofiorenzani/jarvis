@@ -53,7 +53,7 @@ function validateStoreDocument(value) {
 
 function validateAuditLog(bytes) {
   const text = bytes.toString('utf8')
-  for (const [index, line] of text.split('\\n').entries()) {
+  for (const [index, line] of text.split('\n').entries()) {
     if (!line) continue
     let event
     try {
