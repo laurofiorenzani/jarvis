@@ -32,7 +32,7 @@ create index if not exists jarvis_messages_conversation_created_idx
 
 create table if not exists public.jarvis_turns (
   id uuid primary key,
-  conversation_id uuid not null references public.jarvis_conversations(id) on delete cascade,
+  conversation_id uuid not null,
   user_id uuid not null references auth.users(id) on delete cascade,
   status text not null check (status in ('accepted', 'running', 'completed', 'failed', 'cancelled')),
   request_text text not null check (char_length(request_text) <= 100000),
