@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
+import { mkdir, mkdtemp, readFile, rm, symlink, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { MemoryStore } from '../bridge/memory.mjs'
@@ -202,4 +202,30 @@ test('restore refuses to run while another process owns the memory writer lock',
     passphrase: PASSPHRASE,
   }), /locked by a running bridge/)
   assert.equal(vault.creates, 0)
+});
+
+
+test('backup refuses a symlinked memory store or audit file', { skip: process.platform === 'win32' }, async (t) => {
+  const source = await createSource(t)
+  const realStore = source.filePath + '.real'
+  await (await import('node:fs/promises')).rename(source.filePath, realStore)
+  await symlink(realStore, source.filePath)
+  await assert.rejects(createEncryptedMemoryBackup({
+    filePath: source.filePath,
+    auditPath: source.auditPath,
+    key: KEY,
+    passphrase: PASSPHRASE,
+  }), /memory store must be a regular file/i)
+
+  await rm(source.filePath)
+  await (await import('node:fs/promises')).rename(realStore, source.filePath)
+  const realAudit = source.auditPath + '.real'
+  await (await import('node:fs/promises')).rename(source.auditPath, realAudit)
+  await symlink(realAudit, source.auditPath)
+  await assert.rejects(createEncryptedMemoryBackup({
+    filePath: source.filePath,
+    auditPath: source.auditPath,
+    key: KEY,
+    passphrase: PASSPHRASE,
+  }), /audit log must be a regular file/i)
 });
