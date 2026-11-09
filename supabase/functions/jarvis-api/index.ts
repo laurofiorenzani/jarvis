@@ -273,14 +273,14 @@ Deno.serve(async (request) => {
             const { value, done } = await reader.read()
             if (done) break
             buffer += decoder.decode(value, { stream: true })
-            if (buffer.length > 1_000_000 && !buffer.includes('\n\n')) {
+            if (buffer.length > 1_000_000 && !/\r?\n\r?\n/.test(buffer)) {
               throw new Error('upstream_frame_too_large')
             }
-            let boundary: number
-            while ((boundary = buffer.indexOf('\n\n')) !== -1) {
-              const frame = buffer.slice(0, boundary)
-              buffer = buffer.slice(boundary + 2)
-              const dataLine = frame.split('\n').find((line) => line.startsWith('data:'))
+            let separator: RegExpExecArray | null
+            while ((separator = /\r?\n\r?\n/.exec(buffer)) !== null) {
+              const frame = buffer.slice(0, separator.index)
+              buffer = buffer.slice(separator.index + separator[0].length)
+              const dataLine = frame.split(/\r?\n/).find((line) => line.startsWith('data:'))
               if (!dataLine) continue
               const raw = dataLine.slice(5).trim()
               if (raw === '[DONE]') continue
