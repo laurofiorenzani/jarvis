@@ -85,25 +85,30 @@ export async function createWindowsCredentialVault({
 
     async createSecretIfAbsent(name, candidate) {
       validateSecret(candidate)
-      const release = await acquireCreationLock()
+      const requested = Buffer.from(candidate)
       try {
-        const entry = entryFor(name)
-        const existing = await entry.getSecret()
-        if (existing !== null) return Buffer.from(existing)
+        const release = await acquireCreationLock()
+        try {
+          const entry = entryFor(name)
+          const existing = await entry.getSecret()
+          if (existing !== null) return Buffer.from(existing)
 
-        await entry.setSecret(candidate)
-        const stored = await entry.getSecret()
-        if (stored === null) {
-          throw new Error('Windows Credential Manager did not return the newly stored memory key')
+          await entry.setSecret(requested)
+          const stored = await entry.getSecret()
+          if (stored === null) {
+            throw new Error('Windows Credential Manager did not return the newly stored memory key')
+          }
+          const result = Buffer.from(stored)
+          if (!result.equals(requested)) {
+            result.fill(0)
+            throw new Error('Windows Credential Manager returned a different memory key after creation')
+          }
+          return result
+        } finally {
+          await release()
         }
-        const result = Buffer.from(stored)
-        if (!result.equals(candidate)) {
-          result.fill(0)
-          throw new Error('Windows Credential Manager returned a different memory key after creation')
-        }
-        return result
       } finally {
-        await release()
+        requested.fill(0)
       }
     },
   })
