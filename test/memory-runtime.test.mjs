@@ -4,6 +4,7 @@ import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { createMemoryRuntime } from '../bridge/memory-runtime.mjs'
+import { MemoryStore } from '../bridge/memory.mjs'
 
 const KEY = Buffer.from('0123456789abcdef0123456789abcdef')
 
@@ -110,3 +111,33 @@ test('requires a trusted audit callback before opening the runtime', async () =>
     vault: fakeVault(KEY),
   }), /audit callback/)
 })
+
+
+test('purges expired memories before the runtime accepts requests', async (t) => {
+  const directory = await mkdtemp(join(tmpdir(), 'jarvis-memory-runtime-retention-'))
+  t.after(() => rm(directory, { recursive: true, force: true }))
+  const filePath = join(directory, 'memory.json')
+  const initialStore = new MemoryStore({
+    filePath,
+    encryptionKey: KEY,
+    clock: () => new Date('2026-01-01T00:00:00.000Z'),
+  })
+  await initialStore.init()
+  const expired = await initialStore.saveMemory({
+    type: 'episodic',
+    content: 'Expired synthetic retention record',
+    source: 'test',
+    retention: '1d',
+  })
+  await initialStore.close()
+
+  const runtime = await createMemoryRuntime({
+    filePath,
+    vault: fakeVault(KEY),
+    audit: async () => {},
+    clock: () => new Date('2026-11-09T00:00:00.000Z'),
+  })
+  assert.equal(await runtime.store.cleanupExpired(), 0, 'startup already removed expired records')
+  assert.equal(await runtime.store.getMemory(expired.id), null)
+  await runtime.close()
+});
