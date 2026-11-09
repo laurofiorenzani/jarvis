@@ -134,6 +134,8 @@ export const env = {
   elevenVoiceId:
     str(import.meta.env.VITE_ELEVENLABS_VOICE_ID) ?? 'JBFqnCBsd6RMkjVDRZzb',
   porcupineKey: str(import.meta.env.VITE_PICOVOICE_ACCESS_KEY) ?? '',
+  supabaseUrl: str(import.meta.env.VITE_SUPABASE_URL) ?? '',
+  supabasePublishableKey: str(import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY) ?? '',
 }
 
 /** `claude-opus-5` is the strongest model; `claude-sonnet-5` trades a little
