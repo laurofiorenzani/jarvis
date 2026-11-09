@@ -326,11 +326,11 @@ Deno.serve(async (request) => {
         }
       },
       async cancel() {
-        await upstream.body?.cancel().catch(() => {})
         await db.from('jarvis_turns').update({
           status: 'cancelled', cancel_requested_at: new Date().toISOString(),
           completed_at: new Date().toISOString(),
         }).eq('id', turnId).eq('user_id', userId).in('status', ['accepted', 'running'])
+        upstreamAbort.abort()
       },
     })
     return new Response(stream, {
