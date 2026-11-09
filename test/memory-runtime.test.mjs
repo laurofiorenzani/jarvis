@@ -81,6 +81,9 @@ test('boots one encrypted store and completes a real MCP-tool confirmation round
   assert.equal((await runtime.store.getMemory(result.id)).content, result.content)
   assert.equal(auditEvents.length, 1)
   connection.cancelAll()
+  await runtime.close()
+  await assert.rejects(runtime.store.getMemory(result.id), /MemoryStore is closed/)
+  await assert.rejects(runtime.store.saveMemory({ content: 'After close', source: 'test' }), /MemoryStore is closed/)
 })
 
 test('fails closed when an existing encrypted store has no vault key', async (t) => {
@@ -93,6 +96,7 @@ test('fails closed when an existing encrypted store has no vault key', async (t)
     audit: async () => {},
   })
   await runtime.store.saveMemory({ content: 'Persisted record', source: 'test' })
+  await runtime.close()
   await assert.rejects(createMemoryRuntime({
     filePath,
     vault: fakeVault(),
