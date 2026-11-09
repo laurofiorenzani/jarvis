@@ -266,7 +266,7 @@ function dispatch(ws: WebSocket) {
         payloadDigest: msg.payloadDigest,
         ...(msg.payloadPreview === undefined ? {} : { payloadPreview: msg.payloadPreview }),
         turnId: msg.turnId,
-        expiresAt: msg.expiresAt,
+        expiresAt: msg.expiresAt!,
       })
     }
   })
