@@ -88,3 +88,28 @@ test('cloud event parser validates tool outcomes and memory approval challenges'
     challengeId: 'challenge-1', operation: 'save', expiresAt: '2030-01-01T00:00:00Z',
   })?.type, 'memory.confirmation_required')
 })
+
+import { readCloudAssistantEvents } from '../src/lib/cloud-event-stream.ts'
+
+test('cloud event stream handles chunk boundaries and ignores invalid frames', async () => {
+  const source = [
+    'data: {"version":1,"type":"turn.started","conversationId":"c-1","turnId":"t-1"}\n\n',
+    'data: not-json\n\n',
+    'data: {"version":1,"type":"text.delta","conversationId":"c-1","turnId":"t-1","delta":"Olá"}\n\n',
+  ].join('')
+  const bytes = new TextEncoder().encode(source)
+  const body = new ReadableStream<Uint8Array>({
+    start(controller) {
+      controller.enqueue(bytes.slice(0, 41))
+      controller.enqueue(bytes.slice(41, 97))
+      controller.enqueue(bytes.slice(97))
+      controller.close()
+    },
+  })
+  const events = []
+  for await (const event of readCloudAssistantEvents(body)) events.push(event)
+  assert.equal(events.length, 2)
+  assert.equal(events[0].type, 'turn.started')
+  assert.equal(events[1].type, 'text.delta')
+  if (events[1].type === 'text.delta') assert.equal(events[1].delta, 'Olá')
+})
