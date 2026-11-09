@@ -116,3 +116,7 @@ Auth configuration, server-side Anthropic key, allowed app origin and
 operational limits. It is not ready for public release: rate limiting, spend
 controls, stronger audit/monitoring, memory approvals, device management,
 reconnect cursors and adversarial multi-user tests remain.
+
+Cancellation is represented by a dedicated `turn.cancelled` event. If the client
+disconnects before receiving it, the durable turn record still transitions to
+`cancelled`; the client can reconcile state by reloading the conversation.
