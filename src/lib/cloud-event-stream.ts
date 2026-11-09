@@ -31,7 +31,7 @@ export async function* readCloudAssistantEvents(
     while (true) {
       const { value, done } = await reader.read()
       buffer += done ? decoder.decode() : decoder.decode(value, { stream: true })
-      if (buffer.length > MAX_EVENT_FRAME_CHARS && !/\\r?\\n\\r?\\n/.test(buffer)) {
+      if (buffer.length > MAX_EVENT_FRAME_CHARS && !/\r?\n\r?\n/.test(buffer)) {
         throw new Error('Cloud event frame exceeded the size limit.')
       }
       let boundary: number
