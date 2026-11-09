@@ -136,6 +136,12 @@ export type CloudAssistantEvent =
     }
   | {
       version: typeof CLOUD_API_VERSION
+      type: 'turn.cancelled'
+      conversationId: string
+      turnId: string
+    }
+  | {
+      version: typeof CLOUD_API_VERSION
       type: 'turn.failed'
       conversationId: string
       turnId: string
@@ -256,6 +262,8 @@ export function parseCloudAssistantEvent(input: unknown): CloudAssistantEvent | 
       return isNonEmptyString(input.challengeId)
         ? { ...base, type: 'memory.confirmation_cancelled', challengeId: input.challengeId }
         : null
+    case 'turn.cancelled':
+      return { ...base, type: 'turn.cancelled' }
     case 'turn.failed':
       return API_ERROR_CODES.includes(String(input.code)) &&
         typeof input.message === 'string' &&
