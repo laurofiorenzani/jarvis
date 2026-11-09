@@ -77,3 +77,18 @@ test('refuses symlinked audit paths', { skip: process.platform === 'win32' }, as
   await assert.rejects(audit(event('new-record')), /regular file/)
   assert.equal(await readFile(realPath, 'utf8'), '')
 });
+
+
+test('snapshots validated audit metadata before asynchronous queueing', async (t) => {
+  const directory = await makeDirectory(t)
+  const auditPath = join(directory, 'audit.jsonl')
+  const audit = createMemoryAuditLogger({ auditPath, now: () => NOW })
+  const mutable = event('original-id')
+  const pending = audit(mutable)
+  mutable.memoryId = 'mutated-id'
+  mutable.content = 'PRIVATE_SENTINEL'
+  await pending
+  const [record] = (await readFile(auditPath, 'utf8')).trim().split('\n').map((line) => JSON.parse(line))
+  assert.equal(record.memoryId, 'original-id')
+  assert.equal(Object.hasOwn(record, 'content'), false)
+});
