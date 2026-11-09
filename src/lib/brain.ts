@@ -124,7 +124,7 @@ export function interrupt(): void {
  * so there is nothing that can be down until you try it.
  */
 export function isConnected(): boolean {
-  return usingBridge ? bridge.isConnected() : true
+  return activeCloudBrain ? true : usingBridge ? bridge.isConnected() : true
 }
 
 /**
