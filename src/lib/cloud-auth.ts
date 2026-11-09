@@ -150,13 +150,23 @@ export function createSupabaseAuth(options: SupabaseAuthOptions) {
       })
       const next = parseSession(payload)
       await saveSession(next)
+      const getAccessToken = async (): Promise<string | null> => {
+    if (session && (session.expires_at ?? 0) * 1000 > now() + 60_000) return session.access_token
+    const next = await refresh()
+    return next?.access_token ?? null
+  }
+
+  return {
+    async signInWithPassword(email: string, password: string) {
+      if (!email.trim() || !password) throw new CloudAuthError('Email and password are required.', 400)
+      const payload = await authRequest('token?grant_type=password', {
+        email: email.trim(), password,
+      })
+      const next = parseSession(payload)
+      await saveSession(next)
       return { user: next.user }
     },
-    async getAccessToken(): Promise<string | null> {
-      if (session && (session.expires_at ?? 0) * 1000 > now() + 60_000) return session.access_token
-      const next = await refresh()
-      return next?.access_token ?? null
-    },
+    getAccessToken,
     async restoreSession() {
       const next = await refresh()
       return next ? { user: next.user } : null
