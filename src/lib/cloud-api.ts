@@ -1,8 +1,8 @@
 /**
- * Authenticated, provider-neutral HTTP client for the future cloud API.
+ * Authenticated, provider-neutral HTTP client for the Jarvis Cloud API.
  *
- * This module is deliberately not selected by the running app yet. A caller
- * must inject both the API origin and a short-lived access-token provider;
+ * CloudAccess composes this client into the active cloud runtime after sign-in.
+ * A caller must inject both the API origin and a short-lived access-token provider;
  * there is no default host, token persistence, or browser-direct model access.
  */
 import {
