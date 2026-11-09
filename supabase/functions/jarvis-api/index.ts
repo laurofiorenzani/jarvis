@@ -256,7 +256,7 @@ Deno.serve(async (request) => {
                 if (!isRecord(parsed)) continue
                 event = parsed
               } catch { continue }
-              if (event.type === 'content_block_delta' && isRecord(event.delta) &&
+              if (event.type === 'error') throw new Error('upstream_model_error')\n              if (event.type === 'content_block_delta' && isRecord(event.delta) &&
                   event.delta.type === 'text_delta' && typeof event.delta.text === 'string') {
                 answer += event.delta.text
                 emit({ version: VERSION, type: 'text.delta', conversationId, turnId, delta: event.delta.text })
