@@ -14,8 +14,8 @@ test('cloud client sends bearer auth and version without storing credentials', a
       })
     },
   })
-  const result = await client.health()
-  assert.equal(result.status, 'ok')
+  const result = await client.createConversation()
+  assert.equal(result.conversation.id, 'c-1')
   const headers = new Headers(captured?.headers)
   assert.equal(headers.get('Authorization'), 'Bearer short-lived-token')
   assert.equal(headers.get('X-Jarvis-Api-Version'), '1')
