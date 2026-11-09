@@ -18,7 +18,9 @@ import {
 
 export type CloudFetch = (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>
 
-const API_ERROR_CODES = ['unauthenticated', 'forbidden', 'invalid_request', 'rate_limited', 'service_unavailable', 'internal_error'] as const\n\nexport type CloudApiOptions = {
+const API_ERROR_CODES = ['unauthenticated', 'forbidden', 'invalid_request', 'rate_limited', 'service_unavailable', 'internal_error'] as const
+
+export type CloudApiOptions = {
   baseUrl: string
   getAccessToken: () => Promise<string | null>
   fetchImpl?: CloudFetch
