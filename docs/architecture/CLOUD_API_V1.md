@@ -92,3 +92,12 @@ event parser, authenticated HTTP client foundation, and SSE decoder. The client
 is intentionally not wired into the running brain until a real identity provider,
 token lifecycle, server implementation and deployment exist. Endpoint response
 shapes must be finalised together with the server before production enablement.
+
+## Current client implementation
+
+The client can now submit turns as authenticated SSE requests with an
+AbortSignal, reject non-SSE success responses, decode only versioned/validated
+events, and cancel the stream reader when the consumer exits early. The JSON
+acceptance and explicit cancellation methods remain available for non-streaming
+or control-plane operations. The server must implement the same route behavior
+and independently enforce all limits and authorization checks.
