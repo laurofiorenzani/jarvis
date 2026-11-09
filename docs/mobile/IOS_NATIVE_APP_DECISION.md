@@ -49,6 +49,22 @@ Push-to-talk is the initial baseline. Do not promise always-listening wake-word 
 - Windows-only tools are optional and clearly marked unavailable when not hosted.
 - No always-on background listening is advertised without a separately validated and policy-compliant design.
 
-## Status
+## Status — 9 November 2026
 
-Decision recorded; implementation is pending. This document does not claim that Capacitor, cloud hosting, cloud memory, an Xcode project, a signed app, or a TestFlight build already exists.
+**Completed foundation**
+- Cloud-first architecture and current-code dependency audit recorded.
+- Versioned cloud API and Supabase Auth client contracts implemented.
+- Supabase schema with row-level security and rate limiting deployed.
+- Authenticated cloud API Edge Function deployed.
+- Cloud API transport, SSE parser, cloud-brain adapter, and explicit cloud-runtime composition root implemented.
+- Automated tests cover API transport, stream parsing, brain lifecycle/cancellation, and secure token-store injection.
+- CI has passed on earlier commits; the newest cloud-runtime test commit is awaiting its CI result.
+
+**Still pending**
+- Wire the cloud runtime into the running HUD with a real sign-in/session UX.
+- Select and implement a native Keychain-backed token store before enabling persistent mobile sign-in.
+- Verify configured Groq provider credentials/model and a real authenticated model turn; provider invocation has not yet been confirmed.
+- Cloud memory, device enrollment/revocation, and cloud tools.
+- Capacitor iOS target, native audio/lifecycle adapters, physical-device testing, Xcode signing, and TestFlight.
+
+This status does not claim that Capacitor, an Xcode project, a signed app, a TestFlight build, cloud memory, or an end-to-end authenticated model turn already exists.
