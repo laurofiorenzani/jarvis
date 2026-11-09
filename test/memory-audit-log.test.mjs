@@ -92,3 +92,20 @@ test('snapshots validated audit metadata before asynchronous queueing', async (t
   assert.equal(record.memoryId, 'original-id')
   assert.equal(Object.hasOwn(record, 'content'), false)
 });
+
+
+test('records automatic expiry as a distinct metadata-only system event', async (t) => {
+  const directory = await makeDirectory(t)
+  const auditPath = join(directory, 'audit.jsonl')
+  const audit = createMemoryAuditLogger({ auditPath, now: () => NOW })
+  await audit({
+    operation: 'expire',
+    memoryId: 'expired-memory-id',
+    outcome: 'expired',
+    timestamp: new Date(NOW).toISOString(),
+  })
+  const [record] = (await readFile(auditPath, 'utf8')).trim().split('\n').map((line) => JSON.parse(line))
+  assert.equal(record.operation, 'expire')
+  assert.equal(record.outcome, 'expired')
+  assert.equal(record.memoryId, 'expired-memory-id')
+});
