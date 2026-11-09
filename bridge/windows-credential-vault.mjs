@@ -27,11 +27,15 @@ function validateSecret(value) {
 export async function createWindowsCredentialVault({
   home = homedir(),
   EntryClass,
+  service = SERVICE,
   waitMs = 15_000,
   pollMs = 50,
 } = {}) {
   if (!EntryClass && process.platform !== 'win32') {
     throw new Error('Jarvis memory encryption requires Windows Credential Manager on this platform')
+  }
+  if (typeof service !== 'string' || !service.trim() || service.length > 128) {
+    throw new TypeError('Credential Manager service name must be a non-empty string of at most 128 characters')
   }
   if (!Number.isSafeInteger(waitMs) || waitMs < 1 ||
       !Number.isSafeInteger(pollMs) || pollMs < 1) {
@@ -52,7 +56,7 @@ export async function createWindowsCredentialVault({
 
   const entryFor = (name) => {
     if (name !== MEMORY_KEY_PURPOSE) throw new TypeError('Unsupported Jarvis vault entry name')
-    return new AsyncEntry(SERVICE, name)
+    return new AsyncEntry(service, name)
   }
 
   async function acquireCreationLock() {
