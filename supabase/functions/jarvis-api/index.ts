@@ -17,7 +17,7 @@ function error(code: string, message: string, status: number, retryable = false,
   return response({
     version: VERSION,
     error: { code, message, requestId: crypto.randomUUID(), retryable },
-  }, status)
+  }, status, headers)
 }
 
 function corsHeaders(origin: string | null): HeadersInit {
@@ -42,7 +42,7 @@ Deno.serve(async (request) => {
   if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors })
 
   const url = new URL(request.url)
-  const path = url.pathname.replace(/^\/functions\/v1\/jarvis-api/, '').replace(/\/$/, '') || '/'
+  const path = url.pathname.replace(/^\/functions\/v1\/jarvis-api/, '').replace(/^\/v1(?=\/|$)/, '').replace(/\/$/, '') || '/'
   if (request.method === 'GET' && path === '/health') {
     return response({ version: VERSION, status: 'ok' }, 200, cors)
   }
