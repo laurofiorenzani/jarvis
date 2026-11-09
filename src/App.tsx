@@ -28,6 +28,7 @@ import {
   watchUi,
   watchConnection,
   watchMemoryConfirmations,
+  watchMemoryConfirmationCancelled,
   decideMemoryConfirmation,
   connectedLabels,
   usingBridge,
@@ -110,6 +111,10 @@ export default function App() {
   const goDormant = () => {
     clearIdle()
     silence()
+    const currentPhase = store.getState().phase
+    if (currentPhase === 'thinking' || currentPhase === 'tooling' || currentPhase === 'speaking') {
+      interrupt()
+    }
     turn.current++
     const s = store.getState()
     s.setCaption('')
@@ -466,6 +471,9 @@ export default function App() {
         ...pending.filter((item) => item.id !== challenge.id),
         challenge,
       ])
+    })
+    watchMemoryConfirmationCancelled((id) => {
+      setMemoryConfirmations((pending) => pending.filter((item) => item.id !== id))
     })
     watchConnection((state) => {
       if (state === 'lost') {
