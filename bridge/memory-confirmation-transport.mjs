@@ -118,6 +118,9 @@ export function createMemoryConfirmationTransport({
 
   function cancelAll() {
     for (const [id, entry] of pending) {
+      // Tell the UI to dismiss the approval surface as well as denying the
+      // broker request. This is used when the user interrupts or abandons a turn.
+      try { send({ type: 'memory_confirmation_cancelled', id }) } catch {}
       clearTimeout(entry.timer)
       entry.resolve(null)
       pending.delete(id)
