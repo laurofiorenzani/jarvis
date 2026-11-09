@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { mkdir, mkdtemp, rm } from 'node:fs/promises'
+import { mkdir, mkdtemp, rm, stat } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { createWindowsCredentialVault } from '../bridge/windows-credential-vault.mjs'
@@ -67,7 +67,7 @@ test('stale credential initialization lock fails closed and is never removed aut
     vault.createSecretIfAbsent(MEMORY_KEY_PURPOSE, FIRST),
     /locked or stale/,
   )
-  assert.equal((await import('node:fs/promises')).stat(lock).then(() => true), true)
+  assert.equal((await stat(lock)).isDirectory(), true)
 })
 
 test('native adapter round-trips a key through Windows Credential Manager', async (t) => {
