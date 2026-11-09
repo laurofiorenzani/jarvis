@@ -1,9 +1,11 @@
-import { useEffect, useRef } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Scene } from './scene/Scene'
 import { Hud } from './ui/Hud'
 import { Boot } from './ui/Boot'
 import { Ignition } from './ui/Ignition'
 import { Diagnostics } from './ui/Diagnostics'
+import { MemoryConfirmation } from './ui/MemoryConfirmation'
+import type { MemoryConfirmationChallenge } from './lib/bridge'
 import { useStore } from './store'
 import { startVoice, type Voice, type VoiceMode } from './lib/voice'
 import { createSpeaker, cycleVoice, currentVoiceName } from './lib/tts'
@@ -25,6 +27,9 @@ import {
   watchCapture,
   watchUi,
   watchConnection,
+  watchMemoryConfirmations,
+  watchMemoryConfirmationCancelled,
+  decideMemoryConfirmation,
   connectedLabels,
   usingBridge,
   type Msg,
@@ -73,6 +78,11 @@ export default function App() {
   const store = useStore
   const phase = useStore((s) => s.phase)
   const history = useRef<Msg[]>([])
+  const [memoryConfirmations, setMemoryConfirmations] = useState<MemoryConfirmationChallenge[]>([])
+  const decideMemory = useCallback((challenge: MemoryConfirmationChallenge, approved: boolean) => {
+    decideMemoryConfirmation(challenge, approved)
+    setMemoryConfirmations((pending) => pending.filter((item) => item.id !== challenge.id))
+  }, [])
   const speaker = useRef<ReturnType<typeof createSpeaker> | null>(null)
   const voice = useRef<Voice | null>(null)
 
@@ -101,6 +111,10 @@ export default function App() {
   const goDormant = () => {
     clearIdle()
     silence()
+    const currentPhase = store.getState().phase
+    if (currentPhase === 'thinking' || currentPhase === 'tooling' || currentPhase === 'speaking') {
+      interrupt()
+    }
     turn.current++
     const s = store.getState()
     s.setCaption('')
@@ -452,8 +466,18 @@ export default function App() {
     // In bridge mode the conversation lives in the agent session, which is tied
     // to the socket — so a drop silently wipes his memory while the transcript
     // on screen still shows it. Better to say so than to let him quietly forget.
+    watchMemoryConfirmations((challenge) => {
+      setMemoryConfirmations((pending) => [
+        ...pending.filter((item) => item.id !== challenge.id),
+        challenge,
+      ])
+    })
+    watchMemoryConfirmationCancelled((id) => {
+      setMemoryConfirmations((pending) => pending.filter((item) => item.id !== id))
+    })
     watchConnection((state) => {
       if (state === 'lost') {
+        setMemoryConfirmations([])
         store.getState().setError('Bridge connection lost — reconnecting.')
       } else if (state === 'reconnected') {
         store
@@ -703,6 +727,11 @@ export default function App() {
       <Hud />
       <Boot />
       <Diagnostics />
+      <MemoryConfirmation
+        challenge={memoryConfirmations[0] ?? null}
+        queued={Math.max(0, memoryConfirmations.length - 1)}
+        onDecision={decideMemory}
+      />
       <Ignition onStart={() => void powerOn()} />
     </>
   )

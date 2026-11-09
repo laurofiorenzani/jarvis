@@ -125,6 +125,24 @@ export function watchConnection(
   if (usingBridge) bridge.watchConnection(fn)
 }
 
+/** Explicit memory write approval is bridge-only; direct mode has no durable memory runtime. */
+export function watchMemoryConfirmations(
+  fn: (challenge: bridge.MemoryConfirmationChallenge) => void,
+): void {
+  if (usingBridge) bridge.watchMemoryConfirmation(fn)
+}
+
+export function watchMemoryConfirmationCancelled(fn: (id: string) => void): void {
+  if (usingBridge) bridge.watchMemoryConfirmationCancelled(fn)
+}
+
+export function decideMemoryConfirmation(
+  challenge: bridge.MemoryConfirmationChallenge,
+  approved: boolean,
+): boolean {
+  return usingBridge ? bridge.replyMemoryConfirmation(challenge, approved) : false
+}
+
 /** Labels for the HUD's SYSTEMS rail. */
 export function connectedLabels(): string[] {
   return usingBridge ? bridge.bridgeServers() : direct.connectedLabels()

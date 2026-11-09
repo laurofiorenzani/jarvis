@@ -18,6 +18,16 @@ import { BRIDGE_WS_URL } from '../config'
 
 /** Anything the bridge sends. Deliberately loose — a frame from a future
  *  bridge build should be ignored, not crash the turn. */
+export type MemoryConfirmationChallenge = {
+  id: string
+  operation: 'save' | 'update' | 'delete'
+  memoryId: string | null
+  payloadDigest: string
+  payloadPreview?: unknown
+  turnId: string
+  expiresAt: number
+}
+
 type Frame = {
   type?: string
   delta?: string
@@ -35,6 +45,12 @@ type Frame = {
   seconds?: number
   when?: string
   servers?: Array<string | { name?: string }>
+  operation?: string
+  memoryId?: string | null
+  payloadDigest?: string
+  payloadPreview?: unknown
+  turnId?: string
+  expiresAt?: number
 }
 
 /** Every question gets an id so its answer can be told from anyone else's. */
@@ -98,6 +114,39 @@ export function watchBlades(fn: (blade: Blade) => void) {
 let onUi: ((op: string, args: any) => void) | null = null
 export function watchUi(fn: (op: string, args: any) => void) {
   onUi = fn
+}
+
+/** Explicit, correlated approval for memory writes. */
+let onMemoryConfirmation: ((challenge: MemoryConfirmationChallenge) => void) | null = null
+export function watchMemoryConfirmation(fn: (challenge: MemoryConfirmationChallenge) => void) {
+  onMemoryConfirmation = fn
+}
+
+let onMemoryConfirmationCancelled: ((id: string) => void) | null = null
+export function watchMemoryConfirmationCancelled(fn: (id: string) => void) {
+  onMemoryConfirmationCancelled = fn
+}
+
+/** Send the user's decision with the exact metadata the bridge challenged. */
+export function replyMemoryConfirmation(
+  challenge: MemoryConfirmationChallenge,
+  approved: boolean,
+): boolean {
+  if (!socket || socket.readyState !== WebSocket.OPEN) return false
+  try {
+    socket.send(JSON.stringify({
+      type: 'reply',
+      id: challenge.id,
+      operation: challenge.operation,
+      memoryId: challenge.memoryId,
+      payloadDigest: challenge.payloadDigest,
+      turnId: challenge.turnId,
+      approved,
+    }))
+    return true
+  } catch {
+    return false
+  }
 }
 
 /**
@@ -207,6 +256,25 @@ function dispatch(ws: WebSocket) {
       // A `ui` frame with no args is normal — reset and clear take none — so an
       // absent args object is an empty one, not a reason to drop the command.
       onUi?.(msg.op, (msg.args ?? {}) as Record<string, unknown>)
+    } else if (msg.type === 'memory_confirmation_cancelled') {
+      if (typeof msg.id === 'string') onMemoryConfirmationCancelled?.(msg.id)
+    } else if (msg.type === 'memory_confirmation') {
+      if (typeof msg.id !== 'string' ||
+          !['save', 'update', 'delete'].includes(msg.operation ?? '') ||
+          !(msg.memoryId === null || typeof msg.memoryId === 'string') ||
+          typeof msg.payloadDigest !== 'string' ||
+          !/^(?:sha256:)?[a-f0-9]{64}$/.test(msg.payloadDigest) ||
+          typeof msg.turnId !== 'string' ||
+          !Number.isFinite(msg.expiresAt)) return
+      onMemoryConfirmation?.({
+        id: msg.id,
+        operation: msg.operation as MemoryConfirmationChallenge['operation'],
+        memoryId: msg.memoryId,
+        payloadDigest: msg.payloadDigest,
+        ...(msg.payloadPreview === undefined ? {} : { payloadPreview: msg.payloadPreview }),
+        turnId: msg.turnId,
+        expiresAt: msg.expiresAt!,
+      })
     }
   })
 }
