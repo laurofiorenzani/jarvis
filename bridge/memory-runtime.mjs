@@ -76,5 +76,14 @@ export async function createMemoryRuntime({
     })
   }
 
-  return Object.freeze({ store, createConnection })
+  let closed = false
+  return Object.freeze({
+    store,
+    createConnection,
+    async close() {
+      if (closed) return
+      closed = true
+      await store.close()
+    },
+  })
 }
