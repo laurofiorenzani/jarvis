@@ -2,8 +2,8 @@
 
 > **Source of truth.** Read this document before making architecture, hosting, mobile, backend, memory, or deployment changes. If another planning document conflicts with this one, this document wins and the conflicting document must be corrected.
 
-**Status:** Approved product direction; implementation and cloud-provider selection are still pending.  
-**Working branch:** `work/mobile-companion`  
+**Status:** Approved product direction; cloud prototype deployed, client integration and production hardening remain in progress.  
+**Working branch:** `work/memory-integration-ready`  
 **Last decision update:** 2026-11-09
 
 ## 1. Product outcome — non-negotiable
@@ -90,4 +90,4 @@ Prove core chat and memory work while Windows is off. Test iPhone on a physical 
 
 ## 9. Current implementation truth
 
-As of this decision update, the repository has planning documents and a feature branch. This document does **not** mean that a cloud backend, provider account, production database, public endpoint, memory migration, Capacitor project, Xcode project, signed app, or TestFlight build has already been created.
+As of 9 November 2026, the repository contains a Supabase Edge Function prototype (`jarvis-api`), Auth-backed API routes, RLS-protected conversation/message/turn tables, rate limits, a provider-neutral server-side model router, and a TypeScript client foundation (auth, API transport, SSE parser, cloud brain, runtime composition). The Supabase project is on the Free plan. CI and the full cross-platform test workflow passed on commit `101a064c7c9e4c26c6d164ff92e4663b8d303537` on Ubuntu and Windows. The cloud runtime is **not yet wired into the running HUD**; no authenticated end-to-end model turn has been verified, and no model provider configuration is confirmed. Cloud memory, device enrollment/revocation, server-side integrations/tools, production monitoring/backup/recovery, Capacitor, native Keychain storage, Xcode project, signed app, and TestFlight build remain pending. No personal memory has been migrated. This prototype is not production-ready and does not imply any of those pending capabilities exist.
