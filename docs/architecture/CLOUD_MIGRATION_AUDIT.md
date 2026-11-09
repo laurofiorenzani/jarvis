@@ -1,6 +1,6 @@
 # Cloud migration audit — current implementation
 
-**Branch:** `work/mobile-companion`  
+**Branch:** `work/memory-integration-ready`  
 **Audit date:** 2026-11-09  
 **Authority:** `docs/architecture/CLOUD_FIRST_ARCHITECTURE.md`
 
@@ -107,7 +107,7 @@ The correct next move is to separate the core assistant runtime from the local d
 
 ## Current status
 
-Audit and first contract scaffold complete; no production resources were provisioned and no personal data was moved. Automated build/tests have not been run in this environment because the repository is accessible through GitHub operations only, not a checked-out Node workspace. The next code milestone is to extract a transport interface behind `brain.ts`, implement a local adapter without changing behaviour, and then implement the cloud API adapter against the versioned contract.
+The audit and cloud API foundation are complete. Supabase project `undmhmdwhxvjgvezvucy` has the v1 schema and `jarvis-api` Edge Function deployed; migrations, RLS, indexes and rate-limit RPCs are active. No personal memory was migrated. GitHub Actions now runs the build, tests, lint and Deno type-check. The next milestone is wiring authentication and the cloud brain into the app behind an explicit backend choice, while preserving the local bridge as the default until sign-in and native secure storage are ready.
 
 
 ## Cloud client foundation (2026-11-09)
@@ -144,3 +144,15 @@ accepting data. The SSE reader enforces a one-megacharacter frame ceiling and
 cancels the underlying stream if its consumer stops early. Regression tests
 cover these fail-closed behaviors. The server must enforce equivalent or
 stricter limits independently.
+
+
+## Cloud backend and brain adapter progress (2026-11-09)
+
+- Supabase migrations `jarvis_cloud_v1` and `jarvis_cloud_v1_hardening` are applied. Conversations, messages, turns and rate-limit tables have RLS enabled; composite FK indexes and optimized auth policies were added after advisor review.
+- The `jarvis-api` Edge Function is deployed and active. It validates Supabase Auth bearer tokens server-side, derives user identity from the verified session, scopes conversation operations to that user, streams provider output, persists messages and enforces per-user rate limits. JWT verification is performed in the function because the gateway setting is disabled to permit preflight and public health requests; all authenticated routes still validate the bearer token.
+- The model router accepts only explicitly configured HTTPS OpenAI-compatible providers and reads credentials from Edge Function secrets. It does not add a paid fallback. The actual configured provider secret and successful model invocation have not been independently verified.
+- Added `src/lib/cloud-auth.ts` with password sign-in, refresh-token rotation and injected secure storage. It intentionally has no localStorage fallback; a native Keychain adapter or another explicitly reviewed secure store is still required before enabling persistent sessions.
+- Added `src/lib/cloud-api.ts`, `src/lib/cloud-event-stream.ts` and `src/lib/cloud-brain.ts`. The brain adapter now maps the authenticated cloud streaming contract to the existing HUD's `ask/cancel` interface, guards concurrent turns, ignores mismatched event IDs and supports cancellation while a conversation is being created.
+- Added cloud-brain regression tests covering stream correlation, persisted response matching, server failures, incomplete streams, concurrent turns, conversation reset and cancellation during startup.
+- The app itself still uses the bridge by default. The cloud brain is not yet wired into `App.tsx`, no sign-in UI is available, and the iOS Capacitor/Keychain work has not started. Do not describe the cloud API as an end-to-end working app until those steps and a real authenticated provider turn are verified.
+- GitHub Actions on the latest integration branch commit is validating build, tests, lint and Deno types. Cross-platform Windows tests are also running; only completed successful checks should be treated as passed.
