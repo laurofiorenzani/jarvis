@@ -18,6 +18,13 @@ Add and test platform adapters for:
 - Foreground/background lifecycle and reconnect behaviour.
 - Secure device enrollment, credential storage, token refresh, and revocation.
 
+### Secure token storage implementation note
+
+- Candidate for the Capacitor 8 client: `capacitor-secure-storage-plugin@0.13.0`, whose release notes identify its Capacitor 8 migration and iOS Keychain implementation ([package](https://www.npmjs.com/package/capacitor-secure-storage-plugin), [release history](https://github.com/martinkasa/capacitor-secure-storage-plugin/blob/master/CHANGELOG.md)).
+- The app adapter must explicitly verify that the native platform is iOS or Android before any token read/write. The plugin documents a web fallback backed by localStorage; that fallback is **not** acceptable for JARVIS credentials and must fail closed.
+- iOS Keychain items may survive app uninstall. Sign-out must revoke the server session and remove the local item; reinstall/first-launch behaviour must be tested before release.
+- This is a researched candidate, not an installed dependency or verified implementation. Pin and test it after the Capacitor target is created.
+
 Push-to-talk is the initial baseline. Do not promise always-listening wake-word operation while the app is backgrounded or the phone is locked. Preserve the existing desktop/browser implementation behind shared interfaces where practical.
 
 ## Connectivity and security
