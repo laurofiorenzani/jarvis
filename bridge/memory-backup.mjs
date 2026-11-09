@@ -296,7 +296,11 @@ export async function restoreEncryptedMemoryBackup({
     } catch {
       throw new Error('Decrypted memory backup package is malformed')
     }
-    if (!packageData || packageData.format !== FORMAT || packageData.version !== VERSION ||
+    const packageKeys = packageData && typeof packageData === 'object' && !Array.isArray(packageData)
+      ? Object.keys(packageData).sort()
+      : []
+    if (packageKeys.join(',') !== 'audit,createdAt,format,keyPurpose,memoryKey,store,version' ||
+        packageData.format !== FORMAT || packageData.version !== VERSION ||
         packageData.keyPurpose !== MEMORY_KEY_PURPOSE || !Number.isFinite(Date.parse(packageData.createdAt))) {
       throw new Error('Decrypted memory backup package has unsupported metadata')
     }
@@ -307,6 +311,7 @@ export async function restoreEncryptedMemoryBackup({
     if (storeBytes.length > MAX_STORE_BYTES || auditBytes.length > MAX_AUDIT_BYTES) {
       throw new Error('Decrypted memory backup exceeds the supported size limit')
     }
+    validateAuditLog(auditBytes)
 
     const storeDocument = JSON.parse(decryptMemoryPayload(storeBytes.toString('utf8'), recoveredKey))
     validateStoreDocument(storeDocument)
