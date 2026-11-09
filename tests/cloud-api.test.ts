@@ -210,3 +210,22 @@ test('cloud client rejects unversioned successful JSON responses', async () => {
     (error: unknown) => error instanceof CloudApiError && error.code === 'invalid_response',
   )
 })
+
+test('cloud health check is public and does not request an access token', async () => {
+  let tokenRequested = false
+  let captured: RequestInit | undefined
+  const client = createCloudApiClient({
+    baseUrl: 'https://api.example.test',
+    getAccessToken: async () => { tokenRequested = true; return null },
+    fetchImpl: async (_input, init) => {
+      captured = init
+      return new Response(JSON.stringify({ version: 1, status: 'ok' }), {
+        status: 200, headers: { 'Content-Type': 'application/json' },
+      })
+    },
+  })
+  const result = await client.health()
+  assert.equal(result.status, 'ok')
+  assert.equal(tokenRequested, false)
+  assert.equal(new Headers(captured?.headers).has('Authorization'), false)
+})
