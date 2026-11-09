@@ -59,9 +59,9 @@ export function createCloudApiClient(options: CloudApiOptions) {
   const baseUrl = normaliseBaseUrl(options.baseUrl)
   const fetcher = options.fetchImpl ?? fetch
 
-  async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
-    const token = await options.getAccessToken()
-    if (!token?.trim()) {
+  async function request<T>(path: string, init: RequestInit = {}, authenticated = true): Promise<T> {
+    const token = authenticated ? await options.getAccessToken() : null
+    if (authenticated && !token?.trim()) {
       throw new CloudApiError('Sign-in is required.', 401, 'unauthenticated')
     }
 
@@ -69,7 +69,7 @@ export function createCloudApiClient(options: CloudApiOptions) {
     try {
       const headers = new Headers(init.headers)
       headers.set('Accept', 'application/json')
-      headers.set('Authorization', `Bearer ${token}`)
+      if (token) headers.set('Authorization', `Bearer ${token}`)
       headers.set('X-Jarvis-Api-Version', String(CLOUD_API_VERSION))
       if (init.body) headers.set('Content-Type', 'application/json')
       response = await fetcher(`${baseUrl}${path}`, {
@@ -107,7 +107,7 @@ export function createCloudApiClient(options: CloudApiOptions) {
 
   return {
     health: async () => {
-      const result = await request<CloudHealth>('/v1/health')
+      const result = await request<CloudHealth>('/v1/health', {}, false)
       if (result.version !== CLOUD_API_VERSION || !['ok', 'degraded'].includes(result.status)) {
         throw new CloudApiError('Cloud service returned an invalid health response.', 200, 'invalid_response')
       }
