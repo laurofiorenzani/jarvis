@@ -59,3 +59,12 @@ revocation/sign-out must clear the native credential.
   hosting or production availability. Do not upgrade automatically.
 - No migration of local bridge history or encrypted memory is part of this
   runbook. Such migration needs a separate explicit approval and export plan.
+
+## Implemented prototype rate limits
+
+The Edge Function currently applies database-backed per-user limits of 30
+conversation creations per hour and 10 turns per five minutes plus 60 turns
+per hour. The limiter table is inaccessible to end-user roles; its RPC is
+granted only to the service role. Old window records are pruned after two days.
+These are initial abuse controls, not a substitute for provider spend budgets,
+IP/device throttling or monitoring before public access.
