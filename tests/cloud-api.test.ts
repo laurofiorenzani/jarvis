@@ -256,7 +256,7 @@ test('cloud event parser accepts explicit turn cancellation events', () => {
   })
 })
 
-import { CloudAuthError, createSupabaseAuth, type SecureTokenStore } from '../src/lib/cloud-auth.ts'
+import { createSupabaseAuth, type SecureTokenStore } from '../src/lib/cloud-auth.ts'
 
 function memoryTokenStore(): SecureTokenStore & { values: Map<string, string> } {
   const values = new Map<string, string>()
