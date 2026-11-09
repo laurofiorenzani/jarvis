@@ -121,6 +121,8 @@ const EFFECTFUL_VERB =
  *
  * Full `server__tool` keys, so an exemption can never leak across servers.
  */
+const MEMORY_TOOLS = new Set(['memory_search', 'memory_save', 'memory_update', 'memory_delete'])
+
 const VETO_EXEMPT = new Set([
   'openrouter__send-message',
   'openrouter__send-feedback',
@@ -143,14 +145,7 @@ export function decideTool(name, allowWrites = false) {
     // Let those tools reach that broker even in read-only mode; this is not a
     // general write bypass because the memory handlers reject any mutation
     // without an explicit, correlated browser approval.
-    if (server === 'jarvis_memory') {
-      return new Set([
-        'memory_search',
-        'memory_save',
-        'memory_update',
-        'memory_delete',
-      ]).has(mcpToolOf(name))
-    }
+    if (server === 'jarvis_memory') return MEMORY_TOOLS.has(mcpToolOf(name))
 
     // The browser server gates itself, at construction: chromeServer() only
     // builds the acting tools — click, type, form input, close tab — when
