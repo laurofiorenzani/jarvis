@@ -36,6 +36,16 @@ The direct-browser backend does not load this local memory runtime.
 
 
 
+## Windows memory diagnostic
+
+Run this on the actual Windows account that will run Jarvis:
+
+```powershell
+npm run memory:doctor
+```
+
+The diagnostic creates isolated, randomly named Credential Manager entries and synthetic data. It checks binary key round-trip, creates an encrypted store, makes a passphrase-encrypted backup, restores it into a second isolated Credential Manager entry, reads the synthetic record back through the production store loader, and deletes both temporary credentials. It does not read or alter the user's real memory store.
+
 ## Encrypted backup and restore
 
 The development branch now includes a local, passphrase-encrypted backup format. It packages the encrypted memory store, the 32-byte Credential Manager key needed to decrypt it, and the metadata-only audit log inside an AES-256-GCM envelope. The envelope key is derived from a passphrase with scrypt (N=32768, r=8, p=1). The backup file does not contain the memory key in plaintext.
