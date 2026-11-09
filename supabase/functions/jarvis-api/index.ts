@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js'
+import { startFreeModelStream } from './model-router.ts'
 
 const VERSION = 1
 const MAX_TEXT = 20_000
@@ -170,9 +171,6 @@ Deno.serve(async (request) => {
   }
 
   if (request.method === 'POST' && path === '/turns') {
-    const apiKey = Deno.env.get('ANTHROPIC_API_KEY')
-    if (!apiKey) return error('service_unavailable', 'Model provider is not configured.', 503, true, cors)
-
     let body: unknown
     try { body = await request.json() } catch { return error('invalid_request', 'Request body must be JSON.', 400, false, cors) }
     if (!isRecord(body) || body.version !== VERSION ||
@@ -223,22 +221,17 @@ Deno.serve(async (request) => {
     const upstreamAbort = new AbortController()
     let upstream: Response
     try {
-      upstream = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'x-api-key': apiKey,
-        'anthropic-version': '2023-06-01',
-        'content-type': 'application/json',
-      },
-      signal: AbortSignal.any([upstreamAbort.signal, AbortSignal.timeout(130_000)]),
-      body: JSON.stringify({
-        model: Deno.env.get('JARVIS_MODEL') ?? 'claude-sonnet-5-5',
-        max_tokens: 2048,
-        stream: true,
-        system: 'You are JARVIS, a precise and helpful personal assistant. Never claim to have performed an action unless a connected tool confirms it.',
-        messages: (history ?? []).reverse().map((item) => ({ role: item.role, content: item.content })),
-      }),
-      })
+      const routed = await startFreeModelStream([
+        {
+          role: 'system',
+          content: 'You are JARVIS, a precise and helpful personal assistant. Never claim to have performed an action unless a connected tool confirms it.',
+        },
+        ...(history ?? []).reverse().map((item) => ({
+          role: item.role as 'user' | 'assistant',
+          content: item.content as string,
+        })),
+      ], AbortSignal.any([upstreamAbort.signal, AbortSignal.timeout(130_000)]))
+      upstream = routed.response
     } catch {
       await db.from('jarvis_turns').update({ status: 'failed', error_code: 'service_unavailable' })
         .eq('id', turnId).eq('user_id', userId)
