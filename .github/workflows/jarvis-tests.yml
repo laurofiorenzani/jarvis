@@ -48,6 +48,9 @@ jobs:
       - run: npm install --package-lock-only --ignore-scripts
       - run: npm ci
       - run: npm test
+      - name: Verify disposable Windows Credential Manager diagnostic
+        if: runner.os == 'Windows'
+        run: npm run memory:doctor
       - run: npm run build
 
   lockfile:
