@@ -117,17 +117,6 @@ export function createCloudApiClient(options: CloudApiOptions) {
       method: 'POST',
       body: JSON.stringify({ version: CLOUD_API_VERSION }),
     }),
-    sendTurn: (input: Omit<SendTurnRequest, 'version'>) => {
-      const safeInput = {
-        conversationId: requireText(input.conversationId, 'conversation ID'),
-        turnId: requireText(input.turnId, 'turn ID'),
-        text: requireText(input.text, 'message', 100_000),
-      }
-      return request<{ version: typeof CLOUD_API_VERSION; accepted: true }>('/v1/turns', {
-        method: 'POST',
-        body: JSON.stringify({ version: CLOUD_API_VERSION, ...safeInput }),
-      })
-    },
     streamTurn: async (
       input: Omit<SendTurnRequest, 'version'>,
       signal?: AbortSignal,
