@@ -23,6 +23,7 @@ export function CloudAccess({ onConnected, onDisconnected }: { onConnected?: () 
   const [message, setMessage] = useState('')
   const [memories, setMemories] = useState<CloudMemory[]>([])
   const [memoryContextEnabled, setMemoryContextEnabled] = useState(false)
+  const [providerStatus, setProviderStatus] = useState('MODEL STATUS NOT CHECKED')
   const [memoryContent, setMemoryContent] = useState('')
   const [memoryCategory, setMemoryCategory] = useState<MemoryCategory>('preference')
   const [memoryBusy, setMemoryBusy] = useState(false)
@@ -48,6 +49,14 @@ export function CloudAccess({ onConnected, onDisconnected }: { onConnected?: () 
       const [saved, preference] = await Promise.all([runtime.api.listMemories(), runtime.api.getMemoryPreference()])
       setMemories(saved.memories)
       setMemoryContextEnabled(preference.contextEnabled)
+      try {
+        const providers = await runtime.api.getProviderStatus()
+        setProviderStatus(providers.configured
+          ? 'FREE-ONLY PROVIDER CONFIGURED · ' + providers.providers.map((item) => item.model).join(', ')
+          : 'NO FREE-ONLY MODEL PROVIDER CONFIGURED')
+      } catch {
+        setProviderStatus('MODEL PROVIDER CONFIGURATION INVALID OR UNAVAILABLE')
+      }
       selectCloudBrain(runtime.brain)
       setConnected(true)
       setPassword('')
@@ -149,7 +158,8 @@ export function CloudAccess({ onConnected, onDisconnected }: { onConnected?: () 
       {expanded && (
         connected ? (
           <div style={{ paddingTop: 12 }}>
-            <div style={{ marginBottom: 12, color: '#83d9e8' }}>{message}</div>
+            <div style={{ marginBottom: 6, color: '#83d9e8' }}>{message}</div>
+            <div style={{ marginBottom: 12, color: '#7797a2', letterSpacing: 0 }}>{providerStatus}</div>
             <label style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12, letterSpacing: 0 }}>
               <input type="checkbox" checked={memoryContextEnabled} disabled={memoryBusy}
                 onChange={(event) => void toggleMemoryContext(event.target.checked)} />
