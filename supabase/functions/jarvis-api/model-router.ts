@@ -73,6 +73,18 @@ function configuredProviders(): Provider[] {
   return providers
 }
 
+/** Safe provider diagnostics; never returns secret values or environment variable names. */
+export function getFreeProviderStatus(): {
+  configured: boolean
+  providers: { name: string; model: string }[]
+} {
+  const providers = configuredProviders()
+  return {
+    configured: providers.length > 0,
+    providers: providers.map(({ name, model }) => ({ name, model })),
+  }
+}
+
 function retryableStatus(status: number): boolean {
   return status === 408 || status === 409 || status === 425 ||
     status === 429 || status >= 500
