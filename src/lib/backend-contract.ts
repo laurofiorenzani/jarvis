@@ -57,6 +57,11 @@ export type CreateMemoryResponse = {
   memory: CloudMemory
 }
 
+export type MemoryPreferenceResponse = {
+  version: typeof CLOUD_API_VERSION
+  contextEnabled: boolean
+}
+
 export type ConversationRole = 'user' | 'assistant'
 
 export type ConversationMessage = {
