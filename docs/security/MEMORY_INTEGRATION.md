@@ -17,11 +17,11 @@ This is an opt-in integration. It is **disabled by default** and is not ready fo
 - The adapter must use a Windows OS-backed secret store (Credential Manager or a separately reviewed DPAPI design). No environment-variable, plaintext-file, PowerShell, or silent fallback is permitted.
 - If the adapter is missing, invalid, unavailable, or the key is missing for an existing store, startup fails closed when memory is enabled.
 - The encrypted store is placed at `~/.jarvis/memory/memory.enc`; metadata-only audit entries are appended to `~/.jarvis/memory/audit.jsonl`.
-- One process owns the store. Per-WebSocket connections receive their own MCP server and confirmation transport.
+- One process owns the store. An atomic local lock directory prevents a second bridge process from opening the writer. A clean exit releases it; a crash leaves a stale lock that must be inspected and removed manually only after confirming no bridge process is alive. Per-WebSocket connections receive their own MCP server and confirmation transport.
 
 ## Model-facing tools
 
-The `jarvis_memory` MCP server exposes search/save/update/delete operations. Sensitive records are hidden from model-facing search. Mutations require a trusted, correlated browser approval; model text or model-supplied flags cannot approve a write.
+The `jarvis_memory` MCP server exposes search/save/update/delete operations. Sensitive records are hidden from model-facing search. Mutations require a trusted, correlated browser approval; model text or model-supplied flags cannot approve a write. The bridge policy allows these memory tools to reach the approval broker in read-only mode; the memory handlers still reject every mutation without the explicit dialog approval.
 
 When a write is proposed, the UI displays the exact payload preview, operation, and target memory ID. Approval expires after 30 seconds. Denial, timeout, malformed reply, disconnect, or mismatched metadata fails closed.
 
@@ -38,5 +38,6 @@ Do not enable this feature until all of the following are true:
 5. A real UI approval test proves the displayed payload is exactly the payload written.
 6. Bridge restart tests prove encrypted memory persists across process restarts.
 7. Search isolation, retention, sensitive-memory denial, deletion, and backup/restore have been verified.
+8. The exclusive writer lock and stale-lock recovery procedure have been tested on the target Windows filesystem.
 
 Until those gates pass, leave `JARVIS_MEMORY_ENABLED` unset and use synthetic data only. The feature is a guarded integration foundation, not a production-ready memory service.
