@@ -247,3 +247,11 @@ test('cloud client sends versioned cancellation only for valid turn IDs', async 
   assert.equal(String(captured?.input), 'https://api.example.test/functions/v1/jarvis-api/v1/turns/cancel')
   assert.equal(JSON.parse(String(captured?.init?.body)).version, 1)
 })
+
+test('cloud event parser accepts explicit turn cancellation events', () => {
+  assert.deepEqual(parseCloudAssistantEvent({
+    version: 1, type: 'turn.cancelled', conversationId: 'c-1', turnId: 't-1',
+  }), {
+    version: 1, type: 'turn.cancelled', conversationId: 'c-1', turnId: 't-1',
+  })
+})
