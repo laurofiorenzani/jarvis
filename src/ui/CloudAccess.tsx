@@ -1,13 +1,9 @@
-import { useState, type FormEvent } from 'react'
+import { useRef, useState, type FormEvent } from 'react'
 import { env } from '../config'
 import { createCloudRuntime } from '../lib/cloud-runtime'
+import type { CloudRuntimeOptions } from '../lib/cloud-runtime'
 import { selectCloudBrain, selectLocalBrain } from '../lib/brain'
 
-/**
- * Cloud sign-in is opt-in. Refresh tokens live only in this page's memory on
- * web builds; they are never written to localStorage. Native Keychain/Keystore
- * persistence can be injected by the native shell in a later integration.
- */
 function createVolatileTokenStore() {
   const values = new Map<string, string>()
   return {
@@ -24,6 +20,7 @@ export function CloudAccess({ onConnected, onDisconnected }: { onConnected?: () 
   const [busy, setBusy] = useState(false)
   const [connected, setConnected] = useState(false)
   const [message, setMessage] = useState('')
+  const runtimeRef = useRef<ReturnType<typeof createCloudRuntime> | null>(null)
 
   if (!env.supabaseUrl || !env.supabasePublishableKey) return null
 
@@ -32,12 +29,14 @@ export function CloudAccess({ onConnected, onDisconnected }: { onConnected?: () 
     if (busy) return
     setBusy(true)
     setMessage('')
+    const options: CloudRuntimeOptions = {
+      supabaseUrl: env.supabaseUrl,
+      supabasePublishableKey: env.supabasePublishableKey,
+      tokenStore: createVolatileTokenStore(),
+    }
+    const runtime = createCloudRuntime(options)
+    runtimeRef.current = runtime
     try {
-      const runtime = createCloudRuntime({
-        supabaseUrl: env.supabaseUrl,
-        supabasePublishableKey: env.supabasePublishableKey,
-        tokenStore: createVolatileTokenStore(),
-      })
       await runtime.auth.signInWithPassword(email, password)
       await runtime.brain.warm()
       selectCloudBrain(runtime.brain)
@@ -46,17 +45,31 @@ export function CloudAccess({ onConnected, onDisconnected }: { onConnected?: () 
       setMessage('CLOUD SESSION ACTIVE · MEMORY-ONLY TOKEN STORAGE')
       onConnected?.()
     } catch (error) {
+      selectLocalBrain()
+      await runtime.auth.signOut().catch(() => {})
+      runtimeRef.current = null
+      setConnected(false)
       setMessage(error instanceof Error ? error.message : 'Cloud sign-in failed.')
     } finally {
       setBusy(false)
     }
   }
 
-  const signOut = () => {
+  const signOut = async () => {
+    if (busy) return
+    setBusy(true)
     selectLocalBrain()
-    setConnected(false)
-    setMessage('LOCAL BRAIN RESTORED')
-    onDisconnected?.()
+    try {
+      await runtimeRef.current?.auth.signOut()
+      setMessage('LOCAL BRAIN RESTORED · CLOUD SESSION REVOKED')
+    } catch {
+      setMessage('LOCAL BRAIN RESTORED · LOCAL TOKENS CLEARED')
+    } finally {
+      runtimeRef.current = null
+      setConnected(false)
+      setBusy(false)
+      onDisconnected?.()
+    }
   }
 
   return (
@@ -78,7 +91,9 @@ export function CloudAccess({ onConnected, onDisconnected }: { onConnected?: () 
         connected ? (
           <div style={{ paddingTop: 12 }}>
             <div style={{ marginBottom: 12, color: '#83d9e8' }}>{message}</div>
-            <button type="button" onClick={signOut} style={buttonStyle}>SWITCH TO LOCAL BRAIN</button>
+            <button type="button" disabled={busy} onClick={() => void signOut()} style={buttonStyle}>
+              {busy ? 'DISCONNECTING…' : 'SWITCH TO LOCAL BRAIN'}
+            </button>
           </div>
         ) : (
           <form onSubmit={(event) => void signIn(event)} style={{ display: 'grid', gap: 9, paddingTop: 12 }}>
