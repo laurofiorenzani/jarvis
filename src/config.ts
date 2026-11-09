@@ -134,8 +134,10 @@ export const env = {
   elevenVoiceId:
     str(import.meta.env.VITE_ELEVENLABS_VOICE_ID) ?? 'JBFqnCBsd6RMkjVDRZzb',
   porcupineKey: str(import.meta.env.VITE_PICOVOICE_ACCESS_KEY) ?? '',
-  supabaseUrl: str(import.meta.env.VITE_SUPABASE_URL) ?? '',
-  supabasePublishableKey: str(import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY) ?? '',
+  // These are public client settings (never service-role credentials). Environment
+  // values can override them for another Supabase project or deployment.
+  supabaseUrl: str(import.meta.env.VITE_SUPABASE_URL) ?? 'https://undmhmdwhxvjgvezvucy.supabase.co',
+  supabasePublishableKey: str(import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY) ?? 'sb_publishable_oJvnF8wB4y1mrFWzlzSZOQ_kFy-jzVx',
 }
 
 /** `claude-opus-5` is the strongest model; `claude-sonnet-5` trades a little
