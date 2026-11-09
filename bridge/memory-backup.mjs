@@ -141,8 +141,12 @@ export async function createEncryptedMemoryBackup({
     if (!storeInfo.isFile()) throw new Error('Memory store must be a regular file')
     if (storeInfo.size > MAX_STORE_BYTES) throw new Error('Memory store exceeds the backup size limit')
     storeBytes = await readFile(sourceStore)
-    const parsedStore = JSON.parse(decryptMemoryPayload(storeBytes.toString('utf8'), keyCopy))
-    validateStoreDocument(parsedStore)
+    const validationStore = new MemoryStore({ filePath: sourceStore, encryptionKey: keyCopy })
+    try {
+      await validationStore.init()
+    } finally {
+      await validationStore.close()
+    }
 
     try {
       const auditInfo = await lstat(sourceAudit)
