@@ -27,15 +27,24 @@ export type CloudApiOptions = {
 }
 
 export class CloudApiError extends Error {
+  readonly status: number
+  readonly code: ApiError['error']['code'] | 'network_error' | 'invalid_response'
+  readonly requestId?: string
+  readonly retryable: boolean
+
   constructor(
     message: string,
-    readonly status: number,
-    readonly code: ApiError['error']['code'] | 'network_error' | 'invalid_response',
-    readonly requestId?: string,
-    readonly retryable = false,
+    status: number,
+    code: ApiError['error']['code'] | 'network_error' | 'invalid_response',
+    requestId?: string,
+    retryable = false,
   ) {
     super(message)
     this.name = 'CloudApiError'
+    this.status = status
+    this.code = code
+    this.requestId = requestId
+    this.retryable = retryable
   }
 }
 
@@ -166,7 +175,7 @@ export function createCloudApiClient(options: CloudApiOptions) {
         if (payload && typeof payload === 'object' && 'error' in payload) {
           const body = payload as ApiError
           if (body.version === CLOUD_API_VERSION && body.error &&
-              typeof body.error.message === 'string' && API_ERROR_CODES.includes(String(body.error.code))) {
+              typeof body.error.message === 'string' && (API_ERROR_CODES as readonly string[]).includes(body.error.code)) {
             throw new CloudApiError(
               body.error.message, response.status, body.error.code,
               body.error.requestId, body.error.retryable,
