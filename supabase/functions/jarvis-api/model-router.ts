@@ -2,12 +2,14 @@
  * Server-side model provider rotation for JARVIS.
  *
  * Providers are configured by an operator through Supabase Edge Function
- * secrets. This module only speaks the OpenAI-compatible Chat Completions
- * streaming protocol, which includes FreeLLMAPI and many hosted providers.
+ * secrets. Each provider must explicitly declare tier=free and
+ * billingMode=free_quota_only or it is rejected. This module only speaks the
+ * OpenAI-compatible Chat Completions streaming protocol.
  *
  * The router retries another provider only before any answer bytes have been
  * delivered. It never silently falls back to a paid provider: every configured
- * endpoint is an explicit operator choice and should represent a free quota.
+ * endpoint is an explicit operator choice. Configuration labels are not proof
+ * of provider billing settings; account-side paid billing must also be disabled.
  */
 export type ChatMessage = { role: 'system' | 'user' | 'assistant'; content: string }
 
@@ -15,6 +17,9 @@ type ProviderConfig = {
   name: string
   baseUrl: string
   model: string
+  /** Explicit operator assertion that this endpoint is free-tier only. */
+  tier: 'free'
+  billingMode: 'free_quota_only'
   apiKeyEnv?: string
 }
 
@@ -44,7 +49,8 @@ function configuredProviders(): Provider[] {
   const providers: Provider[] = []
   for (const item of parsed) {
     if (!isRecord(item) || typeof item.name !== 'string' ||
-        typeof item.baseUrl !== 'string' || typeof item.model !== 'string') continue
+        typeof item.baseUrl !== 'string' || typeof item.model !== 'string' ||
+        item.tier !== 'free' || item.billingMode !== 'free_quota_only') continue
     let url: URL
     try { url = new URL(item.baseUrl) } catch { continue }
     // Secrets are server-side only. Reject non-HTTPS endpoints and URL-embedded
