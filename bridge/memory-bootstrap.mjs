@@ -1,9 +1,10 @@
-import { appendFile, mkdir } from 'node:fs/promises'
+import { mkdir } from 'node:fs/promises'
 import { rmSync, writeFileSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { isAbsolute, join, resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { createMemoryRuntime } from './memory-runtime.mjs'
+import { createMemoryAuditLogger } from './memory-audit-log.mjs'
 
 /**
  * Opt-in process bootstrap for Jarvis's encrypted memory runtime.
@@ -93,6 +94,7 @@ export async function loadMemoryRuntime({
   process.once('exit', release)
 
   const auditPath = join(directory, 'audit.jsonl')
+  const writeAudit = createMemoryAuditLogger({ auditPath })
 
   const audit = async (event) => {
     if (!event || !['save', 'update', 'delete'].includes(event.operation) ||
@@ -103,16 +105,11 @@ export async function loadMemoryRuntime({
       throw new TypeError('Invalid metadata-only memory audit event')
     }
     // Construct a fresh allowlisted record; never serialize the handler input.
-    const record = {
+    return writeAudit({
       operation: event.operation,
       memoryId: event.memoryId,
       outcome: event.outcome,
       timestamp: new Date(event.timestamp).toISOString(),
-    }
-    await appendFile(auditPath, JSON.stringify(record) + '\n', {
-      encoding: 'utf8',
-      flag: 'a',
-      mode: 0o600,
     })
   }
 
