@@ -119,7 +119,7 @@ test('cloud event stream cancels its reader when the consumer stops early', asyn
   const body = new ReadableStream<Uint8Array>({
     start(controller) {
       controller.enqueue(new TextEncoder().encode(
-        'data: {"version":1,"type":"turn.started","conversationId":"c-1","turnId":"t-1"}\\n\\n',
+        'data: {"version":1,"type":"turn.started","conversationId":"c-1","turnId":"t-1"}\n\n',
       ))
     },
     cancel() { cancelled = true },
