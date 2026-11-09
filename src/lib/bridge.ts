@@ -122,6 +122,11 @@ export function watchMemoryConfirmation(fn: (challenge: MemoryConfirmationChalle
   onMemoryConfirmation = fn
 }
 
+let onMemoryConfirmationCancelled: ((id: string) => void) | null = null
+export function watchMemoryConfirmationCancelled(fn: (id: string) => void) {
+  onMemoryConfirmationCancelled = fn
+}
+
 /** Send the user's decision with the exact metadata the bridge challenged. */
 export function replyMemoryConfirmation(
   challenge: MemoryConfirmationChallenge,
@@ -251,6 +256,8 @@ function dispatch(ws: WebSocket) {
       // A `ui` frame with no args is normal — reset and clear take none — so an
       // absent args object is an empty one, not a reason to drop the command.
       onUi?.(msg.op, (msg.args ?? {}) as Record<string, unknown>)
+    } else if (msg.type === 'memory_confirmation_cancelled') {
+      if (typeof msg.id === 'string') onMemoryConfirmationCancelled?.(msg.id)
     } else if (msg.type === 'memory_confirmation') {
       if (typeof msg.id !== 'string' ||
           !['save', 'update', 'delete'].includes(msg.operation ?? '') ||
