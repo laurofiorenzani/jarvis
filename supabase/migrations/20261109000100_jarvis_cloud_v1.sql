@@ -102,7 +102,10 @@ begin
     return false;
   end if;
 
-  delete from public.jarvis_rate_limits\n    where window_start < clock_timestamp() - interval '2 days';\n\n  v_window_start := to_timestamp(
+  delete from public.jarvis_rate_limits
+    where window_start < clock_timestamp() - interval '2 days';
+
+  v_window_start := to_timestamp(
     floor(extract(epoch from clock_timestamp()) / p_window_seconds) * p_window_seconds
   );
 
