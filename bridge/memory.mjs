@@ -74,8 +74,9 @@ export class MemoryStore {
   #closing = false
   #closed = false
   #closePromise
+  #onExpire
 
-  constructor({ filePath, encryptionKey, clock = () => new Date(), idFactory = randomUUID } = {}) {
+  constructor({ filePath, encryptionKey, clock = () => new Date(), idFactory = randomUUID, onExpire = async () => {} } = {}) {
     assertText(filePath, 'filePath', 4096)
     if (!Buffer.isBuffer(encryptionKey) || encryptionKey.length !== 32) {
       throw new TypeError('MemoryStore requires a 32-byte encryptionKey Buffer')
@@ -84,6 +85,8 @@ export class MemoryStore {
     this.#encryptionKey = Buffer.from(encryptionKey)
     this.#clock = clock
     this.#idFactory = idFactory
+    if (typeof onExpire !== 'function') throw new TypeError('onExpire must be a function')
+    this.#onExpire = onExpire
   }
 
   #assertOpen() {
@@ -145,10 +148,15 @@ export class MemoryStore {
       this.#assertOpen()
       const next = new Map(this.#records)
       const nowMs = this.#clock().getTime()
+      const expiredIds = []
       for (const [id, record] of next) {
-        if (isExpired(record, nowMs)) next.delete(id)
+        if (isExpired(record, nowMs)) {
+          next.delete(id)
+          expiredIds.push(id)
+        }
       }
       const result = change(next)
+      if (expiredIds.length) await this.#onExpire(expiredIds)
       const payload = JSON.stringify({ version: VERSION, records: [...next.values()] }, null, 2) + '\n'
       await this.#atomicWrite(encryptMemoryPayload(payload, this.#encryptionKey))
       this.#records = next
