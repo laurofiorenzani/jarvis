@@ -108,3 +108,26 @@ The correct next move is to separate the core assistant runtime from the local d
 ## Current status
 
 Audit and first contract scaffold complete; no production resources were provisioned and no personal data was moved. Automated build/tests have not been run in this environment because the repository is accessible through GitHub operations only, not a checked-out Node workspace. The next code milestone is to extract a transport interface behind `brain.ts`, implement a local adapter without changing behaviour, and then implement the cloud API adapter against the versioned contract.
+
+
+## Cloud client foundation (2026-11-09)
+
+Implemented `src/lib/cloud-api.ts` as an opt-in HTTP boundary for the future
+cloud service. It requires an explicitly injected API origin and short-lived
+access-token provider; it has no default production host and does not persist
+credentials. Non-local origins must use HTTPS. Requests omit ambient browser
+credentials, reject redirects, send the API version, and normalise structured
+server errors. The initial methods cover health, conversation creation and
+turn submission.
+
+The client is intentionally not wired into `brain.ts` or selected by
+`VITE_BACKEND`: there is still no first-party identity provider, server-side
+API implementation, token issuer, durable conversation store, or deployment.
+The browser-direct Anthropic path remains demo-only and must not be used for a
+public mobile deployment. The Windows bridge remains local-only.
+
+Added Node/tsx tests for bearer-header handling, missing-token fail-closed
+behavior, HTTPS enforcement and structured error propagation. CI must run
+before this work is considered validated. Endpoint paths in the client are
+the proposed v1 contract and must be implemented server-side to match before
+the client is enabled.
