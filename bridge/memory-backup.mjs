@@ -184,7 +184,7 @@ export async function createEncryptedMemoryBackup({
     return result
   } finally {
     keyCopy.fill(0)
-    storeBytes.fill(0)
+    storeBytes?.fill(0)
     auditBytes.fill(0)
     payloadBytes?.fill(0)
     derivedKey?.fill(0)
