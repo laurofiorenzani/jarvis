@@ -8,9 +8,10 @@ import { createMemoryRuntime } from './memory-runtime.mjs'
 /**
  * Opt-in process bootstrap for Jarvis's encrypted memory runtime.
  *
- * The OS vault is deliberately supplied as a local trusted module. There is
- * no environment-variable, plaintext-file, or generated-key fallback. Until a
- * tested Windows Credential Manager adapter is installed, memory remains off.
+ * Windows Credential Manager is the built-in vault; an absolute local
+ * adapter module may override it when explicitly configured. There is no
+ * environment-variable, plaintext-file, or generated-key fallback. Memory
+ * remains off unless the dedicated opt-in launcher is used.
  */
 export async function loadMemoryRuntime({
   env = process.env,
