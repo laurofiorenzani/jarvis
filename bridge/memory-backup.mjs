@@ -1,6 +1,6 @@
 import { createCipheriv, createDecipheriv, randomBytes, scrypt as scryptCallback } from 'node:crypto'
 import { promisify } from 'node:util'
-import { lstat, mkdir, open, readFile, rename, rm, writeFile }
+import { lstat, mkdir, open, readFile, rename, rm, writeFile } from 'node:fs/promises'
 import { basename, dirname, join, resolve } from 'node:path'
 import { decryptMemoryPayload } from './encrypted-memory-payload.mjs'
 import { MemoryStore } from './memory.mjs'
@@ -91,7 +91,7 @@ async function acquireMemoryWriterLock(directory, purpose) {
       pid: process.pid,
       purpose,
       startedAt: new Date().toISOString(),
-    }) + '\\n', { flag: 'wx', mode: 0o600 })
+    }) + '\n', { flag: 'wx', mode: 0o600 })
   } catch (error) {
     await rm(lockPath, { recursive: true, force: true }).catch(() => {})
     throw error
