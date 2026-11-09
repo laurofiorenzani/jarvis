@@ -16,6 +16,7 @@ on:
       - main
     paths:
       - 'bridge/**'
+      - 'src/**'
       - 'test/**'
       - 'package.json'
       - 'package-lock.json'
