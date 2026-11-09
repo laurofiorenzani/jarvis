@@ -42,7 +42,7 @@ export function CloudAccess({ onConnected, onDisconnected }: { onConnected?: () 
       selectCloudBrain(runtime.brain)
       setConnected(true)
       setPassword('')
-      setMessage('CLOUD SESSION ACTIVE · MEMORY-ONLY TOKEN STORAGE')
+      setMessage('AUTHENTICATED · CLOUD API HEALTHY · MODEL NOT YET VERIFIED · MEMORY-ONLY TOKENS')
       onConnected?.()
     } catch (error) {
       selectLocalBrain()
