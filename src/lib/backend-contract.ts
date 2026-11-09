@@ -61,6 +61,17 @@ export type CreateConversationResponse = {
   conversation: ConversationSummary
 }
 
+export type ListConversationsResponse = {
+  version: typeof CLOUD_API_VERSION
+  conversations: ConversationSummary[]
+}
+
+export type GetConversationResponse = {
+  version: typeof CLOUD_API_VERSION
+  conversation: ConversationSummary
+  messages: ConversationMessage[]
+}
+
 export type SendTurnRequest = {
   version: typeof CLOUD_API_VERSION
   conversationId: string
