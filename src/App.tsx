@@ -5,6 +5,7 @@ import { Boot } from './ui/Boot'
 import { Ignition } from './ui/Ignition'
 import { Diagnostics } from './ui/Diagnostics'
 import { MemoryConfirmation } from './ui/MemoryConfirmation'
+import { CloudAccess } from './ui/CloudAccess'
 import type { MemoryConfirmationChallenge } from './lib/bridge'
 import { useStore } from './store'
 import { startVoice, type Voice, type VoiceMode } from './lib/voice'
@@ -725,6 +726,10 @@ export default function App() {
     <>
       <Scene />
       <Hud />
+      <CloudAccess
+        onConnected={() => store.getState().setConnected(connectedLabels())}
+        onDisconnected={() => store.getState().setConnected(connectedLabels())}
+      />
       <Boot />
       <Diagnostics />
       <MemoryConfirmation
