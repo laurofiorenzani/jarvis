@@ -12,13 +12,16 @@ const SECOND = Buffer.from('22222222222222222222222222222222')
 function fakeEntryClass() {
   const credentials = new Map()
   let writes = 0
+  let lastRead = null
   class FakeAsyncEntry {
     constructor(service, username) {
       this.key = `${service}:${username}`
     }
     async getSecret() {
       const value = credentials.get(this.key)
-      return value ? [...value] : null
+      if (!value) return null
+      lastRead = [...value]
+      return lastRead
     }
     async setSecret(value) {
       writes += 1
@@ -26,7 +29,7 @@ function fakeEntryClass() {
       credentials.set(this.key, Buffer.from(value))
     }
   }
-  return { FakeAsyncEntry, credentials, writes: () => writes }
+  return { FakeAsyncEntry, credentials, writes: () => writes, lastRead: () => lastRead }
 }
 
 test('Windows vault adapter validates the fixed purpose and 32-byte key contract', async (t) => {
@@ -97,3 +100,20 @@ test('native adapter round-trips a key through Windows Credential Manager', asyn
     await entry.deleteCredential()
   }
 })
+
+
+test('zeroes temporary native keyring arrays after copying secret bytes', async (t) => {
+  const home = await mkdtemp(join(tmpdir(), 'jarvis-vault-zero-'))
+  t.after(() => rm(home, { recursive: true, force: true }))
+  const fake = fakeEntryClass()
+  const vault = await createWindowsCredentialVault({ home, EntryClass: fake.FakeAsyncEntry })
+  const stored = await vault.createSecretIfAbsent(MEMORY_KEY_PURPOSE, FIRST)
+  assert.equal(stored.equals(FIRST), true)
+  assert.ok(fake.lastRead().every((byte) => byte === 0), 'native array returned after create is wiped')
+
+  const readBack = await vault.getSecret(MEMORY_KEY_PURPOSE)
+  assert.equal(readBack.equals(FIRST), true)
+  assert.ok(fake.lastRead().every((byte) => byte === 0), 'native array returned after get is wiped')
+  stored.fill(0)
+  readBack.fill(0)
+});
