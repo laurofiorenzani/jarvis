@@ -55,9 +55,9 @@ test('denied and unknown tools never reach MCP dispatch', async () => {
   assert.equal(dispatched, false)
 })
 
-test('rejects malformed and duplicate tool definitions', () => {
-  assert.throws(() => createMcpToolAdapter({ servers, callTool: () => {}, authorize: () => true })
-    .execute({ type: 'function', function: { name: 'mcp__notes__read_note', arguments: [] } }))
+test('rejects malformed and duplicate tool definitions', async () => {
+  const adapter = createMcpToolAdapter({ servers, callTool: () => {}, authorize: () => true })
+  await assert.rejects(adapter.execute({ type: 'function', function: { name: 'mcp__notes__read_note', arguments: [] } }), /Malformed MCP tool call/)
   assert.throws(() => createMcpToolAdapter({
     servers: [{ name: 'notes', tools: [{ name: 'x' }, { name: 'x' }] }],
     callTool() {}, authorize: () => true,
