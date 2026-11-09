@@ -74,3 +74,12 @@ public health requests can reach the handler. This is intentional: every
 non-health route explicitly validates the bearer token with Supabase Auth
 (`auth.getUser`) before any user-scoped operation. Do not remove that
 application-level verification.
+
+## Client authentication adapter
+
+`src/lib/cloud-auth.ts` now implements password sign-in, refresh-token rotation,
+access-token expiry checks and local sign-out. It requires an injected
+`SecureTokenStore`; it does not default to localStorage, cookies or filesystem
+storage. The refresh token is the only credential persisted by the adapter;
+the access token remains in memory. The iOS integration must provide a
+Keychain-backed store before sign-in is enabled in the mobile UI.
