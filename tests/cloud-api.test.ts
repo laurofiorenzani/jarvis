@@ -255,3 +255,88 @@ test('cloud event parser accepts explicit turn cancellation events', () => {
     version: 1, type: 'turn.cancelled', conversationId: 'c-1', turnId: 't-1',
   })
 })
+
+import { CloudAuthError, createSupabaseAuth, type SecureTokenStore } from '../src/lib/cloud-auth.ts'
+
+function memoryTokenStore(): SecureTokenStore & { values: Map<string, string> } {
+  const values = new Map<string, string>()
+  return {
+    values,
+    async get(key) { return values.get(key) ?? null },
+    async set(key, value) { values.set(key, value) },
+    async remove(key) { values.delete(key) },
+  }
+}
+
+test('Supabase Auth stores only the refresh token through injected secure storage', async () => {
+  const storage = memoryTokenStore()
+  let requestUrl = ''
+  let requestInit: RequestInit | undefined
+  const auth = createSupabaseAuth({
+    url: 'https://project.supabase.co',
+    anonKey: 'public-anon-key',
+    storage,
+    now: () => 1_800_000_000_000,
+    fetchImpl: async (input, init) => {
+      requestUrl = String(input)
+      requestInit = init
+      return new Response(JSON.stringify({
+        access_token: 'access-1', refresh_token: 'refresh-1',
+        expires_in: 3600, user: { id: 'user-1', email: 'user@example.test' },
+      }), { status: 200, headers: { 'Content-Type': 'application/json' } })
+    },
+  })
+  const result = await auth.signInWithPassword(' user@example.test ', 'password')
+  assert.equal(result.user.id, 'user-1')
+  assert.equal(requestUrl, 'https://project.supabase.co/auth/v1/token?grant_type=password')
+  assert.equal(JSON.parse(String(requestInit?.body)).email, 'user@example.test')
+  assert.equal(storage.values.size, 1)
+  assert.equal(storage.values.get('jarvis.supabase.refresh-token'), 'refresh-1')
+  assert.equal(await auth.getAccessToken(), 'access-1')
+})
+
+test('Supabase Auth refreshes expired access tokens and rotates the stored refresh token', async () => {
+  const storage = memoryTokenStore()
+  storage.values.set('jarvis.supabase.refresh-token', 'refresh-old')
+  let calls = 0
+  const auth = createSupabaseAuth({
+    url: 'https://project.supabase.co',
+    anonKey: 'public-anon-key',
+    storage,
+    now: () => 1_800_000_000_000,
+    fetchImpl: async (_input, init) => {
+      calls++
+      assert.equal(JSON.parse(String(init?.body)).refresh_token, 'refresh-old')
+      return new Response(JSON.stringify({
+        access_token: 'access-new', refresh_token: 'refresh-new',
+        expires_in: 3600, user: { id: 'user-1' },
+      }), { status: 200, headers: { 'Content-Type': 'application/json' } })
+    },
+  })
+  assert.equal(await auth.getAccessToken(), 'access-new')
+  assert.equal(calls, 1)
+  assert.equal(storage.values.get('jarvis.supabase.refresh-token'), 'refresh-new')
+})
+
+test('Supabase Auth clears invalid refresh credentials and never falls back to browser storage', async () => {
+  const storage = memoryTokenStore()
+  storage.values.set('jarvis.supabase.refresh-token', 'expired-refresh')
+  const auth = createSupabaseAuth({
+    url: 'https://project.supabase.co',
+    anonKey: 'public-anon-key',
+    storage,
+    fetchImpl: async () => new Response(JSON.stringify({ message: 'expired' }), { status: 401 }),
+  })
+  assert.equal(await auth.getAccessToken(), null)
+  assert.equal(storage.values.has('jarvis.supabase.refresh-token'), false)
+  assert.equal(storage.values.size, 0)
+})
+
+test('Supabase Auth rejects insecure project URLs', () => {
+  const storage = memoryTokenStore()
+  assert.throws(() => createSupabaseAuth({
+    url: 'http://project.example.test',
+    anonKey: 'key',
+    storage,
+  }), /HTTPS/)
+})
