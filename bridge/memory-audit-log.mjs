@@ -50,6 +50,7 @@ export function createMemoryAuditLogger({
   if (!Number.isFinite(maxAgeMs) || maxAgeMs < 0) throw new TypeError('maxAgeMs must be a non-negative number')
 
   let queue = Promise.resolve()
+  let initialized = false
 
   return function audit(event) {
     validateEvent(event)
@@ -72,15 +73,19 @@ export function createMemoryAuditLogger({
         if (error?.code !== 'ENOENT') throw error
       }
 
+      let existingEvents
+      if (!initialized && currentSize > 0) {
+        existingEvents = parseAuditLog(await readFile(auditPath, 'utf8'))
+      }
+
       const line = JSON.stringify(record) + '\n'
       const lineBytes = Buffer.byteLength(line, 'utf8')
       if (lineBytes > maxBytes) throw new Error('Memory audit event exceeds the configured size limit')
       if (currentSize + lineBytes > maxBytes && currentSize > 0) {
-        const contents = await readFile(auditPath, 'utf8')
         const currentTime = now()
         if (!Number.isFinite(currentTime)) throw new Error('Memory audit clock returned an invalid timestamp')
         const cutoff = currentTime - maxAgeMs
-        let retained = parseAuditLog(contents)
+        let retained = (existingEvents ?? parseAuditLog(await readFile(auditPath, 'utf8')))
           .filter((item) => Date.parse(item.timestamp) >= cutoff)
         const keepCount = Math.max(0, maxEvents - 1)
         retained = keepCount ? retained.slice(-keepCount) : []
@@ -102,6 +107,7 @@ export function createMemoryAuditLogger({
       }
 
       await appendFile(auditPath, line, { mode: 0o600 })
+      initialized = true
     })
 
     queue = operation.catch(() => {})
