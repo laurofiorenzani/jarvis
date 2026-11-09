@@ -47,6 +47,14 @@ function normaliseBaseUrl(value: string): string {
   return url.toString().replace(/\/$/, '')
 }
 
+function requireText(value: string, field: string, maxLength = 200): string {
+  const trimmed = value.trim()
+  if (!trimmed || trimmed.length > maxLength) {
+    throw new CloudApiError(`Invalid ${field}.`, 400, 'invalid_request')
+  }
+  return trimmed
+}
+
 export function createCloudApiClient(options: CloudApiOptions) {
   const baseUrl = normaliseBaseUrl(options.baseUrl)
   const fetcher = options.fetchImpl ?? fetch
@@ -98,20 +106,37 @@ export function createCloudApiClient(options: CloudApiOptions) {
   }
 
   return {
-    health: () => request<CloudHealth>('/v1/health'),
+    health: async () => {
+      const result = await request<CloudHealth>('/v1/health')
+      if (result.version !== CLOUD_API_VERSION || !['ok', 'degraded'].includes(result.status)) {
+        throw new CloudApiError('Cloud service returned an invalid health response.', 200, 'invalid_response')
+      }
+      return result
+    },
     createConversation: () => request<CreateConversationResponse>('/v1/conversations', {
       method: 'POST',
       body: JSON.stringify({ version: CLOUD_API_VERSION }),
     }),
-    sendTurn: (input: Omit<SendTurnRequest, 'version'>) =>
-      request<{ version: typeof CLOUD_API_VERSION; accepted: true }>('/v1/turns', {
+    sendTurn: (input: Omit<SendTurnRequest, 'version'>) => {
+      const safeInput = {
+        conversationId: requireText(input.conversationId, 'conversation ID'),
+        turnId: requireText(input.turnId, 'turn ID'),
+        text: requireText(input.text, 'message', 100_000),
+      }
+      return request<{ version: typeof CLOUD_API_VERSION; accepted: true }>('/v1/turns', {
         method: 'POST',
-        body: JSON.stringify({ version: CLOUD_API_VERSION, ...input }),
-      }),
-    cancelTurn: (input: Omit<CancelTurnRequest, 'version'>) =>
-      request<{ version: typeof CLOUD_API_VERSION; cancelled: boolean }>('/v1/turns/cancel', {
+        body: JSON.stringify({ version: CLOUD_API_VERSION, ...safeInput }),
+      })
+    },
+    cancelTurn: (input: Omit<CancelTurnRequest, 'version'>) => {
+      const safeInput = {
+        conversationId: requireText(input.conversationId, 'conversation ID'),
+        turnId: requireText(input.turnId, 'turn ID'),
+      }
+      return request<{ version: typeof CLOUD_API_VERSION; cancelled: boolean }>('/v1/turns/cancel', {
         method: 'POST',
-        body: JSON.stringify({ version: CLOUD_API_VERSION, ...input }),
-      }),
+        body: JSON.stringify({ version: CLOUD_API_VERSION, ...safeInput }),
+      })
+    },
   }
 }
