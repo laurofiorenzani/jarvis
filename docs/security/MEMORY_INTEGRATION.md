@@ -108,4 +108,6 @@ This validates the implementation on a hosted Windows runner, not on the user's 
 
 The local audit log is metadata-only and serialized across concurrent tool calls. It is capped at 1 MiB; when rotation is needed, the logger validates every existing line, retains only events within the 90-day window and at most 5,000 recent events, then atomically replaces the log before appending the new event. Malformed or non-metadata audit history fails closed and blocks the memory mutation rather than being silently discarded.
 
+Automatic retention cleanup runs during runtime startup and before memory reads. Expired records are audited as `expire` / `expired` metadata events before the encrypted store is rewritten; if the audit append fails, the deletion fails closed.
+
 The memory runtime exposes an idempotent close operation. It waits for queued writes, clears plaintext records from the in-memory map, and zeroes its private encryption-key buffer. The bootstrap releases the exclusive writer lock only after the store has closed.
