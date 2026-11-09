@@ -105,3 +105,21 @@ test('cloud brain prevents concurrent turns and allows an explicit conversation 
   brain.resetConversation()
   assert.equal(brain.getConversationId(), null)
 })
+
+test('cloud brain cancellation during conversation creation prevents model invocation', async () => {
+  let release!: (value: { conversation: { id: string } }) => void
+  const pending = new Promise<{ conversation: { id: string } }>((resolve) => { release = resolve })
+  let modelCalled = false
+  const brain = createCloudBrain({
+    health: async () => ({ status: 'ok' }),
+    createConversation: async () => pending,
+    streamTurn: async () => { modelCalled = true; return streamOf([]) },
+    cancelTurn: async () => ({ cancelled: true }),
+  })
+  const first = brain.ask('Cancel me', [], handlers())
+  brain.cancel()
+  release({ conversation: { id: 'c-1' } })
+  const result = await first
+  assert.equal(result.text, '')
+  assert.equal(modelCalled, false)
+})
