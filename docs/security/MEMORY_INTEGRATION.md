@@ -41,3 +41,10 @@ Do not enable this feature until all of the following are true:
 8. The exclusive writer lock and stale-lock recovery procedure have been tested on the target Windows filesystem.
 
 Until those gates pass, leave `JARVIS_MEMORY_ENABLED` unset and use synthetic data only. The feature is a guarded integration foundation, not a production-ready memory service.
+
+
+## Automated validation
+
+GitHub Actions run [#42634204764](https://github.com/laurofiorenzani/jarvis/actions/runs/42634204764) completed successfully on both Ubuntu and Windows using Node 24. Each platform ran **110 tests: 109 passed, 0 failed, 1 skipped**, followed by a successful TypeScript/Vite production build.
+
+This validates the current integration code and its synthetic test fixtures. It does not validate a real Windows Credential Manager adapter, target-PC permissions, or real user-data operation; those remain explicit release gates above.
