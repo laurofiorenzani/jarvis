@@ -1,6 +1,6 @@
 import { createCipheriv, createDecipheriv, randomBytes, scrypt as scryptCallback } from 'node:crypto'
 import { promisify } from 'node:util'
-import { lstat, mkdir, open, readFile, rename, rm } from 'node:fs/promises'
+import { lstat, mkdir, open, readFile, rename, rm, writeFile }
 import { basename, dirname, join, resolve } from 'node:path'
 import { decryptMemoryPayload } from './encrypted-memory-payload.mjs'
 import { MemoryStore } from './memory.mjs'
@@ -75,6 +75,36 @@ async function writeSynced(path, bytes) {
   }
 }
 
+async function acquireMemoryWriterLock(directory, purpose) {
+  const lockPath = join(directory, 'memory.writer.lock')
+  try {
+    await mkdir(lockPath, { mode: 0o700 })
+  } catch (error) {
+    if (error?.code === 'EEXIST') {
+      throw new Error('Memory store is locked by a running bridge or another maintenance operation')
+    }
+    throw error
+  }
+
+  try {
+    await writeFile(join(lockPath, 'owner.json'), JSON.stringify({
+      pid: process.pid,
+      purpose,
+      startedAt: new Date().toISOString(),
+    }) + '\\n', { flag: 'wx', mode: 0o600 })
+  } catch (error) {
+    await rm(lockPath, { recursive: true, force: true }).catch(() => {})
+    throw error
+  }
+
+  let released = false
+  return async () => {
+    if (released) return
+    released = true
+    await rm(lockPath, { recursive: true, force: true })
+  }
+}
+
 /**
  * Build a passphrase-encrypted backup containing the encrypted store, its
  * 32-byte vault key, and the metadata-only audit log. The key is never written
@@ -93,18 +123,27 @@ export async function createEncryptedMemoryBackup({
   if (typeof auditPath !== 'string' || !auditPath.trim()) throw new TypeError('auditPath is required')
   if (!Number.isFinite(Date.parse(createdAt))) throw new TypeError('createdAt must be a valid timestamp')
 
-  const storeBytes = await readFile(filePath)
+  const sourceStore = resolve(filePath)
+  const sourceAudit = resolve(auditPath)
+  if (dirname(sourceStore) !== dirname(sourceAudit)) {
+    throw new TypeError('Memory store and audit log must be in the same directory')
+  }
+  await mkdir(dirname(sourceStore), { recursive: true, mode: 0o700 })
+  const releaseLock = await acquireMemoryWriterLock(dirname(sourceStore), 'backup')
+
+  let storeBytes
   let auditBytes = Buffer.alloc(0)
   let derivedKey
   let payloadBytes
   const keyCopy = Buffer.from(key)
   try {
+    storeBytes = await readFile(sourceStore)
     if (storeBytes.length > MAX_STORE_BYTES) throw new Error('Memory store exceeds the backup size limit')
     const parsedStore = JSON.parse(decryptMemoryPayload(storeBytes.toString('utf8'), keyCopy))
     validateStoreDocument(parsedStore)
 
     try {
-      auditBytes = await readFile(auditPath)
+      auditBytes = await readFile(sourceAudit)
     } catch (error) {
       if (error?.code !== 'ENOENT') throw error
     }
@@ -149,6 +188,7 @@ export async function createEncryptedMemoryBackup({
     auditBytes.fill(0)
     payloadBytes?.fill(0)
     derivedKey?.fill(0)
+    await releaseLock()
   }
 }
 
@@ -177,8 +217,9 @@ export async function restoreEncryptedMemoryBackup({
   const targetStore = resolve(filePath)
   const targetAudit = resolve(auditPath)
   if (targetStore === targetAudit) throw new TypeError('Memory store and audit paths must be different')
-  if (await exists(targetStore)) throw new Error('Restore target already contains a memory store; refusing to overwrite it')
-  if (await exists(targetAudit)) throw new Error('Restore target already contains an audit log; refusing to overwrite it')
+  if (dirname(targetStore) !== dirname(targetAudit)) {
+    throw new TypeError('Memory store and audit log must be in the same directory')
+  }
 
   let envelope
   try {
@@ -200,8 +241,9 @@ export async function restoreEncryptedMemoryBackup({
   let recoveredKey
   let storeBytes
   let auditBytes
-  const storeTemp = join(dirname(targetStore), '.' + basename(targetStore) + '.' + randomBytes(8).toString('hex') + '.restore.tmp')
-  const auditTemp = join(dirname(targetAudit), '.' + basename(targetAudit) + '.' + randomBytes(8).toString('hex') + '.restore.tmp')
+  let storeTemp
+  let auditTemp
+  let releaseLock
 
   try {
     derivedKey = await deriveBackupKey(passphrase, salt)
@@ -236,7 +278,11 @@ export async function restoreEncryptedMemoryBackup({
     validateStoreDocument(storeDocument)
 
     await mkdir(dirname(targetStore), { recursive: true, mode: 0o700 })
-    await mkdir(dirname(targetAudit), { recursive: true, mode: 0o700 })
+    releaseLock = await acquireMemoryWriterLock(dirname(targetStore), 'restore')
+    if (await exists(targetStore)) throw new Error('Restore target already contains a memory store; refusing to overwrite it')
+    if (await exists(targetAudit)) throw new Error('Restore target already contains an audit log; refusing to overwrite it')
+    storeTemp = join(dirname(targetStore), '.' + basename(targetStore) + '.' + randomBytes(8).toString('hex') + '.restore.tmp')
+    auditTemp = join(dirname(targetAudit), '.' + basename(targetAudit) + '.' + randomBytes(8).toString('hex') + '.restore.tmp')
 
     const storedKey = await vault.createSecretIfAbsent(MEMORY_KEY_PURPOSE, recoveredKey)
     try {
@@ -279,7 +325,8 @@ export async function restoreEncryptedMemoryBackup({
     recoveredKey?.fill(0)
     storeBytes?.fill(0)
     auditBytes?.fill(0)
-    await rm(storeTemp, { force: true }).catch(() => {})
-    await rm(auditTemp, { force: true }).catch(() => {})
+    if (storeTemp) await rm(storeTemp, { force: true }).catch(() => {})
+    if (auditTemp) await rm(auditTemp, { force: true }).catch(() => {})
+    await releaseLock?.()
   }
 }
