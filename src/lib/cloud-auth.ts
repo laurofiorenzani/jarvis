@@ -100,10 +100,14 @@ export function createSupabaseAuth(options: SupabaseAuthOptions) {
   }
 
   function parseSession(payload: AuthResponse): AuthSession {
-    if (typeof payload.access_token !== 'string' || !payload.access_token ||
-        typeof payload.refresh_token !== 'string' || !payload.refresh_token ||
-        typeof payload.expires_in !== 'number' || !payload.user ||
-        typeof payload.user.id !== 'string' || !payload.user.id) {
+    if (typeof payload.access_token !== 'string' || !payload.access_token.trim() ||
+        typeof payload.refresh_token !== 'string' || !payload.refresh_token.trim() ||
+        typeof payload.expires_in !== 'number' || !Number.isFinite(payload.expires_in) ||
+        payload.expires_in <= 0 || payload.expires_in > 31 * 24 * 60 * 60 ||
+        !payload.user || typeof payload.user.id !== 'string' || !payload.user.id.trim() ||
+        (payload.user.email !== undefined && typeof payload.user.email !== 'string') ||
+        (payload.expires_at !== undefined &&
+          (typeof payload.expires_at !== 'number' || !Number.isFinite(payload.expires_at) || payload.expires_at <= 0))) {
       throw new CloudAuthError('Authentication service returned an incomplete session.', 502)
     }
     return {
