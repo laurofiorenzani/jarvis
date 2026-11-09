@@ -1,4 +1,5 @@
 import { useRef, useState, type FormEvent } from 'react'
+import type { CloudMemory, MemoryCategory } from '../lib/backend-contract'
 import { env } from '../config'
 import { createCloudRuntime } from '../lib/cloud-runtime'
 import type { CloudRuntimeOptions } from '../lib/cloud-runtime'
@@ -20,6 +21,10 @@ export function CloudAccess({ onConnected, onDisconnected }: { onConnected?: () 
   const [busy, setBusy] = useState(false)
   const [connected, setConnected] = useState(false)
   const [message, setMessage] = useState('')
+  const [memories, setMemories] = useState<CloudMemory[]>([])
+  const [memoryContent, setMemoryContent] = useState('')
+  const [memoryCategory, setMemoryCategory] = useState<MemoryCategory>('preference')
+  const [memoryBusy, setMemoryBusy] = useState(false)
   const runtimeRef = useRef<ReturnType<typeof createCloudRuntime> | null>(null)
 
   if (!env.supabaseUrl || !env.supabasePublishableKey) return null
@@ -39,6 +44,8 @@ export function CloudAccess({ onConnected, onDisconnected }: { onConnected?: () 
     try {
       await runtime.auth.signInWithPassword(email, password)
       await runtime.brain.warm()
+      const saved = await runtime.api.listMemories()
+      setMemories(saved.memories)
       selectCloudBrain(runtime.brain)
       setConnected(true)
       setPassword('')
@@ -52,6 +59,37 @@ export function CloudAccess({ onConnected, onDisconnected }: { onConnected?: () 
       setMessage(error instanceof Error ? error.message : 'Cloud sign-in failed.')
     } finally {
       setBusy(false)
+    }
+  }
+
+  const saveMemory = async (event: FormEvent) => {
+    event.preventDefault()
+    const runtime = runtimeRef.current
+    if (!runtime || memoryBusy || !memoryContent.trim()) return
+    setMemoryBusy(true)
+    try {
+      const result = await runtime.api.createMemory({ category: memoryCategory, content: memoryContent })
+      setMemories((items) => [result.memory, ...items])
+      setMemoryContent('')
+      setMessage('MEMORY SAVED · EXPLICIT USER APPROVAL')
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : 'Memory could not be saved.')
+    } finally {
+      setMemoryBusy(false)
+    }
+  }
+
+  const deleteMemory = async (id: string) => {
+    const runtime = runtimeRef.current
+    if (!runtime || memoryBusy) return
+    setMemoryBusy(true)
+    try {
+      await runtime.api.deleteMemory(id)
+      setMemories((items) => items.filter((item) => item.id !== id))
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : 'Memory could not be deleted.')
+    } finally {
+      setMemoryBusy(false)
     }
   }
 
@@ -91,6 +129,35 @@ export function CloudAccess({ onConnected, onDisconnected }: { onConnected?: () 
         connected ? (
           <div style={{ paddingTop: 12 }}>
             <div style={{ marginBottom: 12, color: '#83d9e8' }}>{message}</div>
+            <form onSubmit={(event) => void saveMemory(event)} style={{ display: 'grid', gap: 8, marginBottom: 12 }}>
+              <label style={labelStyle}>SAVE A MEMORY (MANUAL ONLY)
+                <select value={memoryCategory} onChange={(event) => setMemoryCategory(event.target.value as MemoryCategory)} style={inputStyle}>
+                  <option value="preference">Preference</option>
+                  <option value="project">Project</option>
+                  <option value="workflow">Workflow</option>
+                  <option value="fact">Fact</option>
+                </select>
+              </label>
+              <textarea value={memoryContent} onChange={(event) => setMemoryContent(event.target.value)}
+                maxLength={2000} rows={3} placeholder="Write only what you explicitly want JARVIS to retain."
+                style={{ ...inputStyle, resize: 'vertical' }} />
+              <button type="submit" disabled={memoryBusy || !memoryContent.trim()} style={buttonStyle}>
+                {memoryBusy ? 'SAVING…' : 'SAVE APPROVED MEMORY'}
+              </button>
+            </form>
+            <div style={{ maxHeight: 180, overflowY: 'auto', display: 'grid', gap: 6, marginBottom: 12 }}>
+              {memories.map((item) => (
+                <div key={item.id} style={{ borderTop: '1px solid #214653', paddingTop: 6, letterSpacing: 0 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, color: '#83d9e8' }}>
+                    <span>{item.category.toUpperCase()}</span>
+                    <button type="button" disabled={memoryBusy} onClick={() => void deleteMemory(item.id)}
+                      style={{ ...buttonStyle, padding: '3px 6px' }}>DELETE</button>
+                  </div>
+                  <div style={{ color: '#c1dce2', whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>{item.content}</div>
+                </div>
+              ))}
+              {!memories.length && <div style={{ color: '#7797a2' }}>No saved memories.</div>}
+            </div>
             <button type="button" disabled={busy} onClick={() => void signOut()} style={buttonStyle}>
               {busy ? 'DISCONNECTING…' : 'SWITCH TO LOCAL BRAIN'}
             </button>
