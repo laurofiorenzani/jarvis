@@ -433,3 +433,23 @@ test('cloud memory client rejects empty or oversized content before network acce
   assert.throws(() => client.createMemory({ category: 'fact', content: 'x'.repeat(2_001) }), /Invalid memory content/)
   assert.equal(called, false)
 })
+
+
+test('memory context preference is explicitly loaded and persisted', async () => {
+  const requests: { url: string; init?: RequestInit }[] = []
+  const client = createCloudApiClient({
+    baseUrl: 'https://project.supabase.co/functions/v1/jarvis-api',
+    getAccessToken: async () => 'token',
+    fetchImpl: async (input, init) => {
+      requests.push({ url: String(input), init })
+      return new Response(JSON.stringify({ version: 1, contextEnabled: init?.method === 'PUT' }), {
+        status: 200, headers: { 'Content-Type': 'application/json' },
+      })
+    },
+  })
+  assert.equal((await client.getMemoryPreference()).contextEnabled, false)
+  assert.equal((await client.setMemoryContextEnabled(true)).contextEnabled, true)
+  assert.equal(requests[0].url.endsWith('/v1/memory-preferences'), true)
+  assert.equal(requests[1].init?.method, 'PUT')
+  assert.equal(JSON.parse(String(requests[1].init?.body)).contextEnabled, true)
+})
