@@ -26,6 +26,10 @@ Do not use the opt-in launcher until you have reviewed the data scope, retention
 - The encrypted store is placed at `~/.jarvis/memory/memory.enc`; metadata-only audit entries are appended to `~/.jarvis/memory/audit.jsonl`.
 - One process owns the store. An atomic local lock directory prevents a second bridge process from opening the writer. A clean exit releases it; a crash leaves a stale lock that must be inspected and removed manually only after confirming no bridge process is alive. Per-WebSocket connections receive their own MCP server and confirmation transport.
 
+## Retention defaults
+
+New memories default to **90 days**. The model may use 30 days for short-lived notes or 365 days when a longer horizon is justified. Indefinite retention is reserved for cases where the user explicitly asks for permanent storage. Sensitive memories remain disabled in this integration.
+
 ## Model-facing tools
 
 The `jarvis_memory` MCP server exposes search/save/update/delete operations. Sensitive records are hidden from model-facing search. Mutations require a trusted, correlated browser approval; model text or model-supplied flags cannot approve a write. The bridge policy allows these memory tools to reach the approval broker in read-only mode; the memory handlers still reject every mutation without the explicit dialog approval.
