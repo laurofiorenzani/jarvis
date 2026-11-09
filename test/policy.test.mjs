@@ -30,6 +30,12 @@ test('memory tools reach their explicit approval broker in read-only mode', () =
   }
 })
 
+test('memory policy rejects undeclared tools even when general writes are enabled', () => {
+  assert.equal(decideTool('mcp__jarvis_memory__memory_export'), false)
+  assert.equal(decideTool('mcp__jarvis_memory__memory_import'), false)
+  assert.equal(decideTool('mcp__jarvis_memory__memory_export', true), false)
+})
+
 test('read-only mode refuses a shell command the CLI would auto-approve', () => {
   // `cat` is what the CLI's own classifier runs without asking canUseTool.
   assert.equal(allowed('Bash', { command: 'cat ~/.ssh/id_rsa' }), false)
