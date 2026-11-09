@@ -371,3 +371,21 @@ test('cloud client loads conversation lists and user-scoped history', async () =
   ])
   await assert.rejects(client.getConversation('  '), /Invalid conversation ID/)
 })
+
+test('cloud client exposes explicit user-scoped conversation deletion', async () => {
+  let captured: { input: RequestInfo | URL; init?: RequestInit } | undefined
+  const client = createCloudApiClient({
+    baseUrl: 'https://project.supabase.co/functions/v1/jarvis-api',
+    getAccessToken: async () => 'token',
+    fetchImpl: async (input, init) => {
+      captured = { input, init }
+      return new Response(JSON.stringify({ version: 1, deleted: true }), {
+        status: 200, headers: { 'Content-Type': 'application/json' },
+      })
+    },
+  })
+  const result = await client.deleteConversation('c-1')
+  assert.equal(result.deleted, true)
+  assert.equal(captured?.init?.method, 'DELETE')
+  assert.equal(String(captured?.input), 'https://project.supabase.co/functions/v1/jarvis-api/v1/conversations/c-1')
+})
