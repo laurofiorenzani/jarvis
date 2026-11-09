@@ -105,3 +105,8 @@ GitHub Actions run [#42643120631](https://github.com/laurofiorenzani/jarvis/acti
 - The production build and lockfile check passed on both platforms.
 
 This validates the implementation on a hosted Windows runner, not on the user's own Windows profile, device security policy, antivirus, or actual memory directory ACL. The user must still run `npm run memory:doctor` on the target PC before enabling personal memory. The branch remains opt-in and must not be merged or deployed without the remaining release gates.
+## Audit log retention and shutdown
+
+The local audit log is metadata-only and serialized across concurrent tool calls. It is capped at 1 MiB; when rotation is needed, the logger validates every existing line, retains only events within the 90-day window and at most 5,000 recent events, then atomically replaces the log before appending the new event. Malformed or non-metadata audit history fails closed and blocks the memory mutation rather than being silently discarded.
+
+The memory runtime exposes an idempotent close operation. It waits for queued writes, clears plaintext records from the in-memory map, and zeroes its private encryption-key buffer. The bootstrap releases the exclusive writer lock only after the store has closed.
