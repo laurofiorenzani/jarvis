@@ -50,8 +50,8 @@ export async function getMemoryEncryptionKey({ vault, encryptedStoreExists } = {
   }
 
   const candidate = randomBytes(KEY_BYTES)
+  let stored
   try {
-    let stored
     try {
       stored = await vault.createSecretIfAbsent(MEMORY_KEY_PURPOSE, candidate)
     } catch {
