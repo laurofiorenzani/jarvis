@@ -96,3 +96,24 @@ production SLA.
 
 References: [Supabase billing and quotas](https://supabase.com/docs/guides/platform/billing-on-supabase),
 [Edge Function limits](https://supabase.com/docs/guides/functions/limits).
+
+## Manual deployment (no paid resources)
+
+The repository does not deploy automatically. After creating the free project:
+
+1. In Supabase SQL Editor, run the migration file in
+   `supabase/migrations/20261109000100_jarvis_cloud_v1.sql`.
+2. Install/use the Supabase CLI locally, authenticate with `supabase login`,
+   link the project with `supabase link --project-ref YOUR_PROJECT_REF`, then
+   deploy with `supabase functions deploy jarvis-api`.
+3. In the Supabase Dashboard, add Edge Function secrets
+   `ANTHROPIC_API_KEY`, `JARVIS_ALLOWED_ORIGIN`, and optionally
+   `JARVIS_MODEL=claude-sonnet-5-5`. Do not paste secret values into ChatGPT,
+   source code, Vite environment variables or GitHub commits.
+4. Verify `GET /functions/v1/jarvis-api/v1/health` returns
+   `{"version":1,"status":"ok"}` and test with two separate Auth users before
+   enabling the mobile client.
+
+The Anthropic API key is a separately billed credential; a Claude app
+subscription does not include API usage. Do not create or add one until its
+usage billing is explicitly approved.
