@@ -39,7 +39,17 @@ export async function createMemoryRuntime({
   const key = await getMemoryEncryptionKey({ vault, encryptedStoreExists: exists })
   let store
   try {
-    store = new MemoryStore({ filePath, encryptionKey: key, clock })
+    store = new MemoryStore({
+      filePath,
+      encryptionKey: key,
+      clock,
+      onExpire: async (memoryIds) => {
+        const timestamp = clock().toISOString()
+        for (const memoryId of memoryIds) {
+          await audit({ operation: 'expire', memoryId, outcome: 'expired', timestamp })
+        }
+      },
+    })
   } finally {
     key.fill(0)
   }
