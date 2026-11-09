@@ -51,6 +51,30 @@ function validateStoreDocument(value) {
   if (value.records.length > 100_000) throw new Error('Backup contains too many memory records')
 }
 
+function validateAuditLog(bytes) {
+  const text = bytes.toString('utf8')
+  for (const [index, line] of text.split('\\n').entries()) {
+    if (!line) continue
+    let event
+    try {
+      event = JSON.parse(line)
+    } catch {
+      throw new Error('Memory audit log contains a malformed event at line ' + (index + 1))
+    }
+    const keys = event && typeof event === 'object' && !Array.isArray(event)
+      ? Object.keys(event).sort()
+      : []
+    if (keys.join(',') !== 'memoryId,operation,outcome,timestamp' ||
+        !['save', 'update', 'delete'].includes(event.operation) ||
+        !(event.memoryId === null || (typeof event.memoryId === 'string' && event.memoryId.length <= 100)) ||
+        event.outcome !== 'authorized' ||
+        typeof event.timestamp !== 'string' ||
+        !Number.isFinite(Date.parse(event.timestamp))) {
+      throw new Error('Memory audit log contains a non-metadata event at line ' + (index + 1))
+    }
+  }
+}
+
 async function deriveBackupKey(passphrase, salt) {
   return Buffer.from(await scrypt(passphrase, salt, KEY_BYTES, SCRYPT))
 }
@@ -157,6 +181,7 @@ export async function createEncryptedMemoryBackup({
       if (error?.code !== 'ENOENT') throw error
     }
     if (auditBytes.length > MAX_AUDIT_BYTES) throw new Error('Memory audit log exceeds the backup size limit')
+    validateAuditLog(auditBytes)
 
     const packageText = JSON.stringify({
       format: FORMAT,
