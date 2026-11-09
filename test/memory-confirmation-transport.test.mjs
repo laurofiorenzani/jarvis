@@ -60,14 +60,19 @@ test('denial is returned as a denial and consumes the pending request', async ()
   assert.equal(transport.pendingCount(), 0)
 })
 
-test('disconnect cancellation resolves every pending request as null', async () => {
-  const transport = createMemoryConfirmationTransport({ send: () => {} })
+test('cancellation notifies the UI and resolves every pending request as null', async () => {
+  const sent = []
+  const transport = createMemoryConfirmationTransport({ send: (frame) => sent.push(frame) })
   const first = transport.requestConfirmation(challenge())
   const second = transport.requestConfirmation(challenge({ id: 'challenge-2' }))
   transport.cancelAll()
   assert.equal(await first, null)
   assert.equal(await second, null)
   assert.equal(transport.pendingCount(), 0)
+  assert.deepEqual(
+    sent.filter((frame) => frame.type === 'memory_confirmation_cancelled').map((frame) => frame.id),
+    ['challenge-1', 'challenge-2'],
+  )
   assert.equal(transport.receive({ type: 'reply', id: 'challenge-1', approved: true }), false)
 })
 
