@@ -116,8 +116,8 @@ export function createSupabaseAuth(options: SupabaseAuthOptions) {
   }
 
   async function saveSession(next: AuthSession) {
-    session = next
     await options.storage.set(REFRESH_TOKEN_KEY, next.refresh_token)
+    session = next
   }
 
   async function refresh(): Promise<AuthSession | null> {
