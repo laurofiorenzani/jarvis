@@ -1,4 +1,6 @@
 project_id = "jarvis"
 
 [functions.jarvis-api]
-verify_jwt = true
+# The handler explicitly validates every non-health bearer token with Auth.
+# Disable gateway-only JWT parsing so OPTIONS preflight and public health work.
+verify_jwt = false
