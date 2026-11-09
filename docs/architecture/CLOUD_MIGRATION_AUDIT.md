@@ -93,6 +93,12 @@ The correct next move is to separate the core assistant runtime from the local d
 - Storing provider credentials or creating production secrets.
 - Deploying to production, publishing an iOS build, or initiating App Store/TestFlight release.
 
+## Progress recorded on 2026-11-09
+
+- Added `src/lib/backend-contract.ts` with a versioned, provider-neutral client contract for conversations, turns, streaming events, memory approval challenges, authenticated device metadata, health status, and a narrow core capability allowlist.
+- The contract is types-only and introduces no runtime dependency, credentials, endpoint, or deployment assumption. TypeScript's application project includes all `src` files, so it is included in the next `npm run build` validation.
+- The contract is not wired into the current `brain.ts`/bridge transport yet. Existing local behaviour remains unchanged.
+
 ## Current status
 
-Audit complete; no production resources were provisioned and no personal data was moved. The next code milestone is to define versioned backend/event contracts and extract the existing bridge behind a transport/runtime boundary while preserving the Windows development path.
+Audit and first contract scaffold complete; no production resources were provisioned and no personal data was moved. Automated build/tests have not been run in this environment because the repository is accessible through GitHub operations only, not a checked-out Node workspace. The next code milestone is to extract a transport interface behind `brain.ts`, implement a local adapter without changing behaviour, and then implement the cloud API adapter against the versioned contract.
