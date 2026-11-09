@@ -131,13 +131,20 @@ test('purges expired memories before the runtime accepts requests', async (t) =>
   })
   await initialStore.close()
 
+  const auditEvents = []
   const runtime = await createMemoryRuntime({
     filePath,
     vault: fakeVault(KEY),
-    audit: async () => {},
+    audit: async (event) => auditEvents.push(event),
     clock: () => new Date('2026-11-09T00:00:00.000Z'),
   })
   assert.equal(await runtime.store.cleanupExpired(), 0, 'startup already removed expired records')
   assert.equal(await runtime.store.getMemory(expired.id), null)
+  assert.deepEqual(auditEvents, [{
+    operation: 'expire',
+    memoryId: expired.id,
+    outcome: 'expired',
+    timestamp: '2026-11-09T00:00:00.000Z',
+  }])
   await runtime.close()
 });
