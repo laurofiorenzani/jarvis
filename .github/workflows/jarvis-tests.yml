@@ -19,6 +19,7 @@ on:
       - 'bridge/**'
       - 'src/**'
       - 'test/**'
+      - 'scripts/**'
       - 'package.json'
       - 'package-lock.json'
       - '.github/workflows/jarvis-tests.yml'
