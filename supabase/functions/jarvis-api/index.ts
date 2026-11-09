@@ -1,4 +1,4 @@
-import { createClient } from 'npm:@supabase/supabase-js@2'
+import { createClient } from '@supabase/supabase-js'
 
 const VERSION = 1
 const MAX_TEXT = 20_000
