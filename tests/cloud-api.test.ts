@@ -453,3 +453,26 @@ test('memory context preference is explicitly loaded and persisted', async () =>
   assert.equal(requests[1].init?.method, 'PUT')
   assert.equal(JSON.parse(String(requests[1].init?.body)).contextEnabled, true)
 })
+
+
+test('provider status is requested through the authenticated cloud API', async () => {
+  let requested = ''
+  let auth = ''
+  const client = createCloudApiClient({
+    baseUrl: 'https://project.supabase.co/functions/v1/jarvis-api',
+    getAccessToken: async () => 'private-access-token',
+    fetchImpl: async (input, init) => {
+      requested = String(input)
+      auth = new Headers(init?.headers).get('Authorization') ?? ''
+      return new Response(JSON.stringify({
+        version: 1, configured: true,
+        providers: [{ name: 'groq-free', model: 'openai/gpt-oss-120b' }],
+      }), { status: 200, headers: { 'Content-Type': 'application/json' } })
+    },
+  })
+  const status = await client.getProviderStatus()
+  assert.equal(status.configured, true)
+  assert.equal(status.providers[0].model, 'openai/gpt-oss-120b')
+  assert.equal(requested.endsWith('/v1/provider-status'), true)
+  assert.equal(auth, 'Bearer private-access-token')
+})
