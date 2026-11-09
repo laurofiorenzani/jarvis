@@ -60,7 +60,7 @@ test('fails closed on malformed or non-metadata audit history', async (t) => {
   const directory = await makeDirectory(t)
   const auditPath = join(directory, 'audit.jsonl')
   await writeFile(auditPath, JSON.stringify({ ...event('bad'), content: 'PRIVATE_SENTINEL', padding: 'x'.repeat(300) }) + '\n')
-  const audit = createMemoryAuditLogger({ auditPath, now: () => NOW, maxBytes: 200 })
+  const audit = createMemoryAuditLogger({ auditPath, now: () => NOW })
   await assert.rejects(audit(event('new-record')), /metadata only/)
   const unchanged = await readFile(auditPath, 'utf8')
   assert.ok(unchanged.includes('PRIVATE_SENTINEL'))
