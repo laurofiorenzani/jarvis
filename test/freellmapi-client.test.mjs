@@ -24,10 +24,26 @@ test('streams OpenAI-compatible text deltas across chunk boundaries', async () =
   const result = await readChatStream(response, { onText: (part) => seen.push(part) })
   assert.deepEqual(seen, ['Hello ', 'sir.'])
   assert.equal(result.complete, true)
+  assert.equal(result.done, true)
   assert.equal(result.aborted, false)
 })
 
-test('sends the key only in the server-side Authorization header', async () => {
+test('surfaces fragmented tool-call deltas without executing them', async () => {
+  const deltas = []
+  const response = streamResponse([
+    'data: {"choices":[{"delta":{"tool_calls":[{"index":0,"id":"call_1","type":"function","function":{"name":"jarvis_read","arguments":"{\\"path\\""}}]}}]}\n',
+    'data: {"choices":[{"delta":{"tool_calls":[{"index":0,"function":{"arguments":":\\"notes.txt\\"}"}}]},"finish_reason":"tool_calls"}]}\n',
+    'data: [DONE]\n',
+  ])
+  const result = await readChatStream(response, { onToolCallDelta: (part) => deltas.push(part) })
+  assert.equal(deltas.length, 2)
+  assert.equal(deltas[0].id, 'call_1')
+  assert.equal(deltas[0].function.name, 'jarvis_read')
+  assert.equal(deltas[1].function.arguments, ':"notes.txt"}')
+  assert.equal(result.complete, true)
+})
+
+test('sends the key only in the server-side Authorization header and forwards tool schemas', async () => {
   let request
   const client = createFreeLlmApiClient({
     apiKey: 'test-secret',
@@ -36,11 +52,15 @@ test('sends the key only in the server-side Authorization header', async () => {
       return streamResponse(['data: [DONE]\n'])
     },
   })
-  await client.streamChat({ messages: [{ role: 'user', content: 'Hello' }] })
+  const tools = [{ type: 'function', function: { name: 'jarvis_read', parameters: { type: 'object' } } }]
+  await client.streamChat({ messages: [{ role: 'user', content: 'Hello' }], tools })
   assert.equal(request.url, 'http://127.0.0.1:3001/v1/chat/completions')
   assert.equal(request.options.headers.Authorization, 'Bearer test-secret')
-  assert.equal(JSON.parse(request.options.body).stream, true)
-  assert.equal(JSON.stringify(request.options.body).includes('test-secret'), false)
+  const body = JSON.parse(request.options.body)
+  assert.equal(body.stream, true)
+  assert.deepEqual(body.tools, tools)
+  assert.equal(body.parallel_tool_calls, false)
+  assert.equal(JSON.stringify(body).includes('test-secret'), false)
 })
 
 test('requires a key and at least one message', async () => {
