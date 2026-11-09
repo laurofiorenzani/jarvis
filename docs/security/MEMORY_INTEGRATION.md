@@ -95,3 +95,13 @@ This validates the current integration code and its synthetic test fixtures. It 
 The integration branch's cross-platform workflow [#42634588630](https://github.com/laurofiorenzani/jarvis/actions/runs/42634588630) passed on Ubuntu and Windows with Node 24. Each platform reported **110 passed, 0 failed, 1 skipped**; `npm run build` also passed on both platforms. The workflow covers the complete existing test suite, memory modules, policy boundary, bootstrap locking, and production TypeScript/Vite build.
 
 This validates the guarded integration code, not the missing native Windows vault adapter or the release gates above.
+
+## Automated validation evidence
+
+GitHub Actions run [#42643120631](https://github.com/laurofiorenzani/jarvis/actions/runs/42643120631) passed on both Ubuntu and Windows with Node 24:
+- 126 tests discovered on each platform; 124 passed, 0 failed, 2 platform-specific tests skipped.
+- Windows `npm run memory:doctor` passed the native Windows Credential Manager binary secret round-trip.
+- The same Windows diagnostic also passed a full passphrase-encrypted backup/restore cycle using two isolated Credential Manager entries and a synthetic memory record.
+- The production build and lockfile check passed on both platforms.
+
+This validates the implementation on a hosted Windows runner, not on the user's own Windows profile, device security policy, antivirus, or actual memory directory ACL. The user must still run `npm run memory:doctor` on the target PC before enabling personal memory. The branch remains opt-in and must not be merged or deployed without the remaining release gates.
