@@ -22,6 +22,7 @@ export function CloudAccess({ onConnected, onDisconnected }: { onConnected?: () 
   const [connected, setConnected] = useState(false)
   const [message, setMessage] = useState('')
   const [memories, setMemories] = useState<CloudMemory[]>([])
+  const [memoryContextEnabled, setMemoryContextEnabled] = useState(false)
   const [memoryContent, setMemoryContent] = useState('')
   const [memoryCategory, setMemoryCategory] = useState<MemoryCategory>('preference')
   const [memoryBusy, setMemoryBusy] = useState(false)
@@ -44,8 +45,9 @@ export function CloudAccess({ onConnected, onDisconnected }: { onConnected?: () 
     try {
       await runtime.auth.signInWithPassword(email, password)
       await runtime.brain.warm()
-      const saved = await runtime.api.listMemories()
+      const [saved, preference] = await Promise.all([runtime.api.listMemories(), runtime.api.getMemoryPreference()])
       setMemories(saved.memories)
+      setMemoryContextEnabled(preference.contextEnabled)
       selectCloudBrain(runtime.brain)
       setConnected(true)
       setPassword('')
@@ -59,6 +61,25 @@ export function CloudAccess({ onConnected, onDisconnected }: { onConnected?: () 
       setMessage(error instanceof Error ? error.message : 'Cloud sign-in failed.')
     } finally {
       setBusy(false)
+    }
+  }
+
+  const toggleMemoryContext = async (enabled: boolean) => {
+    const runtime = runtimeRef.current
+    if (!runtime || memoryBusy) return
+    const previous = memoryContextEnabled
+    setMemoryContextEnabled(enabled)
+    setMemoryBusy(true)
+    try {
+      await runtime.api.setMemoryContextEnabled(enabled)
+      setMessage(enabled
+        ? 'APPROVED MEMORY CONTEXT ENABLED · UP TO 20 RECORDS'
+        : 'APPROVED MEMORY CONTEXT DISABLED')
+    } catch (error) {
+      setMemoryContextEnabled(previous)
+      setMessage(error instanceof Error ? error.message : 'Memory preference could not be saved.')
+    } finally {
+      setMemoryBusy(false)
     }
   }
 
@@ -129,6 +150,14 @@ export function CloudAccess({ onConnected, onDisconnected }: { onConnected?: () 
         connected ? (
           <div style={{ paddingTop: 12 }}>
             <div style={{ marginBottom: 12, color: '#83d9e8' }}>{message}</div>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12, letterSpacing: 0 }}>
+              <input type="checkbox" checked={memoryContextEnabled} disabled={memoryBusy}
+                onChange={(event) => void toggleMemoryContext(event.target.checked)} />
+              Include approved memories in JARVIS replies
+            </label>
+            <div style={{ color: '#7797a2', marginBottom: 10, letterSpacing: 0 }}>
+              Off by default. When enabled, up to 20 non-expired saved memories may be sent to the configured AI provider with your message.
+            </div>
             <form onSubmit={(event) => void saveMemory(event)} style={{ display: 'grid', gap: 8, marginBottom: 12 }}>
               <label style={labelStyle}>SAVE A MEMORY (MANUAL ONLY)
                 <select value={memoryCategory} onChange={(event) => setMemoryCategory(event.target.value as MemoryCategory)} style={inputStyle}>
