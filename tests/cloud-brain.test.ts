@@ -22,6 +22,7 @@ const handlers = (onText: (delta: string) => void = () => {}, onTool: (name: str
 test('cloud brain creates one conversation and streams only events for its active turn', async () => {
   let creates = 0
   let requests = 0
+  let submittedTurnId = ''
   const api = {
     health: async () => ({ status: 'ok' as const }),
     createConversation: async () => {
@@ -29,6 +30,7 @@ test('cloud brain creates one conversation and streams only events for its activ
       return { conversation: { id: 'conversation-1' } }
     },
     streamTurn: async ({ turnId }: { conversationId: string; turnId: string; text: string }) => {
+      submittedTurnId = turnId
       requests++
       return streamOf([
         { version: 1, type: 'turn.started', conversationId: 'other', turnId },
@@ -50,6 +52,7 @@ test('cloud brain creates one conversation and streams only events for its activ
   assert.equal(second.text, 'Olá senhor.')
   assert.equal(creates, 1)
   assert.equal(requests, 2)
+  assert.match(submittedTurnId, /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i)
   assert.equal(brain.getConversationId(), 'conversation-1')
 })
 
