@@ -80,14 +80,18 @@ async function writeBackupFile(outputPath, backup) {
   const destination = resolve(outputPath)
   await mkdir(dirname(destination), { recursive: true, mode: 0o700 })
   const handle = await open(destination, 'wx', 0o600)
+  let failure
   try {
     await handle.writeFile(backup)
     await handle.sync()
   } catch (error) {
-    await rm(destination, { force: true }).catch(() => {})
-    throw error
+    failure = error
   } finally {
     await handle.close()
+  }
+  if (failure) {
+    await rm(destination, { force: true }).catch(() => {})
+    throw failure
   }
   return destination
 }
