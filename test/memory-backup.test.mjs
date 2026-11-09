@@ -229,3 +229,21 @@ test('backup refuses a symlinked memory store or audit file', { skip: process.pl
     passphrase: PASSPHRASE,
   }), /audit log must be a regular file/i)
 });
+
+
+test('backup refuses audit rows that contain memory content or unapproved fields', async (t) => {
+  const source = await createSource(t)
+  await writeFile(source.auditPath, JSON.stringify({
+    operation: 'save',
+    memoryId: source.saved.id,
+    outcome: 'authorized',
+    timestamp: '2026-11-09T12:00:00.000Z',
+    content: 'PRIVATE_AUDIT_LEAK_SENTINEL',
+  }) + '\\n')
+  await assert.rejects(createEncryptedMemoryBackup({
+    filePath: source.filePath,
+    auditPath: source.auditPath,
+    key: KEY,
+    passphrase: PASSPHRASE,
+  }), /non-metadata event/)
+});
