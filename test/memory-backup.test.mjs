@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
+import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { MemoryStore } from '../bridge/memory.mjs'
@@ -68,6 +68,7 @@ test('creates an authenticated passphrase backup and restores the encrypted stor
   const source = await createSource(t)
   assert.equal(source.backup.includes(Buffer.from('Synthetic backup recovery record')), false)
   assert.equal(source.backup.includes(KEY), false)
+  await assert.rejects(readFile(join(source.directory, 'memory.writer.lock', 'owner.json')), { code: 'ENOENT' })
 
   const target = await mkdtemp(join(tmpdir(), 'jarvis-memory-backup-target-'))
   t.after(() => rm(target, { recursive: true, force: true }))
@@ -84,6 +85,7 @@ test('creates an authenticated passphrase backup and restores the encrypted stor
   })
   assert.deepEqual(result, { restored: true, recordCount: 1, auditBytes: (await readFile(source.auditPath)).length })
   assert.equal(vault.creates, 1)
+  await assert.rejects(readFile(join(target, 'memory.writer.lock', 'owner.json')), { code: 'ENOENT' })
   const restoredKey = await vault.getSecret(MEMORY_KEY_PURPOSE)
   assert.deepEqual(restoredKey, KEY)
   const restoredStore = new MemoryStore({ filePath, encryptionKey: restoredKey })
@@ -172,3 +174,32 @@ test('requires a sufficiently long backup passphrase', async () => {
     passphrase: 'short',
   }), /at least 16 characters/)
 })
+
+
+test('backup refuses to run while the Jarvis bridge owns the memory writer lock', async (t) => {
+  const source = await createSource(t)
+  const lockPath = join(source.directory, 'memory.writer.lock')
+  await mkdir(lockPath)
+  await assert.rejects(createEncryptedMemoryBackup({
+    filePath: source.filePath,
+    auditPath: source.auditPath,
+    key: KEY,
+    passphrase: PASSPHRASE,
+  }), /locked by a running bridge/)
+});
+
+test('restore refuses to run while another process owns the memory writer lock', async (t) => {
+  const source = await createSource(t)
+  const target = await mkdtemp(join(tmpdir(), 'jarvis-memory-backup-locked-'))
+  t.after(() => rm(target, { recursive: true, force: true }))
+  await mkdir(join(target, 'memory.writer.lock'))
+  const vault = fakeVault()
+  await assert.rejects(restoreEncryptedMemoryBackup({
+    backup: source.backup,
+    filePath: join(target, 'memory.enc'),
+    auditPath: join(target, 'audit.jsonl'),
+    vault,
+    passphrase: PASSPHRASE,
+  }), /locked by a running bridge/)
+  assert.equal(vault.creates, 0)
+});
