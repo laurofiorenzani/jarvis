@@ -3,6 +3,19 @@ import * as direct from './anthropic'
 import * as bridge from './bridge'
 import type { AskHandlers, Msg } from './anthropic'
 import type { Blade, Panel } from '../store'
+import type { CloudBrain } from './cloud-brain'
+
+let activeCloudBrain: CloudBrain | null = null
+
+/** Enable the authenticated cloud brain for this page session. */
+export function selectCloudBrain(brain: CloudBrain): void {
+  activeCloudBrain = brain
+}
+
+/** Return to the existing local backend without changing its configuration. */
+export function selectLocalBrain(): void {
+  activeCloudBrain = null
+}
 
 export type { AskHandlers, Msg }
 export type { ConnectionState } from './bridge'
@@ -29,13 +42,15 @@ export async function ask(
   history: Msg[],
   handlers: AskHandlers,
 ): Promise<{ text: string; tools: string[] }> {
+  if (activeCloudBrain) return activeCloudBrain.ask(prompt, history, handlers)
   return usingBridge
     ? bridge.ask(prompt, handlers)
     : direct.ask([...history, { role: 'user', content: prompt }], handlers)
 }
 
 export async function warm(): Promise<void> {
-  if (usingBridge) await bridge.warmBridge()
+  if (activeCloudBrain) await activeCloudBrain.warm()
+  else if (usingBridge) await bridge.warmBridge()
 }
 
 /** The bridge reports its server list twice — from config on connect, then
@@ -91,7 +106,8 @@ export function watchCapture(
  * path by aborting the stream so the model stops generating and billing.
  */
 export function cancel(): void {
-  if (usingBridge) bridge.cancel()
+  if (activeCloudBrain) activeCloudBrain.cancel()
+  else if (usingBridge) bridge.cancel()
   else direct.cancel()
 }
 
@@ -145,5 +161,6 @@ export function decideMemoryConfirmation(
 
 /** Labels for the HUD's SYSTEMS rail. */
 export function connectedLabels(): string[] {
+  if (activeCloudBrain) return ['SUPABASE CLOUD']
   return usingBridge ? bridge.bridgeServers() : direct.connectedLabels()
 }
