@@ -44,8 +44,8 @@ Commands (Windows PowerShell or Windows Terminal):
 
 ```powershell
 npm run memory:backup
-npm run memory:backup -- "E:\\JarvisBackups\\jarvis-memory.jmbak"
-npm run memory:restore -- "E:\\JarvisBackups\\jarvis-memory.jmbak"
+npm run memory:backup -- "E:/JarvisBackups/jarvis-memory.jmbak"
+npm run memory:restore -- "E:/JarvisBackups/jarvis-memory.jmbak"
 ```
 
 - The passphrase must be at least 16 characters. It is typed into a hidden terminal prompt, never supplied as a command-line argument, and is not stored by Jarvis. Use a strong randomly generated passphrase and keep it separately in a password manager.
