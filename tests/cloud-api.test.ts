@@ -142,3 +142,17 @@ test('cloud event stream rejects an oversized unterminated frame', async () => {
     for await (const _event of readCloudAssistantEvents(body)) { /* consume */ }
   }, /size limit/)
 })
+
+test('cloud client validates turn inputs before making network requests', async () => {
+  let called = false
+  const client = createCloudApiClient({
+    baseUrl: 'https://api.example.test',
+    getAccessToken: async () => 'token',
+    fetchImpl: async () => { called = true; return new Response('{}') },
+  })
+  await assert.rejects(
+    client.sendTurn({ conversationId: 'c-1', turnId: 't-1', text: '   ' }),
+    (error: unknown) => error instanceof CloudApiError && error.code === 'invalid_request',
+  )
+  assert.equal(called, false)
+})
