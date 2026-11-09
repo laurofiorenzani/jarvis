@@ -99,6 +99,12 @@ The correct next move is to separate the core assistant runtime from the local d
 - The contract is types-only and introduces no runtime dependency, credentials, endpoint, or deployment assumption. TypeScript's application project includes all `src` files, so it is included in the next `npm run build` validation.
 - The contract is not wired into the current `brain.ts`/bridge transport yet. Existing local behaviour remains unchanged.
 
+## Additional implementation progress
+
+- Added `parseCloudAssistantEvent()` to `src/lib/backend-contract.ts`. It rejects unknown versions, malformed IDs, unsupported event types, invalid tool outcomes, malformed memory challenges and invalid failure codes before cloud events are admitted to client state. This is structural validation only; server-side identity and authorization remain mandatory.
+- Added `.github/workflows/ci.yml` to run `npm ci`, `npm run build`, `npm test` and `npm run lint` on pushes to `main` and `work/**`, pull requests and manual dispatch.
+- The GitHub connector did not yet return a workflow run for the workflow commit when checked. Do not interpret that as a passing build; confirm Actions execution once GitHub schedules it.
+
 ## Current status
 
 Audit and first contract scaffold complete; no production resources were provisioned and no personal data was moved. Automated build/tests have not been run in this environment because the repository is accessible through GitHub operations only, not a checked-out Node workspace. The next code milestone is to extract a transport interface behind `brain.ts`, implement a local adapter without changing behaviour, and then implement the cloud API adapter against the versioned contract.
