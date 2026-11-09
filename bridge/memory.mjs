@@ -166,7 +166,7 @@ export class MemoryStore {
       updatedAt: now,
       confidence: input.confidence ?? 1,
       sensitivity: input.sensitivity ?? 'personal',
-      retention: input.retention ?? 'indefinite',
+      retention: input.retention ?? '90d',
       status: input.status ?? 'active',
     })
     return this.#mutate((records) => {
