@@ -24,7 +24,7 @@ test('executes authorized tool calls and feeds results back to the model', async
   const result = await runFreeLlmToolLoop({ client, mcp, messages: [{ role: 'user', content: 'Read it' }] })
   assert.equal(result.rounds, 1)
   assert.equal(result.executed[0].ok, true)
-  assert.equal(requests[1].messages.at(-2).content, 'hello')
+  assert.equal(requests[1].messages.at(-2).content, 'The note says hello.')
   assert.equal(requests[1].messages.at(-1).content, 'The note says hello.')
 })
 
