@@ -6,6 +6,7 @@ on:
       - work/memory-integration
     paths:
       - 'bridge/**'
+      - 'src/**'
       - 'test/**'
       - 'package.json'
       - 'package-lock.json'
