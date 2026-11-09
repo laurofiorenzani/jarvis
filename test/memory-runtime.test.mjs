@@ -127,7 +127,7 @@ test('purges expired memories before the runtime accepts requests', async (t) =>
     type: 'episodic',
     content: 'Expired synthetic retention record',
     source: 'test',
-    retention: '1d',
+    retention: '30d',
   })
   await initialStore.close()
 
