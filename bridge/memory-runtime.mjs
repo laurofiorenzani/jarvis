@@ -1,4 +1,4 @@
-import { stat } from 'node:fs/promises'
+import { lstat } from 'node:fs/promises'
 import { MemoryStore } from './memory.mjs'
 import { getMemoryEncryptionKey } from './memory-key-provider.mjs'
 import { createMemoryApprovalBroker } from './memory-approval-broker.mjs'
@@ -7,7 +7,7 @@ import { createMemoryMcpServer } from './memory-mcp-server.mjs'
 
 async function encryptedStoreExists(filePath) {
   try {
-    const info = await stat(filePath)
+    const info = await lstat(filePath)
     if (!info.isFile()) throw new Error('Memory store path exists but is not a regular file')
     return true
   } catch (error) {
@@ -43,7 +43,12 @@ export async function createMemoryRuntime({
   } finally {
     key.fill(0)
   }
-  await store.init()
+  try {
+    await store.init()
+  } catch (error) {
+    await store.close()
+    throw error
+  }
 
   function createConnection({ send, getCurrentTurnId, sdk, z } = {}) {
     if (typeof getCurrentTurnId !== 'function') {
