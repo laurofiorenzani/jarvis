@@ -37,8 +37,12 @@ export async function getMemoryEncryptionKey({ vault, encryptedStoreExists } = {
   }
 
   if (existing !== null && existing !== undefined) {
-    validateKey(existing)
-    return Buffer.from(existing)
+    try {
+      validateKey(existing)
+      return Buffer.from(existing)
+    } finally {
+      if (Buffer.isBuffer(existing)) existing.fill(0)
+    }
   }
 
   if (encryptedStoreExists) {
@@ -57,5 +61,6 @@ export async function getMemoryEncryptionKey({ vault, encryptedStoreExists } = {
     return Buffer.from(stored)
   } finally {
     candidate.fill(0)
+    if (Buffer.isBuffer(stored)) stored.fill(0)
   }
 }
