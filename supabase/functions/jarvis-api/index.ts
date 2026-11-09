@@ -22,10 +22,13 @@ function error(code: string, message: string, status: number, retryable = false,
 }
 
 function corsHeaders(origin: string | null): HeadersInit {
-  const allowed = Deno.env.get('JARVIS_ALLOWED_ORIGIN')
-  if (!allowed || !origin || origin !== allowed) return { Vary: 'Origin' }
+  const allowedOrigins = new Set([
+    'capacitor://localhost', 'http://localhost', 'http://127.0.0.1',
+    ...(Deno.env.get('JARVIS_ALLOWED_ORIGIN') || '').split(',').map((value) => value.trim()).filter(Boolean),
+  ])
+  if (!origin || !allowedOrigins.has(origin)) return { Vary: 'Origin' }
   return {
-    'Access-Control-Allow-Origin': allowed,
+    'Access-Control-Allow-Origin': origin,
     'Access-Control-Allow-Headers': 'authorization, content-type, x-jarvis-api-version',
     'Access-Control-Allow-Methods': 'GET, POST, DELETE, OPTIONS',
     'Access-Control-Max-Age': '86400',
