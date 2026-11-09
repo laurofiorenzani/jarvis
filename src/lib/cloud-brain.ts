@@ -26,7 +26,7 @@ const makeId = () => globalThis.crypto?.randomUUID?.() ??
 
 export function createCloudBrain(api: CloudApi) {
   let conversationId: string | null = null
-  let active: { conversationId: string; turnId: string; controller: AbortController } | null = null
+  let active: { conversationId: string | null; turnId: string; controller: AbortController; started: boolean } | null = null
   let busy = false
 
   async function ensureConversation(): Promise<string> {
@@ -49,14 +49,15 @@ export function createCloudBrain(api: CloudApi) {
       if (!prompt.trim()) throw new CloudApiError('Message cannot be empty.', 400, 'invalid_request')
       if (busy) throw new CloudApiError('A cloud turn is already running.', 409, 'invalid_request')
       busy = true
-      let turnId: string | null = null
+      const turnId = makeId()
+      const controller = new AbortController()
+      active = { conversationId: null, turnId, controller, started: false }
       let text = ''
       let completed = false
       try {
         const id = await ensureConversation()
-        turnId = makeId()
-        const controller = new AbortController()
-        active = { conversationId: id, turnId, controller }
+        if (controller.signal.aborted) return { text: '', tools: [] }
+        active = { conversationId: id, turnId, controller, started: true }
         const body = await api.streamTurn({ conversationId: id, turnId, text: prompt.trim() }, controller.signal)
         for await (const event of readCloudAssistantEvents(body)) {
           if (event.conversationId !== id || event.turnId !== turnId) continue
@@ -83,7 +84,7 @@ export function createCloudBrain(api: CloudApi) {
         if (!completed) throw new CloudApiError('Cloud stream ended before the turn completed.', 502, 'invalid_response', undefined, true)
         return { text: text.trim(), tools: [] }
       } finally {
-        if (turnId && active?.turnId === turnId) active = null
+        if (active?.turnId === turnId) active = null
         busy = false
       }
     },
@@ -92,10 +93,12 @@ export function createCloudBrain(api: CloudApi) {
       const current = active
       if (!current) return
       current.controller.abort()
-      void api.cancelTurn({
-        conversationId: current.conversationId,
-        turnId: current.turnId,
-      }).catch(() => {})
+      if (current.conversationId && current.started) {
+        void api.cancelTurn({
+          conversationId: current.conversationId,
+          turnId: current.turnId,
+        }).catch(() => {})
+      }
     },
 
     getConversationId() {
@@ -103,7 +106,7 @@ export function createCloudBrain(api: CloudApi) {
     },
 
     resetConversation() {
-      if (active) throw new CloudApiError('Cannot switch conversations during an active turn.', 409, 'invalid_request')
+      if (busy) throw new CloudApiError('Cannot switch conversations during an active turn.', 409, 'invalid_request')
       conversationId = null
     },
   }
