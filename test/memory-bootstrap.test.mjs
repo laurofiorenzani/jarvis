@@ -62,12 +62,17 @@ test('memory runtime enforces a single writer and releases its lock cleanly', as
   }
   let runtime
   try {
-    runtime = await loadMemoryRuntime({ env, home })
+    const attempts = await Promise.allSettled([
+      loadMemoryRuntime({ env, home }),
+      loadMemoryRuntime({ env, home }),
+    ])
+    const opened = attempts.filter((item) => item.status === 'fulfilled')
+    const rejected = attempts.filter((item) => item.status === 'rejected')
+    assert.equal(opened.length, 1, 'exactly one process may acquire the writer lock')
+    assert.equal(rejected.length, 1)
+    assert.match(String(rejected[0].reason?.message), /already locked by another process or a stale lock/)
+    runtime = opened[0].value
     assert.equal(typeof runtime.close, 'function')
-    await assert.rejects(
-      () => loadMemoryRuntime({ env, home }),
-      /already locked by another process or a stale lock/,
-    )
 
     runtime.close()
     runtime = await loadMemoryRuntime({ env, home })
