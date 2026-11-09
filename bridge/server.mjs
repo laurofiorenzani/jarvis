@@ -1614,6 +1614,9 @@ wss.on('connection', (socket) => {
     }
 
     if (msg.type === 'interrupt') {
+      // A memory approval belongs to the turn that requested it. Interrupting
+      // the turn must cancel every outstanding approval before the agent stops.
+      memoryConnection?.cancelAll()
       // Marks the turn in flight as cancelled on purpose, so the failed result
       // it is about to produce is not reported as a fault.
       cancelledAsk = answering
