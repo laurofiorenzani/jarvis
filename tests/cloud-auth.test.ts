@@ -126,3 +126,24 @@ test('auth rejects insecure origins and missing credentials before network acces
   })
   await assert.rejects(auth.signInWithPassword(' ', 'password'), /Email and password/)
 })
+
+
+test('auth rejects malformed token expiry and identity payloads', async () => {
+  const storage = { get: async () => null, set: async () => {}, remove: async () => {} }
+  for (const malformed of [
+    { ...session('access', 'refresh'), expires_in: Number.NaN },
+    { ...session('access', 'refresh'), expires_in: -1 },
+    { ...session('access', 'refresh'), expires_in: 32 * 24 * 60 * 60 },
+    { ...session('access', 'refresh'), expires_at: Number.POSITIVE_INFINITY },
+    { ...session('access', 'refresh'), user: { id: ' ' } },
+  ]) {
+    const auth = createSupabaseAuth({
+      url: 'https://example.supabase.co',
+      anonKey: 'sb_publishable_test',
+      storage,
+      fetchImpl: async () => response(malformed),
+    })
+    await assert.rejects(auth.signInWithPassword('user@example.test', 'password'),
+      (error: unknown) => error instanceof CloudAuthError && error.status === 502)
+  }
+})
