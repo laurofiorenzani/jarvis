@@ -132,6 +132,10 @@ export function watchMemoryConfirmations(
   if (usingBridge) bridge.watchMemoryConfirmation(fn)
 }
 
+export function watchMemoryConfirmationCancelled(fn: (id: string) => void): void {
+  if (usingBridge) bridge.watchMemoryConfirmationCancelled(fn)
+}
+
 export function decideMemoryConfirmation(
   challenge: bridge.MemoryConfirmationChallenge,
   approved: boolean,
