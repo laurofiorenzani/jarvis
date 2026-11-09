@@ -97,9 +97,9 @@ export async function loadMemoryRuntime({
   const writeAudit = createMemoryAuditLogger({ auditPath })
 
   const audit = async (event) => {
-    if (!event || !['save', 'update', 'delete'].includes(event.operation) ||
+    if (!event || !['save', 'update', 'delete', 'expire'].includes(event.operation) ||
         !(event.memoryId === null || typeof event.memoryId === 'string') ||
-        event.outcome !== 'authorized' ||
+        event.outcome !== (event.operation === 'expire' ? 'expired' : 'authorized') ||
         typeof event.timestamp !== 'string' ||
         !Number.isFinite(Date.parse(event.timestamp))) {
       throw new TypeError('Invalid metadata-only memory audit event')
