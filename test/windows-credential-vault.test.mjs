@@ -78,8 +78,9 @@ test('native adapter round-trips a key through Windows Credential Manager', asyn
   const home = await mkdtemp(join(tmpdir(), 'jarvis-wincred-'))
   t.after(() => rm(home, { recursive: true, force: true }))
   const { AsyncEntry } = await import('@napi-rs/keyring')
-  const entry = new AsyncEntry('Jarvis.Memory', MEMORY_KEY_PURPOSE)
-  const vault = await createWindowsCredentialVault({ home })
+  const service = `Jarvis.Memory.Test.${process.pid}.${Date.now()}`
+  const entry = new AsyncEntry(service, MEMORY_KEY_PURPOSE)
+  const vault = await createWindowsCredentialVault({ home, service })
   try {
     const stored = await vault.createSecretIfAbsent(MEMORY_KEY_PURPOSE, FIRST)
     assert.deepEqual(stored, FIRST)
