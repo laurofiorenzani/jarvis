@@ -20,7 +20,8 @@ identity provider, database and hosting platform.
 - Memory writes require a server-created, expiring, single-use approval challenge
   bound to user, conversation, turn, operation and payload digest.
 - Mutating operations use a client-generated turn ID as an idempotency key.
-  Replays return the original operation result; they must not execute twice.
+  Duplicate turn IDs are rejected with HTTP 409; clients must reload durable
+  conversation state rather than silently retrying a turn with the same ID.
 - Logs contain request IDs and operational metadata, not prompts, tokens,
   memory contents or raw tool payloads by default.
 
@@ -97,9 +98,8 @@ shapes must be finalised together with the server before production enablement.
 
 The client can now submit turns as authenticated SSE requests with an
 AbortSignal, reject non-SSE success responses, decode only versioned/validated
-events, and cancel the stream reader when the consumer exits early. The JSON
-acceptance and explicit cancellation methods remain available for non-streaming
-or control-plane operations. The server must implement the same route behavior
+events, and cancel the stream reader when the consumer exits early. Explicit
+turn cancellation remains available as a separate authenticated control request. The server must implement the same route behavior
 and independently enforce all limits and authorization checks.
 
 ## Prototype server
