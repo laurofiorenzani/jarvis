@@ -116,8 +116,10 @@ test('rejects an incorrect passphrase without creating a vault key or target fil
 
 test('rejects a tampered backup before touching the vault', async (t) => {
   const source = await createSource(t)
-  const tampered = Buffer.from(source.backup)
-  tampered[tampered.length - 8] ^= 1
+  const envelope = JSON.parse(source.backup.toString('utf8'))
+  const firstCipherCharacter = envelope.ciphertext[0]
+  envelope.ciphertext = (firstCipherCharacter === 'A' ? 'B' : 'A') + envelope.ciphertext.slice(1)
+  const tampered = Buffer.from(JSON.stringify(envelope))
   const target = await mkdtemp(join(tmpdir(), 'jarvis-memory-backup-tampered-'))
   t.after(() => rm(target, { recursive: true, force: true }))
   const vault = fakeVault()
