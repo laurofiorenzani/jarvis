@@ -126,9 +126,13 @@ export async function loadMemoryRuntime({
     })
     return Object.freeze({
       ...runtime,
-      close() {
+      async close() {
         process.removeListener('exit', release)
-        release()
+        try {
+          await runtime.close()
+        } finally {
+          release()
+        }
       },
     })
   } catch (error) {
