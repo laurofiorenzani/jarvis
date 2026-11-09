@@ -11,6 +11,8 @@ import {
   type CancelTurnRequest,
   type CloudHealth,
   type CreateConversationResponse,
+  type GetConversationResponse,
+  type ListConversationsResponse,
   type SendTurnRequest,
 } from './backend-contract'
 
@@ -117,6 +119,9 @@ export function createCloudApiClient(options: CloudApiOptions) {
       method: 'POST',
       body: JSON.stringify({ version: CLOUD_API_VERSION }),
     }),
+    listConversations: () => request<ListConversationsResponse>('/v1/conversations'),
+    getConversation: (conversationId: string) =>
+      request<GetConversationResponse>(`/v1/conversations/${encodeURIComponent(requireText(conversationId, 'conversation ID'))}`),
     streamTurn: async (
       input: Omit<SendTurnRequest, 'version'>,
       signal?: AbortSignal,
