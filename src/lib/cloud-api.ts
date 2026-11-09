@@ -58,15 +58,14 @@ export function createCloudApiClient(options: CloudApiOptions) {
 
     let response: Response
     try {
+      const headers = new Headers(init.headers)
+      headers.set('Accept', 'application/json')
+      headers.set('Authorization', `Bearer ${token}`)
+      headers.set('X-Jarvis-Api-Version', String(CLOUD_API_VERSION))
+      if (init.body) headers.set('Content-Type', 'application/json')
       response = await fetcher(`${baseUrl}${path}`, {
         ...init,
-        headers: {
-          Accept: 'application/json',
-          Authorization: `Bearer ${token}`,
-          'X-Jarvis-Api-Version': String(CLOUD_API_VERSION),
-          ...(init.body ? { 'Content-Type': 'application/json' } : {}),
-          ...init.headers,
-        },
+        headers,
         credentials: 'omit',
         redirect: 'error',
       })
