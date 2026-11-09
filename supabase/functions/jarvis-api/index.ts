@@ -275,6 +275,7 @@ Deno.serve(async (request) => {
             return
           }
           buffer += decoder.decode()
+          if (!answer.trim()) throw new Error('empty_model_response')
           const { data: assistantMessage, error: saveError } = await db.from('jarvis_messages')
             .insert({ conversation_id: conversationId, user_id: userId, role: 'assistant', content: answer })
             .select('id,role,content,created_at').single()
