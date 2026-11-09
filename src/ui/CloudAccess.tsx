@@ -61,7 +61,7 @@ export function CloudAccess({ onConnected, onDisconnected }: { onConnected?: () 
     selectLocalBrain()
     try {
       await runtimeRef.current?.auth.signOut()
-      setMessage('LOCAL BRAIN RESTORED · CLOUD SESSION REVOKED')
+      setMessage('LOCAL BRAIN RESTORED · LOCAL SESSION CLEARED')
     } catch {
       setMessage('LOCAL BRAIN RESTORED · LOCAL TOKENS CLEARED')
     } finally {
