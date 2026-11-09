@@ -21,17 +21,20 @@ export async function loadMemoryRuntime({
   if (env.JARVIS_MEMORY_ENABLED !== '1') return null
 
   const adapterPath = env.JARVIS_MEMORY_VAULT_MODULE
-  if (typeof adapterPath !== 'string' || !adapterPath.trim()) {
+  let adapter
+  if (typeof adapterPath === 'string' && adapterPath.trim()) {
+    if (!isAbsolute(adapterPath.trim())) {
+      throw new TypeError('JARVIS_MEMORY_VAULT_MODULE must be an absolute local file path')
+    }
+    const moduleUrl = pathToFileURL(resolve(adapterPath.trim())).href
+    adapter = await import(moduleUrl)
+  } else if (process.platform === 'win32') {
+    adapter = await import('./windows-credential-vault.mjs')
+  } else {
     throw new Error(
-      'JARVIS_MEMORY_ENABLED=1 requires JARVIS_MEMORY_VAULT_MODULE to point to a tested OS-vault adapter',
+      'JARVIS_MEMORY_ENABLED=1 requires Windows Credential Manager or an explicit JARVIS_MEMORY_VAULT_MODULE adapter',
     )
   }
-
-  if (!isAbsolute(adapterPath.trim())) {
-    throw new TypeError('JARVIS_MEMORY_VAULT_MODULE must be an absolute local file path')
-  }
-  const moduleUrl = pathToFileURL(resolve(adapterPath.trim())).href
-  const adapter = await import(moduleUrl)
   if (typeof adapter.createVault !== 'function') {
     throw new TypeError('The memory vault module must export createVault()')
   }
