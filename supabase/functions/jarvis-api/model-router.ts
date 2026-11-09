@@ -64,6 +64,8 @@ function configuredProviders(): Provider[] {
       name: item.name.trim().slice(0, 60),
       baseUrl: url.toString().replace(/\/$/, ''),
       model: item.model.trim().slice(0, 160),
+      tier: 'free',
+      billingMode: 'free_quota_only',
       ...(apiKeyEnv ? { apiKeyEnv } : {}),
       ...(apiKey ? { apiKey } : {}),
     })
