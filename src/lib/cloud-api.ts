@@ -143,6 +143,7 @@ export function createCloudApiClient(options: CloudApiOptions) {
         `/v1/conversations/${encodeURIComponent(requireText(conversationId, 'conversation ID'))}`,
         { method: 'DELETE' },
       ),
+    getProviderStatus: () => request<{ version: typeof CLOUD_API_VERSION; configured: boolean; providers: { name: string; model: string }[] }>('/v1/provider-status'),
     getMemoryPreference: () => request<MemoryPreferenceResponse>('/v1/memory-preferences'),
     setMemoryContextEnabled: (contextEnabled: boolean) =>
       request<MemoryPreferenceResponse>('/v1/memory-preferences', {
