@@ -204,10 +204,8 @@ export function parseCloudAssistantEvent(input: unknown): CloudAssistantEvent | 
 
   switch (input.type) {
     case 'turn.started':
+      return { ...base, type: 'turn.started' }
     case 'turn.completed':
-      if (input.type === 'turn.started') return base.type === undefined
-        ? null
-        : { ...base, type: 'turn.started' }
       if (!isRecord(input.assistantMessage) ||
           !isNonEmptyString(input.assistantMessage.id) ||
           input.assistantMessage.role !== 'assistant' ||
