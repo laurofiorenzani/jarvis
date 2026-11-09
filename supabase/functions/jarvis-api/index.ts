@@ -50,6 +50,34 @@ function isRecord(value: unknown): value is Json {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
 
+async function readBoundedJson(request: Request, maxBytes: number): Promise<unknown> {
+  if (!request.body) throw new Error('missing_body')
+  const reader = request.body.getReader()
+  const chunks: Uint8Array[] = []
+  let size = 0
+  try {
+    while (true) {
+      const { value, done } = await reader.read()
+      if (done) break
+      size += value.byteLength
+      if (size > maxBytes) {
+        await reader.cancel()
+        throw new Error('body_too_large')
+      }
+      chunks.push(value)
+    }
+  } finally {
+    reader.releaseLock()
+  }
+  const bytes = new Uint8Array(size)
+  let offset = 0
+  for (const chunk of chunks) {
+    bytes.set(chunk, offset)
+    offset += chunk.byteLength
+  }
+  return JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(bytes))
+}
+
 Deno.serve(async (request) => {
   const origin = request.headers.get('origin')
   const cors = corsHeaders(origin)
@@ -112,10 +140,12 @@ Deno.serve(async (request) => {
     const allowed = await consumeLimit('memory_write_hour', 30, 3600)
     if (allowed === null) return error('service_unavailable', 'Rate limiter is unavailable.', 503, true, cors)
     if (!allowed) return error('rate_limited', 'Memory write limit reached.', 429, true, cors)
-    const length = Number(request.headers.get('content-length') ?? '0')
-    if (length > 8_192) return error('invalid_request', 'Memory payload is too large.', 413, false, cors)
     let body: unknown
-    try { body = await request.json() } catch { return error('invalid_request', 'Request body must be JSON.', 400, false, cors) }
+    try { body = await readBoundedJson(request, 8_192) }
+    catch (cause) {
+      if (cause instanceof Error && cause.message === 'body_too_large') return error('invalid_request', 'Memory payload is too large.', 413, false, cors)
+      return error('invalid_request', 'Request body must be valid JSON.', 400, false, cors)
+    }
     if (!isRecord(body) || body.version !== VERSION ||
         !['preference', 'project', 'workflow', 'fact'].includes(String(body.category)) ||
         typeof body.content !== 'string' || !body.content.trim() || body.content.trim().length > 2_000 ||
