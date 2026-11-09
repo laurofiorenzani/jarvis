@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js'
-import { startFreeModelStream } from './model-router.ts'
+import { getFreeProviderStatus, startFreeModelStream } from './model-router.ts'
 
 const VERSION = 1
 const MAX_TEXT = 20_000
@@ -115,6 +115,14 @@ Deno.serve(async (request) => {
       p_user_id: userId, p_bucket: bucket, p_limit: limit, p_window_seconds: windowSeconds,
     })
     return limitError ? null : data === true
+  }
+
+  if (request.method === 'GET' && path === '/provider-status') {
+    try {
+      return response({ version: VERSION, ...getFreeProviderStatus() }, 200, cors)
+    } catch {
+      return error('service_unavailable', 'Model provider configuration is invalid.', 503, false, cors)
+    }
   }
 
   if (request.method === 'GET' && path === '/memory-preferences') {
