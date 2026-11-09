@@ -340,3 +340,34 @@ test('Supabase Auth rejects insecure project URLs', () => {
     storage,
   }), /HTTPS/)
 })
+
+test('cloud client loads conversation lists and user-scoped history', async () => {
+  const requests: string[] = []
+  const client = createCloudApiClient({
+    baseUrl: 'https://project.supabase.co/functions/v1/jarvis-api',
+    getAccessToken: async () => 'token',
+    fetchImpl: async (input) => {
+      requests.push(String(input))
+      const payload = String(input).endsWith('/conversations')
+        ? { version: 1, conversations: [] }
+        : {
+            version: 1,
+            conversation: {
+              id: 'c-1', title: 'Test', createdAt: '2026-11-09T00:00:00Z',
+              updatedAt: '2026-11-09T00:00:00Z',
+            },
+            messages: [],
+          }
+      return new Response(JSON.stringify(payload), {
+        status: 200, headers: { 'Content-Type': 'application/json' },
+      })
+    },
+  })
+  assert.deepEqual((await client.listConversations()).conversations, [])
+  assert.equal((await client.getConversation('c-1')).conversation.id, 'c-1')
+  assert.deepEqual(requests, [
+    'https://project.supabase.co/functions/v1/jarvis-api/v1/conversations',
+    'https://project.supabase.co/functions/v1/jarvis-api/v1/conversations/c-1',
+  ])
+  await assert.rejects(client.getConversation('  '), /Invalid conversation ID/)
+})
