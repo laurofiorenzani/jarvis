@@ -1,0 +1,45 @@
+name: Jarvis tests
+
+on:
+  push:
+    branches:
+      - work/memory-integration
+    paths:
+      - 'bridge/**'
+      - 'test/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.github/workflows/jarvis-tests.yml'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'bridge/**'
+      - 'test/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.github/workflows/jarvis-tests.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: jarvis-tests-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm test
