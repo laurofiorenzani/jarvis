@@ -9,7 +9,7 @@ test('cloud client sends bearer auth and version without storing credentials', a
     getAccessToken: async () => 'short-lived-token',
     fetchImpl: async (_input, init) => {
       captured = init
-      return new Response(JSON.stringify({ version: 1, status: 'ok' }), {
+      return new Response(JSON.stringify({ version: 1, conversation: { id: 'c-1', title: 'Test', createdAt: '2026-11-09T00:00:00Z', updatedAt: '2026-11-09T00:00:00Z' } }), {
         status: 200, headers: { 'Content-Type': 'application/json' },
       })
     },
@@ -30,7 +30,7 @@ test('cloud client fails closed when no access token is available', async () => 
     getAccessToken: async () => null,
     fetchImpl: async () => { called = true; return new Response('{}') },
   })
-  await assert.rejects(client.health(), (error: unknown) =>
+  await assert.rejects(client.createConversation(), (error: unknown) =>
     error instanceof CloudApiError && error.code === 'unauthenticated')
   assert.equal(called, false)
 })
@@ -151,7 +151,7 @@ test('cloud client validates turn inputs before making network requests', async 
     fetchImpl: async () => { called = true; return new Response('{}') },
   })
   await assert.rejects(
-    client.sendTurn({ conversationId: 'c-1', turnId: 't-1', text: '   ' }),
+    client.streamTurn({ conversationId: 'c-1', turnId: 't-1', text: '   ' }),
     (error: unknown) => error instanceof CloudApiError && error.code === 'invalid_request',
   )
   assert.equal(called, false)
@@ -369,7 +369,7 @@ test('cloud client loads conversation lists and user-scoped history', async () =
     'https://project.supabase.co/functions/v1/jarvis-api/v1/conversations',
     'https://project.supabase.co/functions/v1/jarvis-api/v1/conversations/c-1',
   ])
-  await assert.rejects(client.getConversation('  '), /Invalid conversation ID/)
+  assert.throws(() => client.getConversation('  '), /Invalid conversation ID/)
 })
 
 test('cloud client exposes explicit user-scoped conversation deletion', async () => {
