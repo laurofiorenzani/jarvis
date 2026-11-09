@@ -22,8 +22,9 @@ test('enabled memory runtime fails closed without an OS-vault adapter path', asy
     () => loadMemoryRuntime({
       env: { JARVIS_MEMORY_ENABLED: '1' },
       home: '/tmp/jarvis-memory-test',
+      platform: 'linux',
     }),
-    /requires JARVIS_MEMORY_VAULT_MODULE/,
+    /requires Windows Credential Manager or an explicit JARVIS_MEMORY_VAULT_MODULE/,
   )
 })
 
