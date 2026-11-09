@@ -145,7 +145,7 @@ export function createCloudApiClient(options: CloudApiOptions) {
       const safeInput = {
         conversationId: requireText(input.conversationId, 'conversation ID'),
         turnId: requireText(input.turnId, 'turn ID'),
-        text: requireText(input.text, 'message', 100_000),
+        text: requireText(input.text, 'message', 20_000),
       }
       const token = await options.getAccessToken()
       if (!token?.trim()) {
