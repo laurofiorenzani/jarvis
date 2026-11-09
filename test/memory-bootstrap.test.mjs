@@ -75,11 +75,11 @@ test('memory runtime enforces a single writer and releases its lock cleanly', as
     runtime = opened[0].value
     assert.equal(typeof runtime.close, 'function')
 
-    runtime.close()
+    await runtime.close()
     runtime = await loadMemoryRuntime({ env, home })
     assert.ok(runtime.store)
   } finally {
-    runtime?.close()
+    await runtime?.close()
     await rm(home, { recursive: true, force: true })
   }
 })
