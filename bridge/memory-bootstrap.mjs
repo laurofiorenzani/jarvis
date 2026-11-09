@@ -17,6 +17,7 @@ export async function loadMemoryRuntime({
   home = homedir(),
   sdk,
   z,
+  platform = process.platform,
 } = {}) {
   if (env.JARVIS_MEMORY_ENABLED !== '1') return null
 
@@ -28,7 +29,7 @@ export async function loadMemoryRuntime({
     }
     const moduleUrl = pathToFileURL(resolve(adapterPath.trim())).href
     adapter = await import(moduleUrl)
-  } else if (process.platform === 'win32') {
+  } else if (platform === 'win32') {
     adapter = await import('./windows-credential-vault.mjs')
   } else {
     throw new Error(
