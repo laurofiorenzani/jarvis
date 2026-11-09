@@ -239,7 +239,7 @@ test('backup refuses audit rows that contain memory content or unapproved fields
     outcome: 'authorized',
     timestamp: '2026-11-09T12:00:00.000Z',
     content: 'PRIVATE_AUDIT_LEAK_SENTINEL',
-  }) + '\\n')
+  }) + '\n')
   await assert.rejects(createEncryptedMemoryBackup({
     filePath: source.filePath,
     auditPath: source.auditPath,
