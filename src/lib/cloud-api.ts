@@ -112,7 +112,8 @@ export function createCloudApiClient(options: CloudApiOptions) {
       }
       throw new CloudApiError('Cloud service returned an unexpected error.', response.status, 'invalid_response')
     }
-    if (payload === null) {
+    if (payload === null || typeof payload !== 'object' || Array.isArray(payload) ||
+        (payload as Record<string, unknown>).version !== CLOUD_API_VERSION) {
       throw new CloudApiError('Cloud service returned an empty or invalid response.', response.status, 'invalid_response')
     }
     return payload as T
