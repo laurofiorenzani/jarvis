@@ -23,7 +23,7 @@ This is an opt-in integration. It is **disabled by default** and is not ready fo
 
 The `jarvis_memory` MCP server exposes search/save/update/delete operations. Sensitive records are hidden from model-facing search. Mutations require a trusted, correlated browser approval; model text or model-supplied flags cannot approve a write. The bridge policy allows these memory tools to reach the approval broker in read-only mode; the memory handlers still reject every mutation without the explicit dialog approval.
 
-When a write is proposed, the UI displays the exact payload preview, operation, and target memory ID. Approval expires after 30 seconds. Denial, timeout, malformed reply, disconnect, or mismatched metadata fails closed.
+When a write is proposed, the UI displays the exact payload preview, operation, and target memory ID. Approval expires after 30 seconds. Denial, timeout, malformed reply, disconnect, mismatched metadata, or a user interrupt fails closed. Interrupting or abandoning a turn cancels outstanding approvals and dismisses their UI prompts.
 
 The direct-browser backend does not load this local memory runtime.
 
@@ -48,3 +48,10 @@ Until those gates pass, leave `JARVIS_MEMORY_ENABLED` unset and use synthetic da
 GitHub Actions run [#42634588630](https://github.com/laurofiorenzani/jarvis/actions/runs/42634588630) completed successfully on both Ubuntu and Windows using Node 24. Each platform ran **111 tests: 110 passed, 0 failed, 1 skipped**, followed by a successful TypeScript/Vite production build. This includes concurrent startup/writer-lock tests, cancellation of pending approvals when a turn is interrupted, and denial of undeclared memory MCP tools.
 
 This validates the current integration code and its synthetic test fixtures. It does not validate a real Windows Credential Manager adapter, target-PC permissions, or real user-data operation; those remain explicit release gates above.
+
+
+## Validation
+
+The integration branch's cross-platform workflow [#42634588630](https://github.com/laurofiorenzani/jarvis/actions/runs/42634588630) passed on Ubuntu and Windows with Node 24. Each platform reported **110 passed, 0 failed, 1 skipped**; `npm run build` also passed on both platforms. The workflow covers the complete existing test suite, memory modules, policy boundary, bootstrap locking, and production TypeScript/Vite build.
+
+This validates the guarded integration code, not the missing native Windows vault adapter or the release gates above.
