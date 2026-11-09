@@ -58,7 +58,7 @@ Push-to-talk is the initial baseline. Do not promise always-listening wake-word 
 - Authenticated cloud API Edge Function deployed.
 - Cloud API transport, SSE parser, cloud-brain adapter, and explicit cloud-runtime composition root implemented.
 - Automated tests cover API transport, stream parsing, brain lifecycle/cancellation, and secure token-store injection.
-- CI has passed on earlier commits; the newest cloud-runtime test commit is awaiting its CI result.
+- CI and the full `Jarvis tests` workflow passed on commit `101a064c7c9e4c26c6d164ff92e4663b8d303537`, including Ubuntu and Windows jobs.
 
 **Still pending**
 - Wire the cloud runtime into the running HUD with a real sign-in/session UX.
