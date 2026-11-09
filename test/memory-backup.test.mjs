@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { mkdir, mkdtemp, readFile, rm, symlink, writeFile } from 'node:fs/promises'
+import { appendFile, mkdir, mkdtemp, readFile, rm, symlink, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { MemoryStore } from '../bridge/memory.mjs'
@@ -248,4 +248,23 @@ test('backup refuses audit rows that contain memory content or unapproved fields
     key: KEY,
     passphrase: PASSPHRASE,
   }), /non-metadata event/)
+});
+
+
+test('preserves metadata-only system expiry events in encrypted backups', async (t) => {
+  const source = await createSource(t)
+  await appendFile(source.auditPath, JSON.stringify({
+    operation: 'expire',
+    memoryId: 'expired-memory-id',
+    outcome: 'expired',
+    timestamp: '2026-11-09T12:01:00.000Z',
+  }) + '\n')
+  const backup = await createEncryptedMemoryBackup({
+    filePath: source.filePath,
+    auditPath: source.auditPath,
+    key: KEY,
+    passphrase: PASSPHRASE,
+  })
+  assert.ok(backup.length > 0)
+  backup.fill(0)
 });
