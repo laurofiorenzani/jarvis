@@ -23,7 +23,7 @@ on:
       - '.github/workflows/jarvis-tests.yml'
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   group: jarvis-tests-${{ github.workflow }}-${{ github.ref }}
@@ -43,6 +43,16 @@ jobs:
         with:
           node-version: 24
           cache: npm
+      - run: npm install --package-lock-only --ignore-scripts
       - run: npm ci
       - run: npm test
       - run: npm run build
+      - name: Commit generated lockfile when dependencies change
+        if: github.event_name == 'push'
+        run: |
+          if git diff --quiet -- package-lock.json; then exit 0; fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add package-lock.json
+          git commit -m 'Update package lockfile for memory vault dependency'
+          git push
