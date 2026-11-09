@@ -80,11 +80,19 @@ test('native adapter round-trips a key through Windows Credential Manager', asyn
   const { AsyncEntry } = await import('@napi-rs/keyring')
   const service = `Jarvis.Memory.Test.${process.pid}.${Date.now()}`
   const entry = new AsyncEntry(service, MEMORY_KEY_PURPOSE)
-  const vault = await createWindowsCredentialVault({ home, service })
+  const vaultA = await createWindowsCredentialVault({ home, service })
+  const vaultB = await createWindowsCredentialVault({ home, service })
   try {
-    const stored = await vault.createSecretIfAbsent(MEMORY_KEY_PURPOSE, FIRST)
-    assert.deepEqual(stored, FIRST)
-    assert.deepEqual(await vault.getSecret(MEMORY_KEY_PURPOSE), FIRST)
+    const [storedA, storedB] = await Promise.all([
+      vaultA.createSecretIfAbsent(MEMORY_KEY_PURPOSE, FIRST),
+      vaultB.createSecretIfAbsent(MEMORY_KEY_PURPOSE, SECOND),
+    ])
+    assert.deepEqual(storedA, storedB)
+    assert.equal(storedA.equals(FIRST) || storedA.equals(SECOND), true)
+    assert.deepEqual(await vaultA.getSecret(MEMORY_KEY_PURPOSE), storedA)
+    assert.deepEqual(await vaultB.getSecret(MEMORY_KEY_PURPOSE), storedA)
+    storedA.fill(0)
+    storedB.fill(0)
   } finally {
     await entry.deleteCredential()
   }
