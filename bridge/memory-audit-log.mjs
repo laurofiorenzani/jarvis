@@ -53,6 +53,12 @@ export function createMemoryAuditLogger({
 
   return function audit(event) {
     validateEvent(event)
+    const record = Object.freeze({
+      operation: event.operation,
+      memoryId: event.memoryId,
+      outcome: event.outcome,
+      timestamp: event.timestamp,
+    })
     const operation = queue.then(async () => {
       const directory = dirname(auditPath)
       await mkdir(directory, { recursive: true, mode: 0o700 })
@@ -66,7 +72,7 @@ export function createMemoryAuditLogger({
         if (error?.code !== 'ENOENT') throw error
       }
 
-      const line = JSON.stringify(event) + '\n'
+      const line = JSON.stringify(record) + '\n'
       const lineBytes = Buffer.byteLength(line, 'utf8')
       if (lineBytes > maxBytes) throw new Error('Memory audit event exceeds the configured size limit')
       if (currentSize + lineBytes > maxBytes && currentSize > 0) {
