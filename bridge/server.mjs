@@ -16,7 +16,9 @@
  */
 
 import { WebSocketServer } from 'ws'
-import { query } from '@anthropic-ai/claude-agent-sdk'
+import { createSdkMcpServer, query, tool } from '@anthropic-ai/claude-agent-sdk'
+import { z } from 'zod'
+import { loadMemoryRuntime } from './memory-bootstrap.mjs'
 import { displayServer } from './panels.mjs'
 import { uiServer } from './ui.mjs'
 import { chromeAvailable, chromeServer } from './chrome.mjs'
@@ -265,6 +267,14 @@ const MCP_SERVERS = allowedServers(configuredServers(), process.env.JARVIS_MCP_S
  * JARVIS_ACCOUNT_CONNECTORS=1 to let the account's connectors in as well.
  */
 const ACCOUNT_CONNECTORS = process.env.JARVIS_ACCOUNT_CONNECTORS === '1'
+
+// Memory is disabled unless a separately installed, tested OS-vault adapter is
+// explicitly configured. If enabled, startup fails closed when that adapter or
+// its existing encryption key is unavailable.
+const MEMORY_RUNTIME = await loadMemoryRuntime({
+  sdk: { createSdkMcpServer, tool },
+  z,
+})
 
 /**
  * The tool policy lives in policy.mjs so it can be tested on its own. Bound to
@@ -1132,7 +1142,10 @@ wss.on('connection', (socket) => {
   // Answer the HUD straight away rather than making it wait for the agent's
   // first turn. Refined later by the real init message.
   socket.send(
-    JSON.stringify({ type: 'ready', servers: Object.keys(MCP_SERVERS) }),
+    JSON.stringify({
+      type: 'ready',
+      servers: [...Object.keys(MCP_SERVERS), ...(MEMORY_RUNTIME ? ['jarvis_memory'] : [])],
+    }),
   )
 
   /** Resolves the pending user message into the SDK's input generator. */
@@ -1159,6 +1172,13 @@ wss.on('connection', (socket) => {
   const send = (msg) => {
     if (socket.readyState === socket.OPEN) socket.send(JSON.stringify(msg))
   }
+
+  const memoryConnection = MEMORY_RUNTIME?.createConnection({
+    send,
+    getCurrentTurnId: () => answering,
+    sdk: { createSdkMcpServer, tool },
+    z,
+  }) ?? null
 
   /**
    * Which question the agent is currently answering.
@@ -1298,6 +1318,7 @@ wss.on('connection', (socket) => {
       // connection rather than once.
       mcpServers: {
         ...MCP_SERVERS,
+        ...(memoryConnection ? { jarvis_memory: memoryConnection.server } : {}),
         jarvis: displayServer(
           (panel) => send({ type: 'panel', panel }),
           (blade) => send({ type: 'blade', blade }),
@@ -1576,6 +1597,7 @@ wss.on('connection', (socket) => {
         clearTimeout(slot.timer)
         slot.resolve(msg)
       }
+      memoryConnection?.transport.receive(msg)
     }
 
     if (msg.type === 'interrupt') {
@@ -1599,6 +1621,7 @@ wss.on('connection', (socket) => {
     console.log('[jarvis] client disconnected')
     closed = true
     deliver?.(null)
+    memoryConnection?.cancelAll()
     session.close?.()
   })
 })
