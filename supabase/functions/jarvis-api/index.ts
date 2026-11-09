@@ -89,6 +89,68 @@ Deno.serve(async (request) => {
     return limitError ? null : data === true
   }
 
+  // Personal memory is written only through this explicit authenticated endpoint.
+  // Chat turns never auto-populate this table; the caller must request a save.
+  if (request.method === 'GET' && path === '/memories') {
+    const { data, error: memoryError } = await db.from('jarvis_memories')
+      .select('id,category,content,created_at,updated_at,expires_at')
+      .eq('user_id', userId)
+      .or(`expires_at.is.null,expires_at.gt.${new Date().toISOString()}`)
+      .order('created_at', { ascending: false })
+      .limit(200)
+    if (memoryError) return error('service_unavailable', 'Memories could not be loaded.', 503, true, cors)
+    return response({
+      version: VERSION,
+      memories: (data ?? []).map((item) => ({
+        id: item.id, category: item.category, content: item.content,
+        createdAt: item.created_at, updatedAt: item.updated_at, expiresAt: item.expires_at,
+      })),
+    }, 200, cors)
+  }
+
+  if (request.method === 'POST' && path === '/memories') {
+    const allowed = await consumeLimit('memory_write_hour', 30, 3600)
+    if (allowed === null) return error('service_unavailable', 'Rate limiter is unavailable.', 503, true, cors)
+    if (!allowed) return error('rate_limited', 'Memory write limit reached.', 429, true, cors)
+    const length = Number(request.headers.get('content-length') ?? '0')
+    if (length > 8_192) return error('invalid_request', 'Memory payload is too large.', 413, false, cors)
+    let body: unknown
+    try { body = await request.json() } catch { return error('invalid_request', 'Request body must be JSON.', 400, false, cors) }
+    if (!isRecord(body) || body.version !== VERSION ||
+        !['preference', 'project', 'workflow', 'fact'].includes(String(body.category)) ||
+        typeof body.content !== 'string' || !body.content.trim() || body.content.trim().length > 2_000 ||
+        (body.expiresAt !== undefined && body.expiresAt !== null &&
+          (typeof body.expiresAt !== 'string' || !Number.isFinite(Date.parse(body.expiresAt)) ||
+           Date.parse(body.expiresAt) <= Date.now()))) {
+      return error('invalid_request', 'Invalid memory record.', 400, false, cors)
+    }
+    const { data, error: insertError } = await db.from('jarvis_memories').insert({
+      user_id: userId,
+      category: body.category,
+      content: body.content.trim(),
+      expires_at: body.expiresAt ?? null,
+    }).select('id,category,content,created_at,updated_at,expires_at').single()
+    if (insertError || !data) return error('service_unavailable', 'Memory could not be saved.', 503, true, cors)
+    return response({
+      version: VERSION,
+      memory: {
+        id: data.id, category: data.category, content: data.content,
+        createdAt: data.created_at, updatedAt: data.updated_at, expiresAt: data.expires_at,
+      },
+    }, 201, cors)
+  }
+
+  const memoryMatch = path.match(/^\/memories\/([0-9a-f-]+)$/i)
+  if (request.method === 'DELETE' && memoryMatch) {
+    const memoryId = memoryMatch[1]
+    if (!UUID.test(memoryId)) return error('invalid_request', 'Invalid memory ID.', 400, false, cors)
+    const { data: deleted, error: deleteError } = await db.from('jarvis_memories')
+      .delete().eq('id', memoryId).eq('user_id', userId).select('id').maybeSingle()
+    if (deleteError) return error('service_unavailable', 'Memory could not be deleted.', 503, true, cors)
+    if (!deleted) return error('forbidden', 'Memory not found.', 404, false, cors)
+    return response({ version: VERSION, deleted: true }, 200, cors)
+  }
+
   if (request.method === 'POST' && path === '/conversations') {
     const allowed = await consumeLimit('conversation_create_hour', 30, 3600)
     if (allowed === null) return error('service_unavailable', 'Rate limiter is unavailable.', 503, true, cors)
