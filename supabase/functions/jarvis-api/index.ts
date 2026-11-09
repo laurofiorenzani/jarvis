@@ -292,10 +292,7 @@ Deno.serve(async (request) => {
             await db.from('jarvis_turns').update({
               status: 'cancelled', completed_at: new Date().toISOString(),
             }).eq('id', turnId).eq('user_id', userId)
-            emit({
-              version: VERSION, type: 'turn.failed', conversationId, turnId,
-              code: 'service_unavailable', message: 'Turn cancelled.', retryable: false,
-            })
+            emit({ version: VERSION, type: 'turn.cancelled', conversationId, turnId })
             controller.close()
             return
           }
