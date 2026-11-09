@@ -16,7 +16,7 @@ import {
 
 export type CloudFetch = (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>
 
-export type CloudApiOptions = {
+const API_ERROR_CODES = ['unauthenticated', 'forbidden', 'invalid_request', 'rate_limited', 'service_unavailable', 'internal_error'] as const\n\nexport type CloudApiOptions = {
   baseUrl: string
   getAccessToken: () => Promise<string | null>
   fetchImpl?: CloudFetch
@@ -127,6 +127,57 @@ export function createCloudApiClient(options: CloudApiOptions) {
         method: 'POST',
         body: JSON.stringify({ version: CLOUD_API_VERSION, ...safeInput }),
       })
+    },
+    streamTurn: async (
+      input: Omit<SendTurnRequest, 'version'>,
+      signal?: AbortSignal,
+    ): Promise<ReadableStream<Uint8Array>> => {
+      const safeInput = {
+        conversationId: requireText(input.conversationId, 'conversation ID'),
+        turnId: requireText(input.turnId, 'turn ID'),
+        text: requireText(input.text, 'message', 100_000),
+      }
+      const token = await options.getAccessToken()
+      if (!token?.trim()) {
+        throw new CloudApiError('Sign-in is required.', 401, 'unauthenticated')
+      }
+      let response: Response
+      try {
+        response = await fetcher(`${baseUrl}/v1/turns`, {
+          method: 'POST',
+          headers: {
+            Accept: 'text/event-stream',
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json',
+            'X-Jarvis-Api-Version': String(CLOUD_API_VERSION),
+          },
+          body: JSON.stringify({ version: CLOUD_API_VERSION, ...safeInput }),
+          credentials: 'omit',
+          redirect: 'error',
+          signal,
+        })
+      } catch {
+        if (signal?.aborted) throw new DOMException('The turn was cancelled.', 'AbortError')
+        throw new CloudApiError('Cloud service could not be reached.', 0, 'network_error', undefined, true)
+      }
+      if (!response.ok) {
+        const payload: unknown = await response.json().catch(() => null)
+        if (payload && typeof payload === 'object' && 'error' in payload) {
+          const body = payload as ApiError
+          if (body.version === CLOUD_API_VERSION && body.error &&
+              typeof body.error.message === 'string' && API_ERROR_CODES.includes(String(body.error.code))) {
+            throw new CloudApiError(
+              body.error.message, response.status, body.error.code,
+              body.error.requestId, body.error.retryable,
+            )
+          }
+        }
+        throw new CloudApiError('Cloud service returned an unexpected error.', response.status, 'invalid_response')
+      }
+      if (!response.headers.get('content-type')?.toLowerCase().includes('text/event-stream') || !response.body) {
+        throw new CloudApiError('Cloud service did not return an event stream.', response.status, 'invalid_response')
+      }
+      return response.body
     },
     cancelTurn: (input: Omit<CancelTurnRequest, 'version'>) => {
       const safeInput = {
