@@ -36,6 +36,27 @@ export type ApiError = {
   }
 }
 
+export type MemoryCategory = 'preference' | 'project' | 'workflow' | 'fact'
+
+export type CloudMemory = {
+  id: string
+  category: MemoryCategory
+  content: string
+  createdAt: string
+  updatedAt: string
+  expiresAt: string | null
+}
+
+export type ListMemoriesResponse = {
+  version: typeof CLOUD_API_VERSION
+  memories: CloudMemory[]
+}
+
+export type CreateMemoryResponse = {
+  version: typeof CLOUD_API_VERSION
+  memory: CloudMemory
+}
+
 export type ConversationRole = 'user' | 'assistant'
 
 export type ConversationMessage = {
