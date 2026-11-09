@@ -81,3 +81,25 @@ test('closes already-connected sessions if a later server fails', async () => {
   }), /discovery failed/)
   assert.equal(h.events.filter(e => e[0] === 'close').length, 2)
 })
+
+import { buildMcpChildEnv } from '../bridge/freellmapi-mcp-session.mjs'
+
+test('MCP child environment excludes bridge secrets unless explicitly assigned', () => {
+  const childEnv = buildMcpChildEnv({
+    PATH: '/bin',
+    HOME: '/home/jarvis',
+    FREELLMAPI_API_KEY: 'bridge-secret',
+    ANTHROPIC_API_KEY: 'claude-secret',
+  }, { NOTES_TOKEN: 'notes-only' })
+  assert.deepEqual(childEnv, {
+    PATH: '/bin',
+    HOME: '/home/jarvis',
+    NOTES_TOKEN: 'notes-only',
+  })
+  assert.equal(Object.hasOwn(childEnv, 'FREELLMAPI_API_KEY'), false)
+  assert.equal(Object.hasOwn(childEnv, 'ANTHROPIC_API_KEY'), false)
+})
+
+test('explicit MCP environment values must be strings', () => {
+  assert.throws(() => buildMcpChildEnv({}, { TOKEN: 123 }), /must be strings/)
+})
