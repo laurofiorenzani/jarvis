@@ -28,6 +28,8 @@ test('memory tools reach their explicit approval broker in read-only mode', () =
     assert.equal(decideTool(name), true, name)
     assert.equal(allowed(name, {}), true, name)
   }
+  assert.equal(decideTool('mcp__jarvis_memory__memory_admin'), false)
+  assert.equal(allowed('mcp__jarvis_memory__memory_admin', {}), false)
 })
 
 test('memory policy rejects undeclared tools even when general writes are enabled', () => {
