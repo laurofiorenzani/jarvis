@@ -1,9 +1,19 @@
 # Supabase deployment runbook (free-tier capable)
 
-This is a deployment recipe, not a deployed environment. The repository does
-not contain a Supabase project reference, credentials, provider key, or user
-data. The free plan is sufficient for an initial private prototype, subject
-to Supabase's current quotas, inactivity/pause policy and regional availability.
+This runbook describes the deployed private prototype and the remaining
+operator checks. As of 9 November 2026, the Supabase project `Jarvis`
+(`undmhmdwhxvjgvezvucy`, region `eu-west-3`) is active and healthy. The
+`jarvis-api` Edge Function is active (version 4), both cloud migrations are
+applied, and the four application tables have RLS enabled. The deployed
+`index.ts`, `model-router.ts`, and `deno.json` were compared with this
+working branch and matched byte-for-byte.
+
+This does **not** yet prove that a user can sign in, that model-provider secrets
+are configured, or that a model response can be generated and persisted. Those
+are explicit validation gates below. No user conversations have been migrated
+or seeded. The free plan is sufficient for an initial private prototype,
+subject to Supabase's current quotas, inactivity/pause policy and regional
+availability.
 
 ## Architecture
 
