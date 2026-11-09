@@ -65,9 +65,9 @@ function validateAuditLog(bytes) {
       ? Object.keys(event).sort()
       : []
     if (keys.join(',') !== 'memoryId,operation,outcome,timestamp' ||
-        !['save', 'update', 'delete'].includes(event.operation) ||
+        !['save', 'update', 'delete', 'expire'].includes(event.operation) ||
         !(event.memoryId === null || (typeof event.memoryId === 'string' && event.memoryId.length <= 100)) ||
-        event.outcome !== 'authorized' ||
+        event.outcome !== (event.operation === 'expire' ? 'expired' : 'authorized') ||
         typeof event.timestamp !== 'string' ||
         !Number.isFinite(Date.parse(event.timestamp))) {
       throw new Error('Memory audit log contains a non-metadata event at line ' + (index + 1))
