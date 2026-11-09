@@ -83,3 +83,16 @@ access-token expiry checks and local sign-out. It requires an injected
 storage. The refresh token is the only credential persisted by the adapter;
 the access token remains in memory. The iOS integration must provide a
 Keychain-backed store before sign-in is enabled in the mobile UI.
+
+## Free-plan operating constraints (checked 9 Nov 2026)
+
+Supabase currently lists two active free projects, 500 MB database per project,
+50,000 monthly active users, 5 GB egress and 500,000 Edge Function invocations.
+Free projects pause after one week of inactivity. Hosted Edge Functions have a
+150-second wall-clock limit on the Free plan (and a 150-second request idle
+timeout). The model request is therefore bounded to 130 seconds in this
+prototype. This is appropriate for a low-traffic prototype, not an always-on
+production SLA.
+
+References: [Supabase billing and quotas](https://supabase.com/docs/guides/platform/billing-on-supabase),
+[Edge Function limits](https://supabase.com/docs/guides/functions/limits).
