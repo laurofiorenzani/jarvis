@@ -295,10 +295,16 @@ Deno.serve(async (request) => {
           })
           controller.close()
         } catch {
+          const { data: state } = await db.from('jarvis_turns')
+            .select('cancel_requested_at')
+            .eq('id', turnId).eq('user_id', userId).maybeSingle()
+          const wasCancelled = Boolean(state?.cancel_requested_at)
           await db.from('jarvis_turns').update({
-            status: 'failed', error_code: 'internal_error', completed_at: new Date().toISOString(),
+            status: wasCancelled ? 'cancelled' : 'failed',
+            error_code: wasCancelled ? null : 'internal_error',
+            completed_at: new Date().toISOString(),
           }).eq('id', turnId).eq('user_id', userId)
-          try {
+          if (!wasCancelled) try {
             emit({
               version: VERSION, type: 'turn.failed', conversationId, turnId,
               code: 'internal_error', message: 'The response could not be completed.',
