@@ -217,28 +217,45 @@ Deno.serve(async (request) => {
     }
 
     const encoder = new TextEncoder()
+    const decoder = new TextDecoder()
     const stream = new ReadableStream<Uint8Array>({
       async start(controller) {
         let buffer = ''
         let answer = ''
-        const emit = (event: Json) => controller.enqueue(encoder.encode(`data: ${JSON.stringify(event)}\n\n`))
+        let cancelled = false
+        const emit = (event: Json) => controller.enqueue(encoder.encode(`data: ${JSON.stringify(event)}\\n\\n`))
         emit({ version: VERSION, type: 'turn.started', conversationId, turnId })
         const reader = upstream.body!.getReader()
         try {
           while (true) {
+            const { data: currentTurn } = await db.from('jarvis_turns')
+              .select('cancel_requested_at')
+              .eq('id', turnId).eq('user_id', userId).maybeSingle()
+            if (currentTurn?.cancel_requested_at) {
+              cancelled = true
+              await reader.cancel()
+              break
+            }
             const { value, done } = await reader.read()
             if (done) break
-            buffer += new TextDecoder().decode(value, { stream: true })
+            buffer += decoder.decode(value, { stream: true })
+            if (buffer.length > 1_000_000 && !buffer.includes('\\n\\n')) {
+              throw new Error('upstream_frame_too_large')
+            }
             let boundary: number
-            while ((boundary = buffer.indexOf('\n\n')) !== -1) {
+            while ((boundary = buffer.indexOf('\\n\\n')) !== -1) {
               const frame = buffer.slice(0, boundary)
               buffer = buffer.slice(boundary + 2)
-              const dataLine = frame.split('\n').find((line) => line.startsWith('data:'))
+              const dataLine = frame.split('\\n').find((line) => line.startsWith('data:'))
               if (!dataLine) continue
               const raw = dataLine.slice(5).trim()
               if (raw === '[DONE]') continue
               let event: Json
-              try { const parsed = JSON.parse(raw); if (!isRecord(parsed)) continue; event = parsed } catch { continue }
+              try {
+                const parsed = JSON.parse(raw)
+                if (!isRecord(parsed)) continue
+                event = parsed
+              } catch { continue }
               if (event.type === 'content_block_delta' && isRecord(event.delta) &&
                   event.delta.type === 'text_delta' && typeof event.delta.text === 'string') {
                 answer += event.delta.text
@@ -246,7 +263,19 @@ Deno.serve(async (request) => {
               }
             }
           }
-          if (cancelled) {\n            await db.from('jarvis_turns').update({ status: 'cancelled', completed_at: new Date().toISOString() })\n              .eq('id', turnId).eq('user_id', userId)\n            emit({ version: VERSION, type: 'turn.failed', conversationId, turnId, code: 'service_unavailable', message: 'Turn cancelled.', retryable: false })\n            controller.close()\n            return\n          }\n          buffer += decoder.decode()\n          const { data: assistantMessage, error: saveError } = await db.from('jarvis_messages')
+          if (cancelled) {
+            await db.from('jarvis_turns').update({
+              status: 'cancelled', completed_at: new Date().toISOString(),
+            }).eq('id', turnId).eq('user_id', userId)
+            emit({
+              version: VERSION, type: 'turn.failed', conversationId, turnId,
+              code: 'service_unavailable', message: 'Turn cancelled.', retryable: false,
+            })
+            controller.close()
+            return
+          }
+          buffer += decoder.decode()
+          const { data: assistantMessage, error: saveError } = await db.from('jarvis_messages')
             .insert({ conversation_id: conversationId, user_id: userId, role: 'assistant', content: answer })
             .select('id,role,content,created_at').single()
           if (saveError || !assistantMessage) throw new Error('assistant_persist_failed')
@@ -267,19 +296,26 @@ Deno.serve(async (request) => {
           await db.from('jarvis_turns').update({
             status: 'failed', error_code: 'internal_error', completed_at: new Date().toISOString(),
           }).eq('id', turnId).eq('user_id', userId)
-          emit({
-            version: VERSION, type: 'turn.failed', conversationId, turnId,
-            code: 'internal_error', message: 'The response could not be completed.',
-            retryable: true,
-          })
-          controller.close()
+          try {
+            emit({
+              version: VERSION, type: 'turn.failed', conversationId, turnId,
+              code: 'internal_error', message: 'The response could not be completed.',
+              retryable: true,
+            })
+            controller.close()
+          } catch { /* Client disconnected; durable state was still updated. */ }
         } finally {
           reader.releaseLock()
         }
       },
-      cancel() { void upstream.body?.cancel() },
+      async cancel() {
+        await upstream.body?.cancel().catch(() => {})
+        await db.from('jarvis_turns').update({
+          status: 'cancelled', cancel_requested_at: new Date().toISOString(),
+          completed_at: new Date().toISOString(),
+        }).eq('id', turnId).eq('user_id', userId).in('status', ['accepted', 'running'])
+      },
     })
-
     return new Response(stream, {
       status: 200,
       headers: {
