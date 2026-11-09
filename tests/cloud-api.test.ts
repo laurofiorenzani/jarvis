@@ -57,3 +57,34 @@ test('cloud client preserves structured server errors', async () => {
     error.requestId === 'req-1' &&
     error.retryable)
 })
+
+import { parseCloudAssistantEvent } from '../src/lib/backend-contract.ts'
+
+test('cloud event parser accepts a valid text delta and rejects malformed frames', () => {
+  const valid = {
+    version: 1,
+    type: 'text.delta',
+    conversationId: 'conversation-1',
+    turnId: 'turn-1',
+    delta: 'Hello',
+  }
+  assert.deepEqual(parseCloudAssistantEvent(valid), valid)
+  assert.equal(parseCloudAssistantEvent({ ...valid, version: 2 }), null)
+  assert.equal(parseCloudAssistantEvent({ ...valid, turnId: '' }), null)
+  assert.equal(parseCloudAssistantEvent({ ...valid, type: 'unknown.event' }), null)
+})
+
+test('cloud event parser validates tool outcomes and memory approval challenges', () => {
+  const base = { version: 1, conversationId: 'c-1', turnId: 't-1' }
+  assert.equal(parseCloudAssistantEvent({
+    ...base, type: 'tool.finished', tool: 'web_search', outcome: 'maybe',
+  }), null)
+  assert.equal(parseCloudAssistantEvent({
+    ...base, type: 'memory.confirmation_required',
+    challengeId: 'challenge-1', operation: 'write', expiresAt: 'soon',
+  }), null)
+  assert.equal(parseCloudAssistantEvent({
+    ...base, type: 'memory.confirmation_required',
+    challengeId: 'challenge-1', operation: 'save', expiresAt: '2030-01-01T00:00:00Z',
+  })?.type, 'memory.confirmation_required')
+})
