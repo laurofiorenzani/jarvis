@@ -232,7 +232,7 @@ Deno.serve(async (request) => {
       },
       signal: AbortSignal.any([upstreamAbort.signal, AbortSignal.timeout(130_000)]),
       body: JSON.stringify({
-        model: Deno.env.get('JARVIS_MODEL') ?? 'claude-sonnet-4-5',
+        model: Deno.env.get('JARVIS_MODEL') ?? 'claude-sonnet-5-5',
         max_tokens: 2048,
         stream: true,
         system: 'You are JARVIS, a precise and helpful personal assistant. Never claim to have performed an action unless a connected tool confirms it.',
