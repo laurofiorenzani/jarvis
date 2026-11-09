@@ -172,10 +172,10 @@ export function createSupabaseAuth(options: SupabaseAuthOptions) {
       return next ? { user: next.user } : null
     },
     async signOut() {
-      const accessToken = await getAccessToken()
-      if (accessToken) {
-        try { await authRequest('logout', {}, accessToken) } catch { /* Local sign-out must still complete. */ }
-      }
+      try {
+        const accessToken = await getAccessToken()
+        if (accessToken) await authRequest('logout', {}, accessToken)
+      } catch { /* Local sign-out must still complete when offline. */ }
       session = null
       await options.storage.remove(REFRESH_TOKEN_KEY)
     },
