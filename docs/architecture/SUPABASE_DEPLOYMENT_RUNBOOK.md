@@ -68,3 +68,9 @@ per hour. The limiter table is inaccessible to end-user roles; its RPC is
 granted only to the service role. Old window records are pruned after two days.
 These are initial abuse controls, not a substitute for provider spend budgets,
 IP/device throttling or monitoring before public access.
+
+The function config disables gateway-only JWT parsing so browser preflight and
+public health requests can reach the handler. This is intentional: every
+non-health route explicitly validates the bearer token with Supabase Auth
+(`auth.getUser`) before any user-scoped operation. Do not remove that
+application-level verification.
