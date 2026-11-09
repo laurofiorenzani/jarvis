@@ -113,6 +113,16 @@ Deno.serve(async (request) => {
   }
 
   const conversationMatch = path.match(/^\/conversations\/([0-9a-f-]+)$/i)
+  if (request.method === 'DELETE' && conversationMatch) {
+    const conversationId = conversationMatch[1]
+    if (!UUID.test(conversationId)) return error('invalid_request', 'Invalid conversation ID.', 400, false, cors)
+    const { data: deleted, error: deleteError } = await db.from('jarvis_conversations')
+      .delete().eq('id', conversationId).eq('user_id', userId).select('id').maybeSingle()
+    if (deleteError) return error('service_unavailable', 'Conversation could not be deleted.', 503, true, cors)
+    if (!deleted) return error('forbidden', 'Conversation not found.', 404, false, cors)
+    return response({ version: VERSION, deleted: true }, 200, cors)
+  }
+
   if (request.method === 'GET' && conversationMatch) {
     const conversationId = conversationMatch[1]
     if (!UUID.test(conversationId)) return error('invalid_request', 'Invalid conversation ID.', 400, false, cors)
