@@ -1,10 +1,10 @@
 /**
  * Explicit cloud-runtime composition root.
  *
- * Nothing in the existing HUD selects this runtime yet. The caller must
- * provide Supabase configuration and a secure token store (for example,
- * native Keychain); this module never chooses browser persistence or a
- * provider fallback.
+ * The CloudAccess HUD selects this runtime after an explicit user sign-in.
+ * The caller must provide Supabase configuration and a token store (for
+ * example, ephemeral web storage or native Keychain); this module never
+ * chooses persistence or a provider fallback.
  */
 import { createCloudApiClient, type CloudFetch } from './cloud-api'
 import { createCloudBrain } from './cloud-brain'
