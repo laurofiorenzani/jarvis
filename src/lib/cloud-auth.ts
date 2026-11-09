@@ -1,9 +1,8 @@
 /**
  * Supabase Auth adapter with injected secure storage.
  *
- * The adapter never chooses localStorage or another persistence mechanism.
- * Native clients must inject Keychain-backed storage; browser clients must
- * make an explicit storage decision before enabling sign-in.
+ * It never chooses localStorage or another persistence mechanism. Native
+ * clients must inject Keychain-backed storage before enabling sign-in.
  */
 export type SecureTokenStore = {
   get(key: string): Promise<string | null>
@@ -15,8 +14,7 @@ type AuthSession = {
   access_token: string
   refresh_token: string
   expires_in: number
-  expires_at?: number
-  token_type: string
+  expires_at: number
   user: { id: string; email?: string }
 }
 
@@ -25,7 +23,6 @@ type AuthResponse = {
   refresh_token?: string
   expires_in?: number
   expires_at?: number
-  token_type?: string
   user?: { id?: string; email?: string }
   msg?: string
   message?: string
@@ -51,8 +48,9 @@ const REFRESH_TOKEN_KEY = 'jarvis.supabase.refresh-token'
 
 function validateAuthOrigin(value: string): string {
   const url = new URL(value)
-  if (url.protocol !== 'https:' && url.hostname !== 'localhost' && url.hostname !== '127.0.0.1') {
-    throw new Error('Supabase Auth must use HTTPS.')
+  const local = url.hostname === 'localhost' || url.hostname === '127.0.0.1'
+  if (url.protocol !== 'https:' && !(local && url.protocol === 'http:')) {
+    throw new Error('Supabase Auth must use HTTPS (HTTP is allowed only on localhost).')
   }
   if (url.username || url.password || url.search || url.hash) {
     throw new Error('Supabase Auth URL must not contain credentials, query, or fragment.')
@@ -92,7 +90,7 @@ export function createSupabaseAuth(options: SupabaseAuthOptions) {
         : undefined
       throw new CloudAuthError(typeof message === 'string' ? message : 'Authentication request failed.', response.status)
     }
-    if (!payload || typeof payload !== 'object') {
+    if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
       throw new CloudAuthError('Authentication service returned an invalid response.', response.status)
     }
     return payload as AuthResponse
@@ -110,7 +108,6 @@ export function createSupabaseAuth(options: SupabaseAuthOptions) {
       refresh_token: payload.refresh_token,
       expires_in: payload.expires_in,
       expires_at: payload.expires_at ?? Math.floor(now() / 1000) + payload.expires_in,
-      token_type: payload.token_type ?? 'bearer',
       user: { id: payload.user.id, email: payload.user.email },
     }
   }
@@ -142,16 +139,8 @@ export function createSupabaseAuth(options: SupabaseAuthOptions) {
     return refreshInFlight
   }
 
-  return {
-    async signInWithPassword(email: string, password: string) {
-      if (!email.trim() || !password) throw new CloudAuthError('Email and password are required.', 400)
-      const payload = await authRequest('token?grant_type=password', {
-        email: email.trim(), password,
-      })
-      const next = parseSession(payload)
-      await saveSession(next)
-      const getAccessToken = async (): Promise<string | null> => {
-    if (session && (session.expires_at ?? 0) * 1000 > now() + 60_000) return session.access_token
+  const getAccessToken = async (): Promise<string | null> => {
+    if (session && session.expires_at * 1000 > now() + 60_000) return session.access_token
     const next = await refresh()
     return next?.access_token ?? null
   }
