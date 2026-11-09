@@ -52,7 +52,7 @@ export function CloudAccess({ onConnected, onDisconnected }: { onConnected?: () 
       try {
         const providers = await runtime.api.getProviderStatus()
         setProviderStatus(providers.configured
-          ? 'FREE-ONLY PROVIDER CONFIGURED · ' + providers.providers.map((item) => item.model).join(', ')
+          ? 'FREE-QUOTA CONFIG DECLARED · ' + providers.providers.map((item) => item.model).join(', ')
           : 'NO FREE-ONLY MODEL PROVIDER CONFIGURED')
       } catch {
         setProviderStatus('MODEL PROVIDER CONFIGURATION INVALID OR UNAVAILABLE')
@@ -142,8 +142,8 @@ export function CloudAccess({ onConnected, onDisconnected }: { onConnected?: () 
 
   return (
     <aside style={{
-      position: 'fixed', zIndex: 30, top: 16, right: 16, width: 290,
-      padding: 14, color: '#b9f6ff', background: 'rgba(1, 12, 22, .94)',
+      position: 'fixed', zIndex: 30, top: 16, right: 16, width: 'min(290px, calc(100vw - 32px))',
+      maxHeight: 'calc(100dvh - 32px)', overflowY: 'auto', padding: 14, color: '#b9f6ff', background: 'rgba(1, 12, 22, .94)',
       border: '1px solid rgba(75, 220, 255, .42)', borderRadius: 8,
       boxShadow: '0 0 24px rgba(0, 190, 255, .12)',
       fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
@@ -216,7 +216,7 @@ export function CloudAccess({ onConnected, onDisconnected }: { onConnected?: () 
             </button>
             {message && <div role="status" style={{ color: '#ffbd91', lineHeight: 1.5 }}>{message}</div>}
             <div style={{ color: '#7797a2', lineHeight: 1.5, letterSpacing: 0 }}>
-              Web session only: credentials are not persisted and will be lost on reload.
+              Temporary web session only: refresh tokens stay in memory and are cleared when this page closes. Provider free-tier settings must also be checked in the provider account.
             </div>
           </form>
         )
