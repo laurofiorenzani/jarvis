@@ -128,16 +128,20 @@ export function replyMemoryConfirmation(
   approved: boolean,
 ): boolean {
   if (!socket || socket.readyState !== WebSocket.OPEN) return false
-  socket.send(JSON.stringify({
-    type: 'reply',
-    id: challenge.id,
-    operation: challenge.operation,
-    memoryId: challenge.memoryId,
-    payloadDigest: challenge.payloadDigest,
-    turnId: challenge.turnId,
-    approved,
-  }))
-  return true
+  try {
+    socket.send(JSON.stringify({
+      type: 'reply',
+      id: challenge.id,
+      operation: challenge.operation,
+      memoryId: challenge.memoryId,
+      payloadDigest: challenge.payloadDigest,
+      turnId: challenge.turnId,
+      approved,
+    }))
+    return true
+  } catch {
+    return false
+  }
 }
 
 /**
