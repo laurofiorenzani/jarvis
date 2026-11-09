@@ -193,7 +193,7 @@ Deno.serve(async (request) => {
 
     const { data: history } = await db.from('jarvis_messages')
       .select('role,content').eq('conversation_id', conversationId)
-      .eq('user_id', userId).order('created_at', { ascending: true }).limit(40)
+      .eq('user_id', userId).order('created_at', { ascending: false }).limit(40)
 
     const upstreamAbort = new AbortController()
     let upstream: Response
@@ -211,7 +211,7 @@ Deno.serve(async (request) => {
         max_tokens: 2048,
         stream: true,
         system: 'You are JARVIS, a precise and helpful personal assistant. Never claim to have performed an action unless a connected tool confirms it.',
-        messages: (history ?? []).map((item) => ({ role: item.role, content: item.content })),
+        messages: (history ?? []).reverse().map((item) => ({ role: item.role, content: item.content })),
       }),
       })
     } catch {
