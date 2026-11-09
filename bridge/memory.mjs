@@ -71,6 +71,9 @@ export class MemoryStore {
   #clock
   #idFactory
   #encryptionKey
+  #closing = false
+  #closed = false
+  #closePromise
 
   constructor({ filePath, encryptionKey, clock = () => new Date(), idFactory = randomUUID } = {}) {
     assertText(filePath, 'filePath', 4096)
@@ -83,7 +86,25 @@ export class MemoryStore {
     this.#idFactory = idFactory
   }
 
+  #assertOpen() {
+    if (this.#closing || this.#closed) throw new Error('MemoryStore is closed')
+  }
+
+  async close() {
+    if (this.#closePromise) return this.#closePromise
+    this.#closing = true
+    this.#closePromise = (async () => {
+      if (this.#initPromise) await this.#initPromise.catch(() => {})
+      await this.#writeQueue
+      this.#records.clear()
+      this.#encryptionKey.fill(0)
+      this.#closed = true
+    })()
+    return this.#closePromise
+  }
+
   async init() {
+    this.#assertOpen()
     if (this.#initPromise) return this.#initPromise
     this.#initPromise = (async () => {
       await mkdir(dirname(this.#filePath), { recursive: true, mode: 0o700 })
@@ -118,8 +139,10 @@ export class MemoryStore {
   }
 
   async #mutate(change) {
+    this.#assertOpen()
     await this.init()
     const operation = this.#writeQueue.then(async () => {
+      this.#assertOpen()
       const next = new Map(this.#records)
       const nowMs = this.#clock().getTime()
       for (const [id, record] of next) {
@@ -177,6 +200,7 @@ export class MemoryStore {
   }
 
   async #purgeExpired() {
+    this.#assertOpen()
     await this.init()
     const nowMs = this.#clock().getTime()
     if ([...this.#records.values()].some((record) => isExpired(record, nowMs))) {
@@ -216,6 +240,7 @@ export class MemoryStore {
   }
 
   async getMemory(id, { includeSensitive = false } = {}) {
+    this.#assertOpen()
     assertText(id, 'id', 100)
     await this.#purgeExpired()
     const record = this.#records.get(id)
