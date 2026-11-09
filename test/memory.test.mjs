@@ -41,6 +41,12 @@ test('persists records across store instances', async (t) => {
   assert.deepEqual(await second.listMemories(), [saved])
 })
 
+test('defaults new memories to time-limited 90-day retention', async (t) => {
+  const { store } = await fixture(t)
+  const saved = await store.saveMemory({ content: 'Synthetic default-retention fact', source: 'test' })
+  assert.equal(saved.retention, '90d')
+})
+
 test('validates records and rejects credential-like content', async (t) => {
   const { store } = await fixture(t)
   await assert.rejects(
