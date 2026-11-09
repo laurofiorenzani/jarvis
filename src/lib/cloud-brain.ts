@@ -21,8 +21,23 @@ type CloudApi = {
 
 export type CloudBrain = ReturnType<typeof createCloudBrain>
 
-const makeId = () => globalThis.crypto?.randomUUID?.() ??
-  `turn-${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`
+const makeId = (): string => {
+  if (globalThis.crypto?.randomUUID) return globalThis.crypto.randomUUID()
+  // The Supabase Edge Function validates turn IDs as UUIDs. Keep the fallback
+  // contract identical on older WebViews rather than generating prefixed IDs.
+  if (globalThis.crypto?.getRandomValues) {
+    const bytes = globalThis.crypto.getRandomValues(new Uint8Array(16))
+    bytes[6] = (bytes[6] & 0x0f) | 0x40
+    bytes[8] = (bytes[8] & 0x3f) | 0x80
+    const hex = Array.from(bytes, (byte) => byte.toString(16).padStart(2, '0')).join('')
+    return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`
+  }
+  // Last-resort UUID v4 formatting for constrained runtimes without Web Crypto.
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (char) => {
+    const value = Math.floor(Math.random() * 16)
+    return (char === 'x' ? value : (value & 0x3) | 0x8).toString(16)
+  })
+}
 
 export function createCloudBrain(api: CloudApi) {
   let conversationId: string | null = null
