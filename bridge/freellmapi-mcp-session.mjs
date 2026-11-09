@@ -5,6 +5,8 @@
  * constructors are injected so the lifecycle can be tested without spawning
  * processes; the runtime supplies the official MCP SDK implementations.
  */
+import { Client } from '@modelcontextprotocol/sdk/client/index.js'
+import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js'
 import { createMcpToolAdapter } from './freellmapi-mcp-adapter.mjs'
 
 function validateServerConfig(name, config) {
@@ -87,4 +89,24 @@ export async function connectMcpServers({
     await Promise.allSettled([...sessions.values()].map(client => client.close()))
     throw error
   }
+}
+
+/**
+ * Production connector using the official MCP SDK stdio client transport.
+ * It remains opt-in: the existing Claude Agent SDK path is not changed.
+ */
+export function connectOfficialMcpServers({ configs, authorize, allowedServerNames }) {
+  return connectMcpServers({
+    configs,
+    authorize,
+    allowedServerNames,
+    createClient: (info) => new Client(info, { capabilities: {} }),
+    createTransport: ({ command, args, env, cwd }) => new StdioClientTransport({
+      command,
+      args,
+      env: env ? { ...process.env, ...env } : process.env,
+      cwd,
+      stderr: 'pipe',
+    }),
+  })
 }
