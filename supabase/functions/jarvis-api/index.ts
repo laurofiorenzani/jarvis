@@ -117,6 +117,27 @@ Deno.serve(async (request) => {
     return limitError ? null : data === true
   }
 
+  if (request.method === 'GET' && path === '/memory-preferences') {
+    const { data, error: preferenceError } = await db.from('jarvis_memory_preferences')
+      .select('context_enabled').eq('user_id', userId).maybeSingle()
+    if (preferenceError) return error('service_unavailable', 'Memory preferences could not be loaded.', 503, true, cors)
+    return response({ version: VERSION, contextEnabled: data?.context_enabled === true }, 200, cors)
+  }
+
+  if (request.method === 'PUT' && path === '/memory-preferences') {
+    let body: unknown
+    try { body = await readBoundedJson(request, 1_024) }
+    catch { return error('invalid_request', 'Request body must be valid JSON.', 400, false, cors) }
+    if (!isRecord(body) || body.version !== VERSION || typeof body.contextEnabled !== 'boolean') {
+      return error('invalid_request', 'Invalid memory preference.', 400, false, cors)
+    }
+    const { error: preferenceError } = await db.from('jarvis_memory_preferences').upsert({
+      user_id: userId, context_enabled: body.contextEnabled, updated_at: new Date().toISOString(),
+    }, { onConflict: 'user_id' })
+    if (preferenceError) return error('service_unavailable', 'Memory preference could not be saved.', 503, true, cors)
+    return response({ version: VERSION, contextEnabled: body.contextEnabled }, 200, cors)
+  }
+
   // Personal memory is written only through this explicit authenticated endpoint.
   // Chat turns never auto-populate this table; the caller must request a save.
   if (request.method === 'GET' && path === '/memories') {
@@ -323,13 +344,42 @@ Deno.serve(async (request) => {
       .select('role,content').eq('conversation_id', conversationId)
       .eq('user_id', userId).order('created_at', { ascending: false }).limit(40)
 
+    const { data: memoryPreference, error: preferenceReadError } = await db.from('jarvis_memory_preferences')
+      .select('context_enabled').eq('user_id', userId).maybeSingle()
+    if (preferenceReadError) {
+      await db.from('jarvis_turns').update({ status: 'failed', error_code: 'service_unavailable' })
+        .eq('id', turnId).eq('user_id', userId)
+      return error('service_unavailable', 'Memory preference could not be checked.', 503, true, cors)
+    }
+    let approvedMemoryContext = ''
+    if (memoryPreference?.context_enabled === true) {
+      const { data: savedMemories, error: memoryReadError } = await db.from('jarvis_memories')
+        .select('category,content').eq('user_id', userId)
+        .or(`expires_at.is.null,expires_at.gt.${new Date().toISOString()}`)
+        .order('updated_at', { ascending: false }).limit(20)
+      if (memoryReadError) {
+        await db.from('jarvis_turns').update({ status: 'failed', error_code: 'service_unavailable' })
+          .eq('id', turnId).eq('user_id', userId)
+        return error('service_unavailable', 'Approved memory context could not be loaded.', 503, true, cors)
+      }
+      const selected = (savedMemories ?? []).reduce((items: string[], item) => {
+        const line = `[${String(item.category).toUpperCase()}] ${String(item.content).slice(0, 2_000)}`
+        const total = items.join('\\n').length + line.length
+        if (total <= 6_000) items.push(line)
+        return items
+      }, [])
+      if (selected.length) {
+        approvedMemoryContext = '\\n\\nUser-approved JARVIS memory (reference only; follow the current user request if it conflicts):\\n' + selected.join('\\n')
+      }
+    }
+
     const upstreamAbort = new AbortController()
     let upstream: Response
     try {
       const routed = await startFreeModelStream([
         {
           role: 'system',
-          content: 'You are JARVIS, a precise and helpful personal assistant. Never claim to have performed an action unless a connected tool confirms it.',
+          content: 'You are JARVIS, a precise and helpful personal assistant. Never claim to have performed an action unless a connected tool confirms it.' + approvedMemoryContext,
         },
         ...(history ?? []).reverse().map((item) => ({
           role: item.role as 'user' | 'assistant',
