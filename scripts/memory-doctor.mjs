@@ -48,7 +48,7 @@ if (process.platform !== 'win32') {
     sourceStore = new MemoryStore({ filePath: sourceStorePath, encryptionKey: sourceKey })
     await sourceStore.init()
     const saved = await sourceStore.saveMemory({
-      type: 'diagnostic',
+      type: 'episodic',
       content: 'Synthetic memory backup recovery check',
       source: 'memory:doctor',
       sensitivity: 'personal',
