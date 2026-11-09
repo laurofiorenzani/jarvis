@@ -47,6 +47,7 @@ test('cloud runtime wires auth tokens into the API and brain without choosing st
   assert.equal(result.conversation.id, 'conversation-1')
   assert.equal(values.get('jarvis.supabase.refresh-token'), 'rotating-refresh')
   assert.equal(calls[1]?.authorization, 'Bearer short-lived-access')
+  assert.equal(calls[1]?.url, 'https://example.supabase.co/functions/v1/jarvis-api/v1/conversations')
   assert.equal(typeof runtime.brain.ask, 'function')
   assert.equal(typeof runtime.brain.cancel, 'function')
 })
