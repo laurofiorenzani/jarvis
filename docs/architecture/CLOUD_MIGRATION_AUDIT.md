@@ -137,3 +137,10 @@ boundaries split across network reads, ignores malformed/unrecognised frames,
 and passes accepted JSON through `parseCloudAssistantEvent`. It is not wired
 to a live endpoint until the server streaming contract and authenticated
 identity lifecycle are implemented.
+
+The cloud client now exposes idempotent turn cancellation and validates
+conversation/turn IDs, message presence/length and health response shape before
+accepting data. The SSE reader enforces a one-megacharacter frame ceiling and
+cancels the underlying stream if its consumer stops early. Regression tests
+cover these fail-closed behaviors. The server must enforce equivalent or
+stricter limits independently.
