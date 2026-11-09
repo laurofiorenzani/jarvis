@@ -98,9 +98,9 @@ This validates the guarded integration code, not the missing native Windows vaul
 
 ## Automated validation evidence
 
-GitHub Actions run [#42643120631](https://github.com/laurofiorenzani/jarvis/actions/runs/42643120631) passed on both Ubuntu and Windows with Node 24:
-- 126 tests discovered on each platform; 124 passed, 0 failed, 2 platform-specific tests skipped.
-- The Windows native Credential Manager diagnostic was skipped by the runner condition in that CI run; the workflow condition has been corrected to select the Windows matrix target directly, and native validation remains pending.
+GitHub Actions run [#42644021691](https://github.com/laurofiorenzani/jarvis/actions/runs/42644021691) passed on both Ubuntu and Windows with Node 24:
+- 131 tests discovered on each platform; 129 passed on Ubuntu and 128 on Windows, with 0 failures. The platform-specific skip counts were 2 on Ubuntu and 3 on Windows.
+- Windows `npm run memory:doctor` passed the native Credential Manager binary secret round-trip and the complete passphrase-encrypted backup/restore cycle using two isolated Credential Manager entries and synthetic memory.
 - The production build and lockfile check passed on both platforms.
 
 This validates the implementation on a hosted Windows runner, not on the user's own Windows profile, device security policy, antivirus, or actual memory directory ACL. The user must still run `npm run memory:doctor` on the target PC before enabling personal memory. The branch remains opt-in and must not be merged or deployed without the remaining release gates.
