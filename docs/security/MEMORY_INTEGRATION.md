@@ -9,12 +9,12 @@ This is an opt-in integration. It is **disabled by default** and is not ready fo
 ## Runtime behavior
 
 - `JARVIS_MEMORY_ENABLED` must be set to `1` before the memory runtime is loaded.
-- `JARVIS_MEMORY_VAULT_MODULE` must point to an absolute local JavaScript module exporting `createVault()`.
+- On Windows, the built-in adapter uses Windows Credential Manager through `@napi-rs/keyring`. On another platform, `JARVIS_MEMORY_VAULT_MODULE` must point to an absolute local JavaScript module exporting `createVault()`.
 - That module must return a vault adapter implementing:
   - `getSecret(name): Promise<Buffer | null>`
   - `createSecretIfAbsent(name, value): Promise<Buffer>`
 - `createSecretIfAbsent` must be atomic across processes and return the single stored winner. A plain get-then-set implementation is not acceptable.
-- The adapter must use a Windows OS-backed secret store (Credential Manager or a separately reviewed DPAPI design). No environment-variable, plaintext-file, PowerShell, or silent fallback is permitted.
+- The built-in adapter uses Windows Credential Manager generic credentials and stores the 32-byte key as a binary secret. A per-entry atomic lock serializes first-run creation across processes; waiters return the stored winner. A stale lock fails closed and requires manual inspection. No environment-variable, plaintext-file, PowerShell, or silent fallback is permitted.
 - If the adapter is missing, invalid, unavailable, or the key is missing for an existing store, startup fails closed when memory is enabled.
 - The encrypted store is placed at `~/.jarvis/memory/memory.enc`; metadata-only audit entries are appended to `~/.jarvis/memory/audit.jsonl`.
 - One process owns the store. An atomic local lock directory prevents a second bridge process from opening the writer. A clean exit releases it; a crash leaves a stale lock that must be inspected and removed manually only after confirming no bridge process is alive. Per-WebSocket connections receive their own MCP server and confirmation transport.
@@ -31,7 +31,7 @@ The direct-browser backend does not load this local memory runtime.
 
 Do not enable this feature until all of the following are true:
 
-1. A real Windows Credential Manager adapter has been implemented and tested under the Windows account that runs Jarvis.
+1. The built-in Windows Credential Manager adapter has passed CI integration tests and has been tested under the actual Windows account that runs Jarvis.
 2. Concurrent first-run tests prove two processes receive the same key.
 3. Missing/corrupt key behavior and encrypted-store recovery have been tested.
 4. Windows ACLs on the memory directory and audit log have been verified.
@@ -40,7 +40,7 @@ Do not enable this feature until all of the following are true:
 7. Search isolation, retention, sensitive-memory denial, deletion, and backup/restore have been verified.
 8. The exclusive writer lock and stale-lock recovery procedure have been tested on the target Windows filesystem.
 
-Until those gates pass, leave `JARVIS_MEMORY_ENABLED` unset and use synthetic data only. The feature is a guarded integration foundation, not a production-ready memory service.
+Until those gates pass, leave `JARVIS_MEMORY_ENABLED` unset and use synthetic data only. The CI adapter test uses a disposable Windows runner credential; it does not prove the user's own Windows profile, Credential Manager policy, or ACL configuration is compatible. The feature is a guarded integration foundation, not a production-ready memory service.
 
 
 ## Automated validation
