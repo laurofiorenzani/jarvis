@@ -45,6 +45,7 @@ export async function createMemoryRuntime({
   }
   try {
     await store.init()
+    await store.cleanupExpired()
   } catch (error) {
     await store.close()
     throw error
