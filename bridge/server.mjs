@@ -18,6 +18,7 @@
 import { WebSocketServer } from 'ws'
 import { createSdkMcpServer, query, tool } from '@anthropic-ai/claude-agent-sdk'
 import { z } from 'zod'
+import { resolveBridgeProvider } from './provider-config.mjs'
 import { loadMemoryRuntime } from './memory-bootstrap.mjs'
 import { displayServer } from './panels.mjs'
 import { uiServer } from './ui.mjs'
@@ -179,7 +180,8 @@ const DISABLED = new Set(
  * The orchestrator model. Override with JARVIS_MODEL to trade quality for pace
  * — claude-sonnet-5 is noticeably snappier on camera if Opus feels slow.
  */
-const MODEL = process.env.JARVIS_MODEL ?? 'claude-opus-5'
+const PROVIDER = resolveBridgeProvider()
+const MODEL = PROVIDER.model
 
 /**
  * How hard the model thinks before answering.
@@ -196,7 +198,7 @@ const MODEL = process.env.JARVIS_MODEL ?? 'claude-opus-5'
  * matters more than pace; drop back to 'low' when filming and every second of
  * dead air shows.
  */
-const EFFORT = process.env.JARVIS_EFFORT ?? 'high'
+const EFFORT = PROVIDER.effort
 
 /**
  * Every MCP server Claude Code has configured, read out of its own config.
@@ -1108,7 +1110,7 @@ if (!LOOPBACK) {
 console.log(
   `[jarvis] speech ${elevenKey() ? 'via ElevenLabs (key from MCP config)' : 'using browser fallback voice'}`,
 )
-console.log(`[jarvis] model ${MODEL} · effort ${EFFORT}`)
+console.log(`[jarvis] provider ${PROVIDER.provider} · model ${MODEL}${EFFORT ? ` · effort ${EFFORT}` : ''}`)
 console.log(
   `[jarvis] MCP servers from config: ${Object.keys(MCP_SERVERS).join(', ') || 'none'}` +
     (ACCOUNT_CONNECTORS ? ' · account connectors ON' : ' · account connectors off'),
@@ -1390,7 +1392,8 @@ wss.on('connection', (socket) => {
       // the settings files `settingSources: []` deliberately stops loading, so
       // without this line nothing in the project has a say at all.
       model: MODEL,
-      effort: EFFORT,
+      ...(EFFORT ? { effort: EFFORT } : {}),
+      ...(PROVIDER.sdkEnv ? { env: PROVIDER.sdkEnv } : {}),
       maxTurns: 24,
       // Nothing resumes a JARVIS session — every socket starts a new one — so
       // the transcript the SDK writes by default is only ever a record: every
