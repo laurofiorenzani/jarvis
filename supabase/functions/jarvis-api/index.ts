@@ -195,7 +195,8 @@ Deno.serve(async (request) => {
       .select('role,content').eq('conversation_id', conversationId)
       .eq('user_id', userId).order('created_at', { ascending: true }).limit(40)
 
-    const upstreamAbort = new AbortController()\n    const upstream = await fetch('https://api.anthropic.com/v1/messages', {
+    const upstreamAbort = new AbortController()
+    const upstream = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
         'x-api-key': apiKey,
