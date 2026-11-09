@@ -13,6 +13,9 @@ import {
   type CreateConversationResponse,
   type GetConversationResponse,
   type ListConversationsResponse,
+  type ListMemoriesResponse,
+  type CreateMemoryResponse,
+  type MemoryCategory,
   type SendTurnRequest,
 } from './backend-contract'
 
@@ -137,6 +140,27 @@ export function createCloudApiClient(options: CloudApiOptions) {
     deleteConversation: (conversationId: string) =>
       request<{ version: typeof CLOUD_API_VERSION; deleted: true }>(
         `/v1/conversations/${encodeURIComponent(requireText(conversationId, 'conversation ID'))}`,
+        { method: 'DELETE' },
+      ),
+    listMemories: () => request<ListMemoriesResponse>('/v1/memories'),
+    createMemory: (input: { category: MemoryCategory; content: string; expiresAt?: string | null }) => {
+      const content = requireText(input.content, 'memory content', 2_000)
+      if (!['preference', 'project', 'workflow', 'fact'].includes(input.category)) {
+        throw new CloudApiError('Invalid memory category.', 400, 'invalid_request')
+      }
+      return request<CreateMemoryResponse>('/v1/memories', {
+        method: 'POST',
+        body: JSON.stringify({
+          version: CLOUD_API_VERSION,
+          category: input.category,
+          content,
+          ...(input.expiresAt !== undefined ? { expiresAt: input.expiresAt } : {}),
+        }),
+      })
+    },
+    deleteMemory: (memoryId: string) =>
+      request<{ version: typeof CLOUD_API_VERSION; deleted: true }>(
+        `/v1/memories/${encodeURIComponent(requireText(memoryId, 'memory ID'))}`,
         { method: 'DELETE' },
       ),
     streamTurn: async (
