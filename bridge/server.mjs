@@ -1169,6 +1169,8 @@ wss.on('connection', (socket) => {
     }
   }
 
+  let answering = null
+
   const send = (msg) => {
     if (socket.readyState === socket.OPEN) socket.send(JSON.stringify(msg))
   }
@@ -1190,7 +1192,6 @@ wss.on('connection', (socket) => {
    * the only reliable fix: no amount of waiting on this side changes what a
    * listener over there has already heard.
    */
-  let answering = null
   const sendTurn = (msg) => send({ ...msg, ask: answering })
 
   /**
