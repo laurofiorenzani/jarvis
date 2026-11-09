@@ -13,7 +13,7 @@ function response(body: unknown, status = 200, headers: HeadersInit = {}) {
   })
 }
 
-function error(code: string, message: string, status: number, retryable = false) {
+function error(code: string, message: string, status: number, retryable = false, headers: HeadersInit = {}) {
   return response({
     version: VERSION,
     error: { code, message, requestId: crypto.randomUUID(), retryable },
@@ -49,20 +49,20 @@ Deno.serve(async (request) => {
 
   const authHeader = request.headers.get('authorization') ?? ''
   const match = authHeader.match(/^Bearer\s+(.+)$/i)
-  if (!match) return error('unauthenticated', 'Sign-in is required.', 401)
+  if (!match) return error('unauthenticated', 'Sign-in is required.', 401, false, cors)
 
   const supabaseUrl = Deno.env.get('SUPABASE_URL')
   const anonKey = Deno.env.get('SUPABASE_ANON_KEY')
   const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
   if (!supabaseUrl || !anonKey || !serviceKey) {
-    return error('service_unavailable', 'Cloud service is not configured.', 503, true)
+    return error('service_unavailable', 'Cloud service is not configured.', 503, true, cors)
   }
 
   const authClient = createClient(supabaseUrl, anonKey, {
     auth: { persistSession: false, autoRefreshToken: false },
   })
   const { data: authData, error: authError } = await authClient.auth.getUser(match[1])
-  if (authError || !authData.user) return error('unauthenticated', 'Session is invalid or expired.', 401)
+  if (authError || !authData.user) return error('unauthenticated', 'Session is invalid or expired.', 401, false, cors)
 
   const userId = authData.user.id
   const db = createClient(supabaseUrl, serviceKey, {
@@ -75,7 +75,7 @@ Deno.serve(async (request) => {
       .insert({ user_id: userId })
       .select('id,title,created_at,updated_at')
       .single()
-    if (dbError || !data) return error('service_unavailable', 'Conversation could not be created.', 503, true)
+    if (dbError || !data) return error('service_unavailable', 'Conversation could not be created.', 503, true, cors)
     return response({
       version: VERSION,
       conversation: {
@@ -93,7 +93,7 @@ Deno.serve(async (request) => {
       .is('archived_at', null)
       .order('updated_at', { ascending: false })
       .limit(100)
-    if (dbError) return error('service_unavailable', 'Conversations could not be loaded.', 503, true)
+    if (dbError) return error('service_unavailable', 'Conversations could not be loaded.', 503, true, cors)
     return response({
       version: VERSION,
       conversations: (data ?? []).map((item) => ({
@@ -106,14 +106,14 @@ Deno.serve(async (request) => {
   const conversationMatch = path.match(/^\/conversations\/([0-9a-f-]+)$/i)
   if (request.method === 'GET' && conversationMatch) {
     const conversationId = conversationMatch[1]
-    if (!UUID.test(conversationId)) return error('invalid_request', 'Invalid conversation ID.', 400)
+    if (!UUID.test(conversationId)) return error('invalid_request', 'Invalid conversation ID.', 400, false, cors)
     const { data: conversation, error: conversationError } = await db
       .from('jarvis_conversations')
       .select('id,title,created_at,updated_at')
       .eq('id', conversationId)
       .eq('user_id', userId)
       .maybeSingle()
-    if (conversationError || !conversation) return error('forbidden', 'Conversation not found.', 404)
+    if (conversationError || !conversation) return error('forbidden', 'Conversation not found.', 404, false, cors)
     const { data: messages, error: messagesError } = await db
       .from('jarvis_messages')
       .select('id,role,content,created_at')
@@ -121,7 +121,7 @@ Deno.serve(async (request) => {
       .eq('user_id', userId)
       .order('created_at', { ascending: true })
       .limit(500)
-    if (messagesError) return error('service_unavailable', 'Messages could not be loaded.', 503, true)
+    if (messagesError) return error('service_unavailable', 'Messages could not be loaded.', 503, true, cors)
     return response({
       version: VERSION,
       conversation: {
@@ -136,15 +136,15 @@ Deno.serve(async (request) => {
 
   if (request.method === 'POST' && path === '/turns') {
     const apiKey = Deno.env.get('ANTHROPIC_API_KEY')
-    if (!apiKey) return error('service_unavailable', 'Model provider is not configured.', 503, true)
+    if (!apiKey) return error('service_unavailable', 'Model provider is not configured.', 503, true, cors)
 
     let body: unknown
-    try { body = await request.json() } catch { return error('invalid_request', 'Request body must be JSON.', 400) }
+    try { body = await request.json() } catch { return error('invalid_request', 'Request body must be JSON.', 400, false, cors) }
     if (!isRecord(body) || body.version !== VERSION ||
         typeof body.conversationId !== 'string' || !UUID.test(body.conversationId) ||
         typeof body.turnId !== 'string' || !UUID.test(body.turnId) ||
         typeof body.text !== 'string' || !body.text.trim() || body.text.length > MAX_TEXT) {
-      return error('invalid_request', 'Invalid turn payload.', 400)
+      return error('invalid_request', 'Invalid turn payload.', 400, false, cors)
     }
 
     const conversationId = body.conversationId
@@ -153,7 +153,7 @@ Deno.serve(async (request) => {
     const { data: ownedConversation } = await db
       .from('jarvis_conversations').select('id')
       .eq('id', conversationId).eq('user_id', userId).maybeSingle()
-    if (!ownedConversation) return error('forbidden', 'Conversation not found.', 404)
+    if (!ownedConversation) return error('forbidden', 'Conversation not found.', 404, false, cors)
 
     const { error: turnInsertError } = await db.from('jarvis_turns').insert({
       id: turnId, conversation_id: conversationId, user_id: userId,
@@ -162,8 +162,8 @@ Deno.serve(async (request) => {
     if (turnInsertError) {
       const { data: existing } = await db.from('jarvis_turns').select('status')
         .eq('id', turnId).eq('user_id', userId).maybeSingle()
-      if (existing) return error('invalid_request', 'This turn ID has already been used.', 409)
-      return error('service_unavailable', 'Turn could not be reserved.', 503, true)
+      if (existing) return error('invalid_request', 'This turn ID has already been used.', 409, false, cors)
+      return error('service_unavailable', 'Turn could not be reserved.', 503, true, cors)
     }
 
     const { error: messageError } = await db.from('jarvis_messages').insert({
@@ -172,7 +172,7 @@ Deno.serve(async (request) => {
     if (messageError) {
       await db.from('jarvis_turns').update({ status: 'failed', error_code: 'internal_error' })
         .eq('id', turnId).eq('user_id', userId)
-      return error('service_unavailable', 'Message could not be saved.', 503, true)
+      return error('service_unavailable', 'Message could not be saved.', 503, true, cors)
     }
 
     const { data: history } = await db.from('jarvis_messages')
@@ -197,7 +197,7 @@ Deno.serve(async (request) => {
     if (!upstream.ok || !upstream.body) {
       await db.from('jarvis_turns').update({ status: 'failed', error_code: 'service_unavailable' })
         .eq('id', turnId).eq('user_id', userId)
-      return error('service_unavailable', 'Model provider could not start the response.', 503, true)
+      return error('service_unavailable', 'Model provider could not start the response.', 503, true, cors)
     }
 
     const encoder = new TextEncoder()
@@ -275,5 +275,5 @@ Deno.serve(async (request) => {
     })
   }
 
-  return error('invalid_request', 'Route not found.', 404)
+  return error('invalid_request', 'Route not found.', 404, false, cors)
 })
