@@ -156,3 +156,43 @@ test('cloud client validates turn inputs before making network requests', async 
   )
   assert.equal(called, false)
 })
+
+test('cloud client opens an authenticated SSE stream and supports abort signals', async () => {
+  let captured: RequestInit | undefined
+  const stream = new ReadableStream<Uint8Array>()
+  const client = createCloudApiClient({
+    baseUrl: 'https://api.example.test',
+    getAccessToken: async () => 'stream-token',
+    fetchImpl: async (_input, init) => {
+      captured = init
+      return new Response(stream, {
+        status: 200,
+        headers: { 'Content-Type': 'text/event-stream; charset=utf-8' },
+      })
+    },
+  })
+  const controller = new AbortController()
+  const body = await client.streamTurn({
+    conversationId: 'c-1', turnId: 't-1', text: 'Hello',
+  }, controller.signal)
+  assert.equal(body, stream)
+  const headers = new Headers(captured?.headers)
+  assert.equal(headers.get('Authorization'), 'Bearer stream-token')
+  assert.equal(headers.get('Accept'), 'text/event-stream')
+  assert.equal(captured?.signal, controller.signal)
+  assert.equal(captured?.credentials, 'omit')
+})
+
+test('cloud client rejects successful responses that are not SSE', async () => {
+  const client = createCloudApiClient({
+    baseUrl: 'https://api.example.test',
+    getAccessToken: async () => 'token',
+    fetchImpl: async () => new Response('{}', {
+      status: 200, headers: { 'Content-Type': 'application/json' },
+    }),
+  })
+  await assert.rejects(
+    client.streamTurn({ conversationId: 'c-1', turnId: 't-1', text: 'Hello' }),
+    (error: unknown) => error instanceof CloudApiError && error.code === 'invalid_response',
+  )
+})
