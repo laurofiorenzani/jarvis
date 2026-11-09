@@ -15,6 +15,7 @@ import {
   type ListConversationsResponse,
   type ListMemoriesResponse,
   type CreateMemoryResponse,
+  type MemoryPreferenceResponse,
   type MemoryCategory,
   type SendTurnRequest,
 } from './backend-contract'
@@ -142,6 +143,12 @@ export function createCloudApiClient(options: CloudApiOptions) {
         `/v1/conversations/${encodeURIComponent(requireText(conversationId, 'conversation ID'))}`,
         { method: 'DELETE' },
       ),
+    getMemoryPreference: () => request<MemoryPreferenceResponse>('/v1/memory-preferences'),
+    setMemoryContextEnabled: (contextEnabled: boolean) =>
+      request<MemoryPreferenceResponse>('/v1/memory-preferences', {
+        method: 'PUT',
+        body: JSON.stringify({ version: CLOUD_API_VERSION, contextEnabled }),
+      }),
     listMemories: () => request<ListMemoriesResponse>('/v1/memories'),
     createMemory: (input: { category: MemoryCategory; content: string; expiresAt?: string | null }) => {
       const content = requireText(input.content, 'memory content', 2_000)
