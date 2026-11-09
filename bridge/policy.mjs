@@ -139,6 +139,12 @@ export function decideTool(name, allowWrites = false) {
     // a write and would hold the whole surface back behind allowWrites.
     if (server === 'jarvis' || server === 'jarvis_ui') return true
 
+    // Memory writes have their own one-shot, payload-bound approval broker.
+    // Let those tools reach that broker even in read-only mode; this is not a
+    // general write bypass because the memory handlers reject any mutation
+    // without an explicit, correlated browser approval.
+    if (server === 'jarvis_memory') return true
+
     // The browser server gates itself, at construction: chromeServer() only
     // builds the acting tools — click, type, form input, close tab — when
     // allowWrites is set, so anything that reaches here at all is something
