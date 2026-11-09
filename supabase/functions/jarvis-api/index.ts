@@ -68,8 +68,17 @@ Deno.serve(async (request) => {
   const db = createClient(supabaseUrl, serviceKey, {
     auth: { persistSession: false, autoRefreshToken: false },
   })
+  const consumeLimit = async (bucket: string, limit: number, windowSeconds: number) => {
+    const { data, error: limitError } = await db.rpc('jarvis_consume_rate_limit', {
+      p_user_id: userId, p_bucket: bucket, p_limit: limit, p_window_seconds: windowSeconds,
+    })
+    return limitError ? null : data === true
+  }
 
   if (request.method === 'POST' && path === '/conversations') {
+    const allowed = await consumeLimit('conversation_create_hour', 30, 3600)
+    if (allowed === null) return error('service_unavailable', 'Rate limiter is unavailable.', 503, true, cors)
+    if (!allowed) return error('rate_limited', 'Too many conversations created. Try again later.', 429, true, cors)
     const { data, error: dbError } = await db
       .from('jarvis_conversations')
       .insert({ user_id: userId })
@@ -162,6 +171,12 @@ Deno.serve(async (request) => {
         typeof body.text !== 'string' || !body.text.trim() || body.text.length > MAX_TEXT) {
       return error('invalid_request', 'Invalid turn payload.', 400, false, cors)
     }
+    const hourlyAllowed = await consumeLimit('turn_hour', 60, 3600)
+    if (hourlyAllowed === null) return error('service_unavailable', 'Rate limiter is unavailable.', 503, true, cors)
+    if (!hourlyAllowed) return error('rate_limited', 'Hourly turn limit reached.', 429, true, cors)
+    const burstAllowed = await consumeLimit('turn_burst', 10, 300)
+    if (burstAllowed === null) return error('service_unavailable', 'Rate limiter is unavailable.', 503, true, cors)
+    if (!burstAllowed) return error('rate_limited', 'Too many recent turns. Try again shortly.', 429, true, cors)
 
     const conversationId = body.conversationId
     const turnId = body.turnId
