@@ -346,7 +346,7 @@ bridge on a random loopback port, and none of the tests opens an agent session.
 
 ## Encrypted memory (experimental)
 
-A guarded, encrypted memory integration is being developed on the isolated `work/memory-integration` branch. It is disabled by default and requires a tested Windows OS-vault adapter before it can be enabled. Do not set `JARVIS_MEMORY_ENABLED` or store personal data until the release gates in [the memory integration guide](docs/security/MEMORY_INTEGRATION.md) are complete.
+A guarded, encrypted memory integration is being developed on the isolated `work/memory-integration` branch. It is disabled by default. Windows Credential Manager support is integrated and covered by CI; run `npm run memory:doctor` for a disposable local check, then use `npm run bridge:memory` only after reviewing the data and approval behavior in [the memory integration guide](docs/security/MEMORY_INTEGRATION.md). Do not use personal data until the remaining target-PC, backup/recovery, and retention release gates are complete.
 
 ## Security
 
