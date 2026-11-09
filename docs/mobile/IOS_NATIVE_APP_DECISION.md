@@ -1,59 +1,54 @@
 # JARVIS iPhone app — implementation decision
 
+> **Architecture authority:** `docs/architecture/CLOUD_FIRST_ARCHITECTURE.md`. This document covers the iOS client only and must not redefine backend hosting or connectivity.
+
 ## Decision
 
-Deliver an installable iOS application, not a Home Screen website/PWA as the final product.
+Deliver a real installable iOS application, not a Home Screen website/PWA as the final product. Use **Capacitor around the existing React/Vite application** for the first release. This reuses the existing HUD and React components inside a signed native iOS app container; the UI remains web-rendered and is not fully SwiftUI-native.
 
-For the first iPhone release, use **Capacitor around the existing React/Vite application**. This produces a real signed iOS app package that can be installed through TestFlight and later distributed through the App Store, while reusing the existing HUD, React components, state and most of the conversation UI.
+**The iPhone app connects directly to the cloud-hosted JARVIS backend. It must not depend on the Windows PC, a Windows-hosted bridge, or a Windows-to-phone relay for core chat or approved memory.** Windows remains a development/admin environment and optional host for local-only tools.
 
-This is a native app container with a web-rendered interface, not a claim that the current Vite code is already a fully native Swift/SwiftUI interface. A full React Native or SwiftUI rewrite is not the sensible first move: it would duplicate a substantial interface and increase delivery and maintenance cost before the mobile workflow is validated.
+## Native iOS responsibilities
 
-## What must become native
-
-The existing browser voice layer cannot simply be assumed to work identically inside iOS. Add a platform adapter boundary and implement/test iOS-specific capabilities for:
-
+Add and test platform adapters for:
 - Microphone permission and audio capture.
 - Speech recognition / transcription.
 - Text-to-speech and audio session lifecycle.
-- Audio interruption and route changes (headphones, Bluetooth, phone calls).
-- App foreground/background lifecycle and reconnect behaviour.
-- Secure credential/device enrollment and revocation.
+- Audio interruptions and route changes (headphones, Bluetooth, phone calls).
+- Foreground/background lifecycle and reconnect behaviour.
+- Secure device enrollment, credential storage, token refresh, and revocation.
 
-The desktop/browser implementation remains intact behind the same adapter interfaces.
-
-## iOS constraints
-
-- Microphone capture must be permissioned and visibly user-initiated.
-- Push-to-talk is the baseline interaction. Do not promise an always-listening wake word while the app is backgrounded or the phone is locked.
-- Background audio modes are not a loophole for permanent microphone surveillance; only request background capabilities that fit Apple's allowed use and review requirements.
-- Notifications and Siri/Shortcuts integrations are later capabilities and require their own native implementation and permissions.
+Push-to-talk is the initial baseline. Do not promise always-listening wake-word operation while the app is backgrounded or the phone is locked. Preserve the existing desktop/browser implementation behind shared interfaces where practical.
 
 ## Connectivity and security
 
-The app must not connect directly to an exposed Windows bridge port. Keep the bridge loopback-only on the PC. Use a separately authenticated, encrypted relay/session between the iPhone app and the Windows host, with short-lived revocable device credentials and an allowlisted set of mobile capabilities.
-
-Never embed Claude, MCP, bridge, or Windows vault secrets in the iOS application bundle. Windows Credential Manager remains on Windows. Shared memory is not enabled until encrypted sync, device identity, recovery, revocation, retention and deletion have been designed and tested.
+- Connect directly to the authenticated cloud API over HTTPS/WSS.
+- Use short-lived access tokens, secure device enrollment, revocation, per-user authorization, and least-privilege capability scopes.
+- Keep all provider and integration secrets server-side; never ship Claude, MCP, cloud, bridge, or Windows vault credentials in the iOS bundle.
+- Do not expose the current local Windows bridge to the internet or LAN.
+- Do not use a Windows relay as the production path.
+- Do not migrate personal memory until cloud encryption, isolation, backup/recovery, export, retention, and deletion have been designed and tested.
 
 ## Delivery stages
 
-1. Add Capacitor iOS target and app identity; keep Vite browser/desktop build working.
-2. Audit and adapt responsive HUD, safe areas, touch targets and navigation.
-3. Introduce platform audio interfaces; preserve current desktop voice implementation and add an iOS-native implementation.
-4. Build, sign and install on a physical iPhone through Xcode/TestFlight.
-5. Implement the authenticated Windows-host relay and mobile capability allowlist.
-6. Test audio, interruptions, reconnection, device revocation and memory approvals on a real device.
-7. Prepare App Store privacy disclosures and review requirements before public release.
+1. Complete the cloud-first architecture and current-code dependency audit.
+2. Define the cloud API/auth contracts before mobile integration.
+3. Add Capacitor iOS target and app identity while keeping Vite/browser builds working.
+4. Adapt HUD layout, safe areas, touch targets, navigation, and mobile diagnostics.
+5. Implement native audio/lifecycle adapters and connect to the cloud API.
+6. Test on a physical iPhone; build/sign via macOS/Xcode and TestFlight when the Apple environment and credentials are available.
+7. Complete privacy disclosures and App Store review preparation.
 
 ## Acceptance criteria
 
-- A real JARVIS app icon and signed iOS app install, not only an Add-to-Home-Screen website.
-- The existing JARVIS identity and HUD are retained.
-- Push-to-talk, transcription, spoken replies and interruption work on a physical iPhone.
-- The app can securely reach the Windows-hosted session without exposing the local bridge.
-- No secrets are shipped in the app bundle.
-- The existing Windows experience remains functional.
-- Background listening is not advertised unless a separately approved and technically validated iOS design supports it.
+- A real JARVIS app icon and signed iOS app install.
+- Direct authenticated connection to cloud JARVIS.
+- Core chat and approved memory work while the Windows PC is off.
+- Push-to-talk, transcription, spoken replies, and interruption work on a physical iPhone.
+- No privileged secrets in the app bundle.
+- Windows-only tools are optional and clearly marked unavailable when not hosted.
+- No always-on background listening is advertised without a separately validated and policy-compliant design.
 
 ## Status
 
-Architecture decision recorded. This commit does not add Capacitor, create an Xcode project, provision relay infrastructure, sign an app, or install anything on the user's phone. Those steps remain implementation work.
+Decision recorded; implementation is pending. This document does not claim that Capacitor, cloud hosting, cloud memory, an Xcode project, a signed app, or a TestFlight build already exists.
