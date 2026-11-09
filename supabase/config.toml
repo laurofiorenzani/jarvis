@@ -1,0 +1,4 @@
+project_id = "jarvis"
+
+[functions.jarvis-api]
+verify_jwt = true
