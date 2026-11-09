@@ -23,7 +23,7 @@ on:
       - '.github/workflows/jarvis-tests.yml'
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: jarvis-tests-${{ github.workflow }}-${{ github.ref }}
@@ -37,6 +37,8 @@ jobs:
         os: [ubuntu-latest, windows-latest]
     runs-on: ${{ matrix.os }}
     timeout-minutes: 15
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
@@ -47,12 +49,36 @@ jobs:
       - run: npm ci
       - run: npm test
       - run: npm run build
-      - name: Commit generated lockfile when dependencies change
-        if: github.event_name == 'push'
+
+  lockfile:
+    if: github.event_name == 'push'
+    needs: test
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.ref_name }}
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+      - name: Regenerate and commit lockfile safely
+        env:
+          BRANCH: ${{ github.ref_name }}
         run: |
-          if git diff --quiet -- package-lock.json; then exit 0; fi
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add package-lock.json
-          git commit -m 'Update package lockfile for memory vault dependency'
-          git push
+          for attempt in 1 2 3; do
+            git fetch origin "$BRANCH"
+            git reset --hard "origin/$BRANCH"
+            npm install --package-lock-only --ignore-scripts
+            if git diff --quiet -- package-lock.json; then exit 0; fi
+            git add package-lock.json
+            git commit -m 'Update package lockfile for memory vault dependency'
+            if git push origin "HEAD:$BRANCH"; then exit 0; fi
+          done
+          echo 'Could not publish generated package-lock.json after three attempts' >&2
+          exit 1
