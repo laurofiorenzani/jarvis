@@ -6,6 +6,13 @@ The memory foundation from the isolated workbench has been copied into this appl
 
 This is an opt-in integration. It is **disabled by default** and is not ready for personal data.
 
+## Safe local commands
+
+- `npm run memory:doctor` runs a disposable Windows Credential Manager round-trip using a unique temporary credential and removes it afterward. It does not enable memory or create the real Jarvis memory key.
+- `npm run bridge:memory` is the explicit opt-in launcher. It sets `JARVIS_MEMORY_ENABLED=1` for that bridge process only; the normal `npm run bridge` remains memory-disabled.
+
+Do not use the opt-in launcher until you have reviewed the data scope, retention behavior, and the on-screen approval prompt. The doctor command can be run first without enabling the memory feature.
+
 ## Runtime behavior
 
 - `JARVIS_MEMORY_ENABLED` must be set to `1` before the memory runtime is loaded.
