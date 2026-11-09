@@ -8,6 +8,7 @@
 import {
   CLOUD_API_VERSION,
   type ApiError,
+  type CancelTurnRequest,
   type CloudHealth,
   type CreateConversationResponse,
   type SendTurnRequest,
@@ -104,6 +105,11 @@ export function createCloudApiClient(options: CloudApiOptions) {
     }),
     sendTurn: (input: Omit<SendTurnRequest, 'version'>) =>
       request<{ version: typeof CLOUD_API_VERSION; accepted: true }>('/v1/turns', {
+        method: 'POST',
+        body: JSON.stringify({ version: CLOUD_API_VERSION, ...input }),
+      }),
+    cancelTurn: (input: Omit<CancelTurnRequest, 'version'>) =>
+      request<{ version: typeof CLOUD_API_VERSION; cancelled: boolean }>('/v1/turns/cancel', {
         method: 'POST',
         body: JSON.stringify({ version: CLOUD_API_VERSION, ...input }),
       }),
