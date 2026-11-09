@@ -196,7 +196,9 @@ Deno.serve(async (request) => {
       .eq('user_id', userId).order('created_at', { ascending: true }).limit(40)
 
     const upstreamAbort = new AbortController()
-    const upstream = await fetch('https://api.anthropic.com/v1/messages', {
+    let upstream: Response
+    try {
+      upstream = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
         'x-api-key': apiKey,
@@ -211,7 +213,12 @@ Deno.serve(async (request) => {
         system: 'You are JARVIS, a precise and helpful personal assistant. Never claim to have performed an action unless a connected tool confirms it.',
         messages: (history ?? []).map((item) => ({ role: item.role, content: item.content })),
       }),
-    })
+      })
+    } catch {
+      await db.from('jarvis_turns').update({ status: 'failed', error_code: 'service_unavailable' })
+        .eq('id', turnId).eq('user_id', userId)
+      return error('service_unavailable', 'Model provider could not be reached.', 503, true, cors)
+    }
     if (!upstream.ok || !upstream.body) {
       await db.from('jarvis_turns').update({ status: 'failed', error_code: 'service_unavailable' })
         .eq('id', turnId).eq('user_id', userId)
