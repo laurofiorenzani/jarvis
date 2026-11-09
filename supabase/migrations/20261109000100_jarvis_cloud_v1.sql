@@ -8,7 +8,8 @@ create table if not exists public.jarvis_conversations (
   title text not null default 'New conversation' check (char_length(title) <= 160),
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
-  archived_at timestamptz
+  archived_at timestamptz,
+  unique (id, user_id)
 );
 
 create index if not exists jarvis_conversations_user_updated_idx
@@ -17,11 +18,13 @@ create index if not exists jarvis_conversations_user_updated_idx
 
 create table if not exists public.jarvis_messages (
   id uuid primary key default gen_random_uuid(),
-  conversation_id uuid not null references public.jarvis_conversations(id) on delete cascade,
+  conversation_id uuid not null,
   user_id uuid not null references auth.users(id) on delete cascade,
   role text not null check (role in ('user', 'assistant')),
   content text not null check (char_length(content) <= 100000),
-  created_at timestamptz not null default now()
+  created_at timestamptz not null default now(),
+  foreign key (conversation_id, user_id)
+    references public.jarvis_conversations(id, user_id) on delete cascade
 );
 
 create index if not exists jarvis_messages_conversation_created_idx
@@ -38,7 +41,9 @@ create table if not exists public.jarvis_turns (
   cancel_requested_at timestamptz,
   created_at timestamptz not null default now(),
   completed_at timestamptz,
-  unique (user_id, id)
+  unique (user_id, id),
+  foreign key (conversation_id, user_id)
+    references public.jarvis_conversations(id, user_id) on delete cascade
 );
 
 create index if not exists jarvis_turns_conversation_created_idx
