@@ -120,3 +120,8 @@ reconnect cursors and adversarial multi-user tests remain.
 Cancellation is represented by a dedicated `turn.cancelled` event. If the client
 disconnects before receiving it, the durable turn record still transitions to
 `cancelled`; the client can reconcile state by reloading the conversation.
+
+The authenticated `DELETE /v1/conversations/{id}` route permanently removes a
+conversation; database cascades remove its messages and turns. The operation is
+scoped by both conversation ID and authenticated user ID. A future account-level
+export/deletion workflow is still required before public production use.
