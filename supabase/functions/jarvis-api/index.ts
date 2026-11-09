@@ -230,7 +230,7 @@ Deno.serve(async (request) => {
         'anthropic-version': '2023-06-01',
         'content-type': 'application/json',
       },
-      signal: upstreamAbort.signal,
+      signal: AbortSignal.any([upstreamAbort.signal, AbortSignal.timeout(130_000)]),
       body: JSON.stringify({
         model: Deno.env.get('JARVIS_MODEL') ?? 'claude-sonnet-4-5',
         max_tokens: 2048,
