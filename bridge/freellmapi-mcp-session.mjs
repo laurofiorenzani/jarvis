@@ -12,11 +12,11 @@ function validateServerConfig(name, config) {
   if (!config || typeof config !== 'object' || Array.isArray(config)) {
     throw new Error(`Invalid MCP configuration for ${name}.`)
   }
-  if (typeof config.command !== 'string' || !config.command.trim()) {
-    throw new Error(`MCP server ${name} must use a configured stdio command for this backend.`)
-  }
   if (config.url || config.type === 'http' || config.type === 'sse') {
     throw new Error(`MCP server ${name} uses a remote transport not enabled in this stage.`)
+  }
+  if (typeof config.command !== 'string' || !config.command.trim()) {
+    throw new Error(`MCP server ${name} must use a configured stdio command for this backend.`)
   }
   if (config.args !== undefined && (!Array.isArray(config.args) || config.args.some(x => typeof x !== 'string'))) {
     throw new Error(`MCP server ${name} has invalid arguments.`)
