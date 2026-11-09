@@ -429,7 +429,7 @@ test('cloud memory client rejects empty or oversized content before network acce
     getAccessToken: async () => 'token',
     fetchImpl: async () => { called = true; return new Response('{}') },
   })
-  await assert.rejects(client.createMemory({ category: 'fact', content: '  ' }), /Invalid memory content/)
-  await assert.rejects(client.createMemory({ category: 'fact', content: 'x'.repeat(2_001) }), /Invalid memory content/)
+  assert.throws(() => client.createMemory({ category: 'fact', content: '  ' }), /Invalid memory content/)
+  assert.throws(() => client.createMemory({ category: 'fact', content: 'x'.repeat(2_001) }), /Invalid memory content/)
   assert.equal(called, false)
 })
