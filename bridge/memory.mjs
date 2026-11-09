@@ -203,9 +203,13 @@ export class MemoryStore {
     this.#assertOpen()
     await this.init()
     const nowMs = this.#clock().getTime()
-    if ([...this.#records.values()].some((record) => isExpired(record, nowMs))) {
-      await this.#mutate(() => undefined)
-    }
+    const expiredCount = [...this.#records.values()].filter((record) => isExpired(record, nowMs)).length
+    if (expiredCount > 0) await this.#mutate(() => undefined)
+    return expiredCount
+  }
+
+  async cleanupExpired() {
+    return this.#purgeExpired()
   }
 
   // includeSensitive is a trusted-caller escape hatch, not authorization. The runtime adapter must enforce access policy before setting it.
