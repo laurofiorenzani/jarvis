@@ -113,3 +113,32 @@ test('cloud event stream handles chunk boundaries and ignores invalid frames', a
   assert.equal(events[1].type, 'text.delta')
   if (events[1].type === 'text.delta') assert.equal(events[1].delta, 'Olá')
 })
+
+test('cloud event stream cancels its reader when the consumer stops early', async () => {
+  let cancelled = false
+  const body = new ReadableStream<Uint8Array>({
+    start(controller) {
+      controller.enqueue(new TextEncoder().encode(
+        'data: {"version":1,"type":"turn.started","conversationId":"c-1","turnId":"t-1"}\\n\\n',
+      ))
+    },
+    cancel() { cancelled = true },
+  })
+  for await (const event of readCloudAssistantEvents(body)) {
+    assert.equal(event.type, 'turn.started')
+    break
+  }
+  assert.equal(cancelled, true)
+})
+
+test('cloud event stream rejects an oversized unterminated frame', async () => {
+  const body = new ReadableStream<Uint8Array>({
+    start(controller) {
+      controller.enqueue(new Uint8Array(1_000_001).fill(65))
+      controller.close()
+    },
+  })
+  await assert.rejects(async () => {
+    for await (const _event of readCloudAssistantEvents(body)) { /* consume */ }
+  }, /size limit/)
+})
