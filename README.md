@@ -377,3 +377,30 @@ MIT.
 The boot sound and any tracks in `public/audio/` ship with the project for the
 demo. If you go on to monetise something built on this, clearing the rights to
 that audio is your responsibility.
+---
+
+## Experimental: FreeLLMAPI backend prototype
+
+The default bridge remains the Claude Agent SDK. The optional FreeLLMAPI
+transport is being developed separately and is **not activated by**
+`FREELLMAPI_API_KEY` alone. No browser-facing `VITE_*` variable should ever
+contain this key.
+
+The prototype is composed from server-side modules:
+
+- `bridge/freellmapi-client.mjs` — OpenAI-compatible streaming transport.
+- `bridge/freellmapi-mcp-session.mjs` — isolated stdio MCP client sessions.
+- `bridge/freellmapi-policy.mjs` — reuses the JARVIS tool authorization policy.
+- `bridge/freellmapi-tool-loop.mjs` — bounded tool-call orchestration.
+- `bridge/freellmapi-runtime.mjs` — optional composition entry point.
+
+To prepare a local environment, copy the example settings into the server
+environment and set `FREELLMAPI_API_KEY`, `FREELLMAPI_BASE_URL`, and
+`FREELLMAPI_MODEL`. Keep the key server-side and never commit it.
+
+**Important:** this prototype does not yet replace or route requests from
+`bridge/server.mjs`. It also does not automatically read or launch every MCP
+server in `~/.claude.json`. A caller must explicitly provide the stdio MCP
+configurations and server-name allowlist. Remote MCP transports are not
+enabled. Keep using the normal Claude bridge until a separately reviewed
+integration is completed.
