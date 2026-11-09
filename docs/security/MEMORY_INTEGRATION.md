@@ -34,6 +34,29 @@ When a write is proposed, the UI displays the exact payload preview, operation, 
 
 The direct-browser backend does not load this local memory runtime.
 
+
+
+## Encrypted backup and restore
+
+The development branch now includes a local, passphrase-encrypted backup format. It packages the encrypted memory store, the 32-byte Credential Manager key needed to decrypt it, and the metadata-only audit log inside an AES-256-GCM envelope. The envelope key is derived from a passphrase with scrypt (N=32768, r=8, p=1). The backup file does not contain the memory key in plaintext.
+
+Commands (Windows PowerShell or Windows Terminal):
+
+```powershell
+npm run memory:backup
+npm run memory:backup -- "E:\\JarvisBackups\\jarvis-memory.jmbak"
+npm run memory:restore -- "E:\\JarvisBackups\\jarvis-memory.jmbak"
+```
+
+- The passphrase must be at least 16 characters. It is typed into a hidden terminal prompt, never supplied as a command-line argument, and is not stored by Jarvis. Use a strong randomly generated passphrase and keep it separately in a password manager.
+- Backup and restore use the same exclusive `memory.writer.lock` as the bridge. Stop Jarvis before creating a backup; the operation fails rather than taking an inconsistent snapshot while the bridge is running.
+- Restore refuses to overwrite an existing memory store or audit log. It requires an empty target and atomically inserts the recovered key only if Credential Manager has no key; if an existing key differs, restore fails closed.
+- The restore operation validates the staged encrypted store through the production `MemoryStore` loader before moving it into place.
+- The backup file itself is encrypted, but still store copies on a BitLocker-protected external drive or another protected destination. Do not send it through ordinary email or chat.
+- The backup module is currently Windows-only because the integrated OS vault is Windows Credential Manager. No cloud backup service is configured.
+
+This implementation is covered by synthetic cross-platform tests. It has **not** yet been exercised against the user's actual Windows profile, a real external drive, a real passphrase manager, or a production memory store. Keep personal data disabled until those checks and the remaining ACL/recovery release gates are complete.
+
 ## Enablement gate
 
 Do not enable this feature until all of the following are true:
