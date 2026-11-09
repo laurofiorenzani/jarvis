@@ -38,9 +38,12 @@ export type SupabaseAuthOptions = {
 }
 
 export class CloudAuthError extends Error {
-  constructor(message: string, readonly status: number) {
+  readonly status: number
+
+  constructor(message: string, status: number) {
     super(message)
     this.name = 'CloudAuthError'
+    this.status = status
   }
 }
 
