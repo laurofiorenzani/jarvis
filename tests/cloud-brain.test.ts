@@ -87,18 +87,19 @@ test('cloud brain surfaces structured server turn failures', async () => {
 
 test('cloud brain prevents concurrent turns and allows an explicit conversation reset', async () => {
   let release!: (stream: ReadableStream<Uint8Array>) => void
+  let markStarted!: () => void
+  const started = new Promise<void>((resolve) => { markStarted = resolve })
   const pending = new Promise<ReadableStream<Uint8Array>>((resolve) => { release = resolve })
   const api = {
     health: async () => ({ status: 'ok' as const }),
     createConversation: async () => ({ conversation: { id: 'c-1' } }),
-    streamTurn: async () => pending,
+    streamTurn: async () => { markStarted(); return pending },
     cancelTurn: async () => ({ cancelled: true }),
   }
   const brain = createCloudBrain(api)
   const first = brain.ask('First', [], handlers())
-  await Promise.resolve()
+  await started
   await assert.rejects(brain.ask('Second', [], handlers()), /already running/)
-  brain.resetConversation // reset is deliberately blocked while active
   release(streamOf([]))
   await assert.rejects(first, /before the turn completed/)
   brain.resetConversation()
