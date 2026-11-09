@@ -17,7 +17,7 @@ function createVolatileTokenStore() {
   }
 }
 
-export function CloudAccess({ onConnected }: { onConnected?: () => void }) {
+export function CloudAccess({ onConnected, onDisconnected }: { onConnected?: () => void; onDisconnected?: () => void }) {
   const [expanded, setExpanded] = useState(false)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -56,6 +56,7 @@ export function CloudAccess({ onConnected }: { onConnected?: () => void }) {
     selectLocalBrain()
     setConnected(false)
     setMessage('LOCAL BRAIN RESTORED')
+    onDisconnected?.()
   }
 
   return (
