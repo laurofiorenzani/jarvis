@@ -20,10 +20,11 @@ Add and test platform adapters for:
 
 ### Secure token storage implementation note
 
-- Candidate for the Capacitor 8 client: `capacitor-secure-storage-plugin@0.13.0`, whose release notes identify its Capacitor 8 migration and iOS Keychain implementation ([package](https://www.npmjs.com/package/capacitor-secure-storage-plugin), [release history](https://github.com/martinkasa/capacitor-secure-storage-plugin/blob/master/CHANGELOG.md)).
+- Candidate under investigation: `capacitor-secure-storage-plugin@0.13.0` ([package](https://www.npmjs.com/package/capacitor-secure-storage-plugin), [release history](https://github.com/martinkasa/capacitor-secure-storage-plugin/blob/master/CHANGELOG.md)). Its npm README currently documents Capacitor 7 installation, while the earlier candidate note referred to Capacitor 8. Do not install or pin it until the exact Capacitor peer compatibility and native build are verified.
 - The app adapter must explicitly verify that the native platform is iOS or Android before any token read/write. The plugin documents a web fallback backed by localStorage; that fallback is **not** acceptable for JARVIS credentials and must fail closed.
 - iOS Keychain items may survive app uninstall. Sign-out must revoke the server session and remove the local item; reinstall/first-launch behaviour must be tested before release.
-- This is a researched candidate, not an installed dependency or verified implementation. Pin and test it after the Capacitor target is created.
+- A plugin-neutral native token-store adapter now exists at `src/lib/native-secure-token-store.ts`. It checks the plugin-reported platform before exposing storage, rejects web/localStorage, distinguishes missing keys from Keychain read failures, and requires write confirmation. Tests are in `tests/native-secure-token-store.test.ts` and are included in `npm test`.
+- The adapter is not yet connected to the HUD or a concrete plugin. The candidate remains uninstalled until Capacitor compatibility is resolved and a native build can be tested.
 
 Push-to-talk is the initial baseline. Do not promise always-listening wake-word operation while the app is backgrounded or the phone is locked. Preserve the existing desktop/browser implementation behind shared interfaces where practical.
 
@@ -69,7 +70,7 @@ Push-to-talk is the initial baseline. Do not promise always-listening wake-word 
 
 **Still pending**
 - Wire the cloud runtime into the running HUD with a real sign-in/session UX.
-- Select and implement a native Keychain-backed token store before enabling persistent mobile sign-in.
+- Select a Capacitor-compatible secure-storage plugin, wire it into the native app, and verify Keychain behaviour on a physical iPhone. The plugin-neutral adapter and its tests are implemented, but no concrete plugin is installed.
 - Verify configured Groq provider credentials/model and a real authenticated model turn; provider invocation has not yet been confirmed.
 - Cloud memory, device enrollment/revocation, and cloud tools.
 - Capacitor iOS target, native audio/lifecycle adapters, physical-device testing, Xcode signing, and TestFlight.
