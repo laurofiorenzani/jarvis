@@ -27,6 +27,7 @@ const makeId = () => globalThis.crypto?.randomUUID?.() ??
 export function createCloudBrain(api: CloudApi) {
   let conversationId: string | null = null
   let active: { conversationId: string; turnId: string; controller: AbortController } | null = null
+  let busy = false
 
   async function ensureConversation(): Promise<string> {
     if (conversationId) return conversationId
@@ -46,14 +47,16 @@ export function createCloudBrain(api: CloudApi) {
 
     async ask(prompt: string, _history: unknown[], handlers: AskHandlers): Promise<{ text: string; tools: string[] }> {
       if (!prompt.trim()) throw new CloudApiError('Message cannot be empty.', 400, 'invalid_request')
-      if (active) throw new CloudApiError('A cloud turn is already running.', 409, 'invalid_request')
-      const id = await ensureConversation()
-      const turnId = makeId()
-      const controller = new AbortController()
-      active = { conversationId: id, turnId, controller }
+      if (busy) throw new CloudApiError('A cloud turn is already running.', 409, 'invalid_request')
+      busy = true
+      let turnId: string | null = null
       let text = ''
       let completed = false
       try {
+        const id = await ensureConversation()
+        turnId = makeId()
+        const controller = new AbortController()
+        active = { conversationId: id, turnId, controller }
         const body = await api.streamTurn({ conversationId: id, turnId, text: prompt.trim() }, controller.signal)
         for await (const event of readCloudAssistantEvents(body)) {
           if (event.conversationId !== id || event.turnId !== turnId) continue
@@ -80,7 +83,8 @@ export function createCloudBrain(api: CloudApi) {
         if (!completed) throw new CloudApiError('Cloud stream ended before the turn completed.', 502, 'invalid_response', undefined, true)
         return { text: text.trim(), tools: [] }
       } finally {
-        if (active?.turnId === turnId) active = null
+        if (turnId && active?.turnId === turnId) active = null
+        busy = false
       }
     },
 
