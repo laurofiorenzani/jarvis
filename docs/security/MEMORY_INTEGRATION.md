@@ -45,7 +45,7 @@ Until those gates pass, leave `JARVIS_MEMORY_ENABLED` unset and use synthetic da
 
 ## Automated validation
 
-GitHub Actions run [#42634588630](https://github.com/laurofiorenzani/jarvis/actions/runs/42634588630) completed successfully on both Ubuntu and Windows using Node 24. Each platform ran **111 tests: 110 passed, 0 failed, 1 skipped**, followed by a successful TypeScript/Vite production build. This includes concurrent startup/writer-lock tests, cancellation of pending approvals when a turn is interrupted, and denial of undeclared memory MCP tools.
+The latest completed test matrix before the lockfile workflow refactor ran on Node 24. Ubuntu ran **115 tests: 113 passed, 0 failed, 2 skipped**; Windows ran **115 tests: 114 passed, 0 failed, 1 skipped**. Both TypeScript/Vite production builds succeeded. The Windows-only native test successfully wrote, read, and deleted a disposable 32-byte credential through Windows Credential Manager. This also covers concurrent startup/writer-lock tests, cancellation of pending approvals when a turn is interrupted, and denial of undeclared memory MCP tools. The workflow is being tightened to keep write permissions out of the test job and isolate lockfile updates.
 
 This validates the current integration code and its synthetic test fixtures. It does not validate a real Windows Credential Manager adapter, target-PC permissions, or real user-data operation; those remain explicit release gates above.
 
