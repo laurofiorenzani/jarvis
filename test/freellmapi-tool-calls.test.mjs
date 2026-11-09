@@ -33,6 +33,6 @@ test('rejects oversized arguments and incomplete calls', () => {
   const oversized = createToolCallAccumulator({ maxArgumentBytes: 4 })
   assert.throws(() => oversized.add({ index: 0, function: { arguments: '{"a":1}' } }), /size limit/)
   const incomplete = createToolCallAccumulator()
-  incomplete.add({ index: 0, id: 'x', function: { name: 'read', arguments: '{}' } })
+  incomplete.add({ index: 0, id: 'x', function: { arguments: '{}' } })
   assert.throws(() => incomplete.finish(), /incomplete/)
 })
