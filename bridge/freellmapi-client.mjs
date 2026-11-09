@@ -2,8 +2,10 @@
  * Optional FreeLLMAPI transport for the JARVIS bridge.
  *
  * This module deliberately does not start tools or change the active agent.
- * It keeps credentials in the Node process and provides an abortable,
- * OpenAI-compatible streaming chat request for the backend adapter.
+ * It keeps credentials in the Node process and exposes an abortable,
+ * OpenAI-compatible streaming chat transport. Tool-call deltas are surfaced
+ * separately so the orchestration layer can apply JARVIS policy before
+ * executing any MCP capability.
  */
 
 function normalizeBaseURL(value) {
@@ -31,37 +33,54 @@ function extractError(body) {
   return typeof message === 'string' ? message.replace(/[\r\n]+/g, ' ').slice(0, 240) : ''
 }
 
-/** Parse an OpenAI-compatible SSE stream and emit only textual deltas. */
-export async function readChatStream(response, { signal, onText = () => {} } = {}) {
+/**
+ * Parse OpenAI-compatible SSE. Text and tool-call fragments are deliberately
+ * separate: callers must assemble tool calls and run them through policy.
+ */
+export async function readChatStream(
+  response,
+  { signal, onText = () => {}, onToolCallDelta = () => {} } = {},
+) {
   if (!response.body) throw new Error('FreeLLMAPI returned an empty response stream.')
   const reader = response.body.getReader()
   const decoder = new TextDecoder()
   let buffer = ''
   let complete = false
+  let done = false
 
   const consume = (line) => {
     if (!line.startsWith('data:')) return
     const data = line.slice(5).trim()
-    if (!data || data === '[DONE]') return
+    if (!data) return
+    if (data === '[DONE]') {
+      done = true
+      return
+    }
     let frame
     try { frame = JSON.parse(data) } catch { return }
-    const delta = frame?.choices?.[0]?.delta?.content
-    if (typeof delta === 'string' && delta) onText(delta)
-    if (frame?.choices?.[0]?.finish_reason) complete = true
+    const choice = frame?.choices?.[0]
+    const delta = choice?.delta
+    if (typeof delta?.content === 'string' && delta.content) onText(delta.content)
+    if (Array.isArray(delta?.tool_calls)) {
+      for (const toolCall of delta.tool_calls) {
+        if (toolCall && Number.isInteger(toolCall.index)) onToolCallDelta(toolCall)
+      }
+    }
+    if (choice?.finish_reason) complete = true
   }
 
   try {
-    while (!signal?.aborted) {
-      const { done, value } = await reader.read()
-      if (done) break
+    while (!signal?.aborted && !done) {
+      const { done: ended, value } = await reader.read()
+      if (ended) break
       buffer += decoder.decode(value, { stream: true })
       const lines = buffer.split(/\r?\n/)
       buffer = lines.pop() ?? ''
       for (const line of lines) consume(line)
     }
     buffer += decoder.decode()
-    if (buffer.trim()) consume(buffer.trim())
-    return { aborted: Boolean(signal?.aborted), complete }
+    if (buffer.trim() && !signal?.aborted) consume(buffer.trim())
+    return { aborted: Boolean(signal?.aborted), complete, done }
   } finally {
     reader.releaseLock()
   }
@@ -84,10 +103,20 @@ export function createFreeLlmApiClient({
   if (typeof fetchImpl !== 'function') throw new Error('A Fetch-compatible implementation is required.')
 
   return {
-    async streamChat({ messages, signal, onText } = {}) {
-      if (!key) throw new Error('FREELLMAPI_API_KEY is not configured for the JARVIS bridge.')
+    async streamChat({ messages, tools, signal, onText, onToolCallDelta } = {}) {
+      if (!key) throw new Error('FreeLLMAPI_API_KEY is not configured for the JARVIS bridge.')
       if (!Array.isArray(messages) || messages.length === 0) {
         throw new Error('At least one chat message is required.')
+      }
+      const body = {
+        model: selectedModel,
+        messages,
+        stream: true,
+      }
+      if (Array.isArray(tools) && tools.length) {
+        body.tools = tools
+        body.tool_choice = 'auto'
+        body.parallel_tool_calls = false
       }
       const response = await fetchImpl(`${endpoint}/chat/completions`, {
         method: 'POST',
@@ -96,11 +125,7 @@ export function createFreeLlmApiClient({
           'Content-Type': 'application/json',
           Accept: 'text/event-stream',
         },
-        body: JSON.stringify({
-          model: selectedModel,
-          messages,
-          stream: true,
-        }),
+        body: JSON.stringify(body),
         signal,
       })
       if (!response.ok) {
@@ -108,7 +133,7 @@ export function createFreeLlmApiClient({
         try { detail = extractError(await response.json()) } catch {}
         throw new Error(`FreeLLMAPI returned HTTP ${response.status}${detail ? `: ${detail}` : '.'}`)
       }
-      return readChatStream(response, { signal, onText })
+      return readChatStream(response, { signal, onText, onToolCallDelta })
     },
   }
 }
