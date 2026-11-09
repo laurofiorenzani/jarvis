@@ -1,7 +1,6 @@
-import { randomBytes } from 'node:crypto'
 import { open, lstat, mkdir, readFile, rm } from 'node:fs/promises'
 import { homedir } from 'node:os'
-import { basename, dirname, join, resolve } from 'node:path'
+import { dirname, join, resolve } from 'node:path'
 import { StringDecoder } from 'node:string_decoder'
 import { createWindowsCredentialVault } from '../bridge/windows-credential-vault.mjs'
 import { getMemoryEncryptionKey } from '../bridge/memory-key-provider.mjs'
@@ -30,7 +29,9 @@ function promptSecret(label) {
     const cleanup = () => {
       input.removeListener('data', onData)
       input.removeListener('error', onError)
-      if (input.isTTY) input.setRawMode(false)
+      if (input.isTTY) {
+        try { input.setRawMode(false) } catch {}
+      }
       input.pause()
       output.write('\n')
     }
@@ -100,7 +101,7 @@ async function requireRegularFile(path, label, maxBytes) {
 async function backup(outputArgument) {
   const vault = await createWindowsCredentialVault()
   await requireRegularFile(MEMORY_FILE, 'Encrypted memory store', 64 * 1024 * 1024)
-  const key = await getMemoryEncryptionKey({ vault, encryptedStoreExists: true })
+  let key
   let passphrase = ''
   let confirmation = ''
   let encryptedBackup
@@ -108,6 +109,7 @@ async function backup(outputArgument) {
     passphrase = await promptSecret('Backup passphrase (16+ characters; use a password manager): ')
     confirmation = await promptSecret('Confirm backup passphrase: ')
     if (passphrase !== confirmation) throw new Error('Passphrases do not match')
+    key = await getMemoryEncryptionKey({ vault, encryptedStoreExists: true })
     const createdAt = new Date().toISOString()
     encryptedBackup = await createEncryptedMemoryBackup({
       filePath: MEMORY_FILE,
@@ -126,7 +128,7 @@ async function backup(outputArgument) {
     console.log('[jarvis] keep the passphrase separately in a password manager; it cannot be recovered')
     console.log('[jarvis] the bridge must be stopped while the snapshot is taken')
   } finally {
-    key.fill(0)
+    key?.fill(0)
     encryptedBackup?.fill(0)
     passphrase = ''
     confirmation = ''
