@@ -23,6 +23,19 @@ test('enabled memory runtime fails closed without an OS-vault adapter path', asy
   )
 })
 
+test('enabled memory runtime rejects relative adapter paths', async () => {
+  await assert.rejects(
+    () => loadMemoryRuntime({
+      env: {
+        JARVIS_MEMORY_ENABLED: '1',
+        JARVIS_MEMORY_VAULT_MODULE: './vault.mjs',
+      },
+      home: '/tmp/jarvis-memory-test',
+    }),
+    /must be an absolute local file path/,
+  )
+})
+
 test('enabled memory runtime rejects an adapter without createVault', async () => {
   await assert.rejects(
     () => loadMemoryRuntime({
