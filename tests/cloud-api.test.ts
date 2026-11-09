@@ -196,3 +196,17 @@ test('cloud client rejects successful responses that are not SSE', async () => {
     (error: unknown) => error instanceof CloudApiError && error.code === 'invalid_response',
   )
 })
+
+test('cloud client rejects unversioned successful JSON responses', async () => {
+  const client = createCloudApiClient({
+    baseUrl: 'https://api.example.test',
+    getAccessToken: async () => 'token',
+    fetchImpl: async () => new Response(JSON.stringify({ status: 'ok' }), {
+      status: 200, headers: { 'Content-Type': 'application/json' },
+    }),
+  })
+  await assert.rejects(
+    client.health(),
+    (error: unknown) => error instanceof CloudApiError && error.code === 'invalid_response',
+  )
+})
