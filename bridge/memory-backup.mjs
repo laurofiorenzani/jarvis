@@ -137,12 +137,16 @@ export async function createEncryptedMemoryBackup({
   let payloadBytes
   const keyCopy = Buffer.from(key)
   try {
+    const storeInfo = await lstat(sourceStore)
+    if (!storeInfo.isFile()) throw new Error('Memory store must be a regular file')
     storeBytes = await readFile(sourceStore)
     if (storeBytes.length > MAX_STORE_BYTES) throw new Error('Memory store exceeds the backup size limit')
     const parsedStore = JSON.parse(decryptMemoryPayload(storeBytes.toString('utf8'), keyCopy))
     validateStoreDocument(parsedStore)
 
     try {
+      const auditInfo = await lstat(sourceAudit)
+      if (!auditInfo.isFile()) throw new Error('Memory audit log must be a regular file')
       auditBytes = await readFile(sourceAudit)
     } catch (error) {
       if (error?.code !== 'ENOENT') throw error
