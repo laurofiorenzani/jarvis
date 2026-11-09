@@ -131,3 +131,9 @@ behavior, HTTPS enforcement and structured error propagation. CI must run
 before this work is considered validated. Endpoint paths in the client are
 the proposed v1 contract and must be implemented server-side to match before
 the client is enabled.
+
+A validated SSE reader now incrementally decodes UTF-8 chunks, handles frame
+boundaries split across network reads, ignores malformed/unrecognised frames,
+and passes accepted JSON through `parseCloudAssistantEvent`. It is not wired
+to a live endpoint until the server streaming contract and authenticated
+identity lifecycle are implemented.
