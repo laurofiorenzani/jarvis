@@ -134,6 +134,22 @@ Deno.serve(async (request) => {
     }, 200, cors)
   }
 
+  if (request.method === 'POST' && path === '/turns/cancel') {
+    let body: unknown
+    try { body = await request.json() } catch { return error('invalid_request', 'Request body must be JSON.', 400, false, cors) }
+    if (!isRecord(body) || body.version !== VERSION ||
+        typeof body.conversationId !== 'string' || !UUID.test(body.conversationId) ||
+        typeof body.turnId !== 'string' || !UUID.test(body.turnId)) {
+      return error('invalid_request', 'Invalid cancellation payload.', 400, false, cors)
+    }
+    const { data: turn, error: cancelError } = await db.from('jarvis_turns')
+      .update({ cancel_requested_at: new Date().toISOString(), status: 'cancelled', completed_at: new Date().toISOString() })
+      .eq('id', body.turnId).eq('conversation_id', body.conversationId).eq('user_id', userId)
+      .in('status', ['accepted', 'running']).select('id').maybeSingle()
+    if (cancelError) return error('service_unavailable', 'Turn could not be cancelled.', 503, true, cors)
+    return response({ version: VERSION, cancelled: Boolean(turn) }, 200, cors)
+  }
+
   if (request.method === 'POST' && path === '/turns') {
     const apiKey = Deno.env.get('ANTHROPIC_API_KEY')
     if (!apiKey) return error('service_unavailable', 'Model provider is not configured.', 503, true, cors)
@@ -230,7 +246,7 @@ Deno.serve(async (request) => {
               }
             }
           }
-          const { data: assistantMessage, error: saveError } = await db.from('jarvis_messages')
+          if (cancelled) {\n            await db.from('jarvis_turns').update({ status: 'cancelled', completed_at: new Date().toISOString() })\n              .eq('id', turnId).eq('user_id', userId)\n            emit({ version: VERSION, type: 'turn.failed', conversationId, turnId, code: 'service_unavailable', message: 'Turn cancelled.', retryable: false })\n            controller.close()\n            return\n          }\n          buffer += decoder.decode()\n          const { data: assistantMessage, error: saveError } = await db.from('jarvis_messages')
             .insert({ conversation_id: conversationId, user_id: userId, role: 'assistant', content: answer })
             .select('id,role,content,created_at').single()
           if (saveError || !assistantMessage) throw new Error('assistant_persist_failed')
