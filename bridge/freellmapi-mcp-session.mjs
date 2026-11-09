@@ -92,6 +92,27 @@ export async function connectMcpServers({
 }
 
 /**
+ * Build a deliberately small environment for MCP child processes.
+ * Secrets from the Jarvis bridge are not inherited implicitly. A server may
+ * receive additional values only through its own explicit config.env.
+ */
+export function buildMcpChildEnv(systemEnv = process.env, serverEnv = {}) {
+  const allowedSystemKeys = [
+    'PATH', 'PATHEXT', 'SYSTEMROOT', 'WINDIR', 'COMSPEC',
+    'TEMP', 'TMP', 'HOME', 'USERPROFILE',
+  ]
+  const result = {}
+  for (const key of allowedSystemKeys) {
+    if (typeof systemEnv[key] === 'string') result[key] = systemEnv[key]
+  }
+  for (const [key, value] of Object.entries(serverEnv ?? {})) {
+    if (typeof value !== 'string') throw new TypeError('MCP environment values must be strings.')
+    result[key] = value
+  }
+  return result
+}
+
+/**
  * Production connector using the official MCP SDK stdio client transport.
  * It remains opt-in: the existing Claude Agent SDK path is not changed.
  */
@@ -104,7 +125,7 @@ export function connectOfficialMcpServers({ configs, authorize, allowedServerNam
     createTransport: ({ command, args, env, cwd }) => new StdioClientTransport({
       command,
       args,
-      env: env ? { ...process.env, ...env } : process.env,
+      env: buildMcpChildEnv(process.env, env),
       cwd,
       stderr: 'pipe',
     }),
