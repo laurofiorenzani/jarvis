@@ -229,3 +229,21 @@ test('cloud health check is public and does not request an access token', async 
   assert.equal(tokenRequested, false)
   assert.equal(new Headers(captured?.headers).has('Authorization'), false)
 })
+
+test('cloud client sends versioned cancellation only for valid turn IDs', async () => {
+  let captured: { input: RequestInfo | URL; init?: RequestInit } | undefined
+  const client = createCloudApiClient({
+    baseUrl: 'https://api.example.test/functions/v1/jarvis-api',
+    getAccessToken: async () => 'token',
+    fetchImpl: async (input, init) => {
+      captured = { input, init }
+      return new Response(JSON.stringify({ version: 1, cancelled: true }), {
+        status: 200, headers: { 'Content-Type': 'application/json' },
+      })
+    },
+  })
+  const result = await client.cancelTurn({ conversationId: 'c-1', turnId: 't-1' })
+  assert.equal(result.cancelled, true)
+  assert.equal(String(captured?.input), 'https://api.example.test/functions/v1/jarvis-api/v1/turns/cancel')
+  assert.equal(JSON.parse(String(captured?.init?.body)).version, 1)
+})
