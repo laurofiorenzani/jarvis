@@ -53,7 +53,7 @@ jobs:
       - run: node --check scripts/memory-backup.mjs
       - run: npm test
       - name: Verify disposable Windows Credential Manager diagnostic
-        if: runner.os == 'Windows'
+        if: matrix.os == 'windows-latest'
         run: npm run memory:doctor
       - run: npm run build
 
