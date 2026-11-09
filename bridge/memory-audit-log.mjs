@@ -68,13 +68,24 @@ export function createMemoryAuditLogger({
 
       const line = JSON.stringify(event) + '\n'
       const lineBytes = Buffer.byteLength(line, 'utf8')
+      if (lineBytes > maxBytes) throw new Error('Memory audit event exceeds the configured size limit')
       if (currentSize + lineBytes > maxBytes && currentSize > 0) {
         const contents = await readFile(auditPath, 'utf8')
-        const cutoff = now() - maxAgeMs
-        const retained = parseAuditLog(contents)
+        const currentTime = now()
+        if (!Number.isFinite(currentTime)) throw new Error('Memory audit clock returned an invalid timestamp')
+        const cutoff = currentTime - maxAgeMs
+        let retained = parseAuditLog(contents)
           .filter((item) => Date.parse(item.timestamp) >= cutoff)
-          .slice(-(Math.max(0, maxEvents - 1)))
-        const rotated = retained.length ? retained.map((item) => JSON.stringify(item)).join('\n') + '\n' : ''
+        const keepCount = Math.max(0, maxEvents - 1)
+        retained = keepCount ? retained.slice(-keepCount) : []
+        let rotated = retained.length ? retained.map((item) => JSON.stringify(item)).join('\n') + '\n' : ''
+        while (retained.length && Buffer.byteLength(rotated, 'utf8') + lineBytes > maxBytes) {
+          retained.shift()
+          rotated = retained.length ? retained.map((item) => JSON.stringify(item)).join('\n') + '\n' : ''
+        }
+        if (Buffer.byteLength(rotated, 'utf8') + lineBytes > maxBytes) {
+          throw new Error('Memory audit log cannot fit within the configured size limit')
+        }
         const temporaryPath = auditPath + '.' + randomUUID() + '.tmp'
         try {
           await writeFile(temporaryPath, rotated, { flag: 'wx', mode: 0o600 })
