@@ -223,7 +223,7 @@ Deno.serve(async (request) => {
         let buffer = ''
         let answer = ''
         let cancelled = false
-        const emit = (event: Json) => controller.enqueue(encoder.encode(`data: ${JSON.stringify(event)}\\n\\n`))
+        const emit = (event: Json) => controller.enqueue(encoder.encode(`data: ${JSON.stringify(event)}\n\n`))
         emit({ version: VERSION, type: 'turn.started', conversationId, turnId })
         const reader = upstream.body!.getReader()
         try {
@@ -239,14 +239,14 @@ Deno.serve(async (request) => {
             const { value, done } = await reader.read()
             if (done) break
             buffer += decoder.decode(value, { stream: true })
-            if (buffer.length > 1_000_000 && !buffer.includes('\\n\\n')) {
+            if (buffer.length > 1_000_000 && !buffer.includes('\n\n')) {
               throw new Error('upstream_frame_too_large')
             }
             let boundary: number
-            while ((boundary = buffer.indexOf('\\n\\n')) !== -1) {
+            while ((boundary = buffer.indexOf('\n\n')) !== -1) {
               const frame = buffer.slice(0, boundary)
               buffer = buffer.slice(boundary + 2)
-              const dataLine = frame.split('\\n').find((line) => line.startsWith('data:'))
+              const dataLine = frame.split('\n').find((line) => line.startsWith('data:'))
               if (!dataLine) continue
               const raw = dataLine.slice(5).trim()
               if (raw === '[DONE]') continue
