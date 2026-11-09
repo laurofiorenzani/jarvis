@@ -22,11 +22,21 @@ function error(code: string, message: string, status: number, retryable = false,
 }
 
 function corsHeaders(origin: string | null): HeadersInit {
-  const allowedOrigins = new Set([
-    'capacitor://localhost', 'http://localhost', 'http://127.0.0.1',
-    ...(Deno.env.get('JARVIS_ALLOWED_ORIGIN') || '').split(',').map((value) => value.trim()).filter(Boolean),
-  ])
-  if (!origin || !allowedOrigins.has(origin)) return { Vary: 'Origin' }
+  const allowedOrigins = new Set(
+    (Deno.env.get('JARVIS_ALLOWED_ORIGIN') || '').split(',').map((value) => value.trim()).filter(Boolean),
+  )
+  const isLocalDevelopmentOrigin = (() => {
+    if (!origin) return false
+    try {
+      const parsed = new URL(origin)
+      return (parsed.protocol === 'http:' &&
+        (parsed.hostname === 'localhost' || parsed.hostname === '127.0.0.1')) ||
+        (parsed.protocol === 'capacitor:' && parsed.hostname === 'localhost')
+    } catch {
+      return false
+    }
+  })()
+  if (!origin || (!allowedOrigins.has(origin) && !isLocalDevelopmentOrigin)) return { Vary: 'Origin' }
   return {
     'Access-Control-Allow-Origin': origin,
     'Access-Control-Allow-Headers': 'authorization, content-type, x-jarvis-api-version',
