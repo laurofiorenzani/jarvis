@@ -122,6 +122,11 @@ export function createCloudApiClient(options: CloudApiOptions) {
     listConversations: () => request<ListConversationsResponse>('/v1/conversations'),
     getConversation: (conversationId: string) =>
       request<GetConversationResponse>(`/v1/conversations/${encodeURIComponent(requireText(conversationId, 'conversation ID'))}`),
+    deleteConversation: (conversationId: string) =>
+      request<{ version: typeof CLOUD_API_VERSION; deleted: true }>(
+        `/v1/conversations/${encodeURIComponent(requireText(conversationId, 'conversation ID'))}`,
+        { method: 'DELETE' },
+      ),
     streamTurn: async (
       input: Omit<SendTurnRequest, 'version'>,
       signal?: AbortSignal,
