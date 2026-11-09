@@ -1,6 +1,6 @@
 import { appendFile, mkdir } from 'node:fs/promises'
 import { homedir } from 'node:os'
-import { join, resolve } from 'node:path'
+import { isAbsolute, join, resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { createMemoryRuntime } from './memory-runtime.mjs'
 
@@ -26,6 +26,9 @@ export async function loadMemoryRuntime({
     )
   }
 
+  if (!isAbsolute(adapterPath.trim())) {
+    throw new TypeError('JARVIS_MEMORY_VAULT_MODULE must be an absolute local file path')
+  }
   const moduleUrl = pathToFileURL(resolve(adapterPath.trim())).href
   const adapter = await import(moduleUrl)
   if (typeof adapter.createVault !== 'function') {
