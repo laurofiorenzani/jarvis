@@ -1,6 +1,6 @@
 # JARVIS Cloud API v1
 
-Status: proposed contract; not a deployed service.
+Status: v1 prototype deployed to Supabase project `undmhmdwhxvjgvezvucy` (Edge Function `jarvis-api`, version 2).
 
 This contract defines the boundary between the mobile/web client and the
 first-party cloud service. It is deliberately independent of a model vendor,
@@ -104,16 +104,16 @@ and independently enforce all limits and authorization checks.
 
 ## Prototype server
 
-A Supabase Edge Function prototype now implements authenticated health,
-conversation creation/list/read, turn submission with Anthropic streaming, and
-cooperative turn cancellation. It validates the caller with Supabase Auth,
+A Supabase Edge Function prototype is deployed and implements authenticated health,
+conversation creation/list/read, turn submission through a server-side OpenAI-compatible
+provider router, and cooperative turn cancellation. It validates the caller with Supabase Auth,
 derives the user ID server-side, and uses the service-role database client only
 inside the function. The SQL migration enables row-level security and provides
 no client-side write policy for messages or turns.
 
-The function is not deployed. It requires a Supabase project, migration,
-Auth configuration, server-side Anthropic key, allowed app origin and
-operational limits. It is not ready for public release: rate limiting, spend
+The database migrations are applied and the function is deployed. A valid Supabase
+Auth user/session and at least one configured model provider are still required
+for end-to-end authenticated turn tests. Provider credentials remain server-side. It is not ready for public release: rate limiting, spend
 controls, stronger audit/monitoring, memory approvals, device management,
 reconnect cursors and adversarial multi-user tests remain.
 
