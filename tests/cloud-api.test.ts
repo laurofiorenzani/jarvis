@@ -389,3 +389,47 @@ test('cloud client exposes explicit user-scoped conversation deletion', async ()
   assert.equal(captured?.init?.method, 'DELETE')
   assert.equal(String(captured?.input), 'https://project.supabase.co/functions/v1/jarvis-api/v1/conversations/c-1')
 })
+
+
+test('cloud memory API supports explicit save, list and user-requested deletion', async () => {
+  const calls: { url: string; init?: RequestInit }[] = []
+  const memory = {
+    id: 'memory-1', category: 'preference', content: 'Prefers concise answers',
+    createdAt: '2026-11-09T00:00:00Z', updatedAt: '2026-11-09T00:00:00Z', expiresAt: null,
+  }
+  const client = createCloudApiClient({
+    baseUrl: 'https://project.supabase.co/functions/v1/jarvis-api',
+    getAccessToken: async () => 'token',
+    fetchImpl: async (input, init) => {
+      const url = String(input)
+      calls.push({ url, init })
+      const payload = url.endsWith('/memories')
+        ? init?.method === 'POST'
+          ? { version: 1, memory }
+          : { version: 1, memories: [memory] }
+        : { version: 1, deleted: true }
+      return new Response(JSON.stringify(payload), {
+        status: init?.method === 'POST' ? 201 : 200,
+        headers: { 'Content-Type': 'application/json' },
+      })
+    },
+  })
+  assert.deepEqual((await client.listMemories()).memories, [memory])
+  assert.equal((await client.createMemory({ category: 'preference', content: 'Prefers concise answers' })).memory.id, 'memory-1')
+  assert.equal((await client.deleteMemory('memory-1')).deleted, true)
+  assert.equal(calls[0].url.endsWith('/v1/memories'), true)
+  assert.equal(JSON.parse(String(calls[1].init?.body)).content, 'Prefers concise answers')
+  assert.equal(calls[2].url.endsWith('/v1/memories/memory-1'), true)
+})
+
+test('cloud memory client rejects empty or oversized content before network access', async () => {
+  let called = false
+  const client = createCloudApiClient({
+    baseUrl: 'https://project.supabase.co/functions/v1/jarvis-api',
+    getAccessToken: async () => 'token',
+    fetchImpl: async () => { called = true; return new Response('{}') },
+  })
+  await assert.rejects(client.createMemory({ category: 'fact', content: '  ' }), /Invalid memory content/)
+  await assert.rejects(client.createMemory({ category: 'fact', content: 'x'.repeat(2_001) }), /Invalid memory content/)
+  assert.equal(called, false)
+})
