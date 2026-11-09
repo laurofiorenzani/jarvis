@@ -22,6 +22,14 @@ test('decideTool keeps its existing verdicts', () => {
   assert.equal(decideTool('SomeFutureBuiltin'), false)
 })
 
+test('memory tools reach their explicit approval broker in read-only mode', () => {
+  for (const tool of ['memory_search', 'memory_save', 'memory_update', 'memory_delete']) {
+    const name = `mcp__jarvis_memory__${tool}`
+    assert.equal(decideTool(name), true, name)
+    assert.equal(allowed(name, {}), true, name)
+  }
+})
+
 test('read-only mode refuses a shell command the CLI would auto-approve', () => {
   // `cat` is what the CLI's own classifier runs without asking canUseTool.
   assert.equal(allowed('Bash', { command: 'cat ~/.ssh/id_rsa' }), false)
