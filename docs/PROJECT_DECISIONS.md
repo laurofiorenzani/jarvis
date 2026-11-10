@@ -8,6 +8,7 @@
 - BMW/My BMW, Blink, Dreame, and future services are capabilities JARVIS invokes. They are not separate assistants or chat apps.
 - The preferred iPhone deliverable is a standalone installable native iOS app with its own icon and lifecycle. However, a cloud-hosted responsive web app/PWA is an explicitly approved fallback and must be treated as a supported, usable release surface if native iOS delivery is blocked, delayed, or impractical. The project must not be held hostage by App Store approval, Xcode availability, signing, or native packaging. The web app must work on desktop and both iPhones with per-user authentication and isolated data.
 - Normal JARVIS operation is cloud-first and must not require the Windows PC or a local bridge to be running.
+- For the zero-cost two-user cloud prototype, use the existing Supabase Edge Function provider router with direct HTTPS free-tier model endpoints and server-side secrets. Do not expose the single-user FreeLLMAPI dashboard/API as a public multi-user service. Keep FreeLLMAPI local-only unless a genuinely free, persistent, private host and multi-user isolation are proven.
 - The holographic HUD belongs to the iPhone JARVIS app. Any optional CarPlay surface is restricted and secondary; it is not the way JARVIS controls My BMW.
 - Build the continuous JARVIS conversation first, then progressively enable device integrations through the same assistant.
 
@@ -66,6 +67,8 @@ Do not automatically store every conversation or sensitive credential as memory.
 - Never invent credentials or claim a vendor action succeeded without a verifiable result.
 
 ## Update history
+
+- 2026-11-10: User authorised preparation of a zero-cost cloud model route. Assessment selected the existing Supabase Free Edge Function router with server-side provider secrets instead of a public FreeLLMAPI deployment: the latter is single-user, requires persistent SQLite storage, and is documented as unsafe to expose publicly. No paid host or automatic billing is authorised. Cloud activation still requires the owner-only secret entry and verification of provider free-tier billing/data terms.
 
 - 2026-11-10: Recorded the user's explicit correction that vendor services must be controlled directly by JARVIS; earlier Shortcut/Quick View ideas are historical and superseded.
 - 2026-11-10: Reprioritised work to stabilise the cloud conversation, voice, auth, and history before any vendor integrations.
