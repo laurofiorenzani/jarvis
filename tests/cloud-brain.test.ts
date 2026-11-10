@@ -213,8 +213,14 @@ test('cloud brain treats an aborted SSE reader as a normal cancellation', async 
     cancelTurn: async () => { cancelCalls++; return { cancelled: true } },
   })
 
-  const pending = brain.ask('Stop this response', [], handlers())
+  let markTextReceived!: () => void
+  const textReceived = new Promise<void>((resolve) => { markTextReceived = resolve })
+  const pending = brain.ask('Stop this response', [], handlers(() => markTextReceived()))
   await started
+  // Wait until the SSE parser has delivered the queued delta to the brain.
+  // Enqueueing in the stream's start() callback alone does not mean the
+  // asynchronous reader has consumed it yet.
+  await textReceived
   brain.cancel()
   const result = await pending
   assert.equal(result.text, 'Partial answer')
