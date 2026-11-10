@@ -59,4 +59,4 @@ Working branch: `work/memory-integration-ready`. Do not merge to `main` without 
 
 ## Current status
 
-Architecture and cloud backend foundation implemented. Supabase schema and API are deployed; cloud auth/API/brain adapters and regression tests exist. The running HUD still uses the local bridge by default. Cloud memory, verified provider invocation, client wiring, Capacitor, native Keychain/audio adapters, physical-device testing, Xcode signing and TestFlight remain pending.
+Architecture and cloud backend foundation implemented. Supabase schema and API are deployed (`jarvis-api` version 9); cloud auth/API/brain adapters and regression tests exist. The HUD includes a Cloud Access panel and switches to the cloud brain after explicit sign-in, but the initial backend still defaults to the local bridge. A real authenticated model inference is not yet verified and no provider configuration is confirmed. Cloud memory security/lifecycle hardening, device enrollment/revocation, cloud tool/integration registry, Capacitor, native Keychain/audio adapters, physical-device testing, Xcode signing and TestFlight remain pending.
