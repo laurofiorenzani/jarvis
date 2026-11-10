@@ -12,8 +12,8 @@ export function selectCloudBrain(brain: CloudBrain): void {
   activeCloudBrain = brain
 }
 
-/** Return to the existing local backend without changing its configuration. */
-export function selectLocalBrain(): void {
+/** Return to the configured default backend after signing out of cloud. */
+export function selectConfiguredBrain(): void {
   activeCloudBrain = null
 }
 
