@@ -3,7 +3,7 @@
 This runbook describes the deployed cloud-first prototype and its remaining
 owner-only setup gates. As of 10 November 2026, the Supabase `Jarvis` project
 (`undmhmdwhxvjgvezvucy`, region `eu-west-3`) is ACTIVE_HEALTHY on the Free
-plan. The `jarvis-api` Edge Function is active (version 13), with application-
+plan. The `jarvis-api` Edge Function is active (version 16), with application-
 level Supabase Auth bearer validation, production-origin CORS and the required
 `apikey` CORS header. Its public health route and production CORS are covered
 by a passing deployed smoke test. The deployed function files match the
@@ -171,14 +171,15 @@ Example privacy-first OpenRouter configuration:
 
 When `privacyMode` is `"zdr"`, JARVIS sends OpenRouter's
 `provider: { "zdr": true, "data_collection": "deny" }` request options. The
-router accepts this mode only for the official `openrouter.ai` host and only
-when a server-side API key is configured. OpenRouter documents that request-
+router accepts this mode only for the official `openrouter.ai` host with a
+configured server-side key, and rejects mixed ZDR/standard provider lists so
+failover cannot silently weaken privacy. OpenRouter documents that request-
 level `zdr: true` can still admit its separate Safety Retention tier unless
 the account or a guardrail is configured for ZDR-only routing. Before sending
 personal conversations, set the OpenRouter account privacy setting to ZDR-only
 and exclude Safety Retention; otherwise do not claim strict zero retention.
-If no eligible free endpoint is available, the request fails rather than
-falling back to a retaining endpoint.
+If the ZDR key or route is unavailable, the request fails rather than falling
+back to a retaining endpoint.
 OpenRouter's Free plan currently offers free models with a 50-request/day cap
 (20/minute); model availability and quota can change. OpenRouter states that
 it does not train on customer data, and ZDR routing is available on every plan.
