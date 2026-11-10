@@ -5,13 +5,14 @@ This note records what is present in the integration branch and separates code-l
 ## Confirmed in the repository
 
 - The production default backend is now `cloud`. `VITE_BACKEND=bridge` explicitly opts into the local developer bridge; `VITE_BACKEND=direct` remains a local-only demo mode.
-- The app contains an explicit Cloud Access panel. A successful Supabase password sign-in creates the cloud runtime and selects the cloud brain for the current page session. Fresh sessions open the sign-in panel by default; previously opted-in tab sessions are automatically restored after reload. Signing out clears the tab-session choice and returns to the configured backend (cloud requires a new sign-in).
+- The app contains an explicit Cloud Access panel. A successful Supabase password sign-in creates the cloud runtime and selects the cloud brain for the current page session. Fresh sessions open the sign-in panel by default; previously opted-in tab sessions are automatically restored after reload. Signing out clears the tab-session choice and returns to the configured backend (cloud requires a new sign-in). The UI currently supports sign-in only; account creation and password recovery are not implemented, so an authorised Supabase Auth user must already exist.
 - Cloud authentication uses an injected token store. The browser offers two explicit choices: volatile tokens (sign in again after reload) or an opt-in `sessionStorage` token store scoped to the current tab (restorable after reload in that tab; cleared when the tab session ends). This is not persistent login across browser restarts or devices.
 - The cloud API client supports authenticated conversation creation, listing, retrieval and deletion, plus streamed turns and cancellation.
 - The cloud brain creates conversations lazily and exposes an explicit `resumeConversation(id)` operation. The Cloud Access panel lists saved conversations, refreshes the list, and lets the user explicitly resume one or start a new conversation. After a page reload, the user must first sign in or restore the tab session, then explicitly choose a conversation; no conversation is silently activated.
 - The cloud memory panel supports explicit manual save, list, deletion and an opt-in setting for including approved memories in model context. It is not the same subsystem as the local encrypted-memory bridge.
 - The local FreeLLMAPI smoke test targets a loopback endpoint (default `http://127.0.0.1:3001`) and refuses non-loopback endpoints before sending its API key. This validates a local adapter only; it does not prove that the cloud model router is configured or that a live provider call succeeds.
 - The cloud provider-status panel reports whether provider configuration is declared and which model names are configured. This is not a live inference test and must not be presented as proof that a provider is reachable or that free-tier quotas are available.
+- Cloud mode uses browser-native speech recognition and speech synthesis. The ElevenLabs proxy remains a local-bridge feature; server-side cloud TTS/STT is not yet integrated. No provider key is read into the cloud browser config.
 - The encrypted local memory runtime remains disabled by default. Its CI checks do not complete the target-PC, backup/recovery, retention, ACL and production rollout gates documented in `docs/security/MEMORY_INTEGRATION.md`.
 
 ## CI evidence
@@ -28,7 +29,8 @@ These are repository CI results for an earlier commit only. The latest commits h
 2. Confirm a live authenticated model inference with a controlled low-token turn, only after confirming server-side provider secrets and free-quota policy. The provider-status endpoint only reports declared configuration, not successful inference.
 3. Validate cloud voice input/output, reconnects, conversation history, and error states in a real browser session.
 4. Add Capacitor and native Keychain/audio adapters, then test on a physical iPhone. Do not claim iOS readiness before this.
-5. Keep production Edge Function deployment, secrets, paid resources, and personal-data migration behind separate explicit approval.
+5. Configure an authorised Supabase Auth account and the production web origin allowlist before hosting the frontend. The UI currently has no account-creation or password-reset flow.
+6. Keep production secrets, paid resources, network exposure, and personal-data migration behind separate explicit approval.
 
 ## Safety boundaries
 
