@@ -729,6 +729,15 @@ export default function App() {
       <CloudAccess
         onConnected={() => store.getState().setConnected(connectedLabels())}
         onDisconnected={() => store.getState().setConnected(connectedLabels())}
+        onResumeConversation={(messages) => {
+          useStore.setState({
+            turns: messages.map((message) => ({
+              id: message.id,
+              role: message.role === 'assistant' ? 'jarvis' : 'user',
+              text: message.content,
+            })),
+          })
+        }}
       />
       <Boot />
       <Diagnostics />
