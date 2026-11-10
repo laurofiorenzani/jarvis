@@ -1,12 +1,15 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { BACKEND } from '../src/config'
+import { BACKEND, USE_ELEVENLABS, env } from '../src/config'
 import { ask, cancel, connectedLabels, isConnected, usingBridge, usingDirect, warm } from '../src/lib/brain'
 
 test('production default is cloud and does not start the local bridge', async () => {
   assert.equal(BACKEND, 'cloud')
   assert.equal(usingBridge, false)
   assert.equal(usingDirect, false)
+  assert.equal(USE_ELEVENLABS, false)
+  assert.equal(env.anthropicKey, '')
+  assert.equal(env.elevenKey, '')
   assert.equal(isConnected(), false)
   assert.deepEqual(connectedLabels(), ['CLOUD SIGN-IN REQUIRED'])
 
