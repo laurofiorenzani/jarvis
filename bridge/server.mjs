@@ -611,7 +611,13 @@ const withinRoots = (real) =>
       canonicalRoot = normalizeWindowsPath(canonicalRoot)
       canonicalReal = normalizeWindowsPath(canonicalReal)
       const rel = win32.relative(canonicalRoot, canonicalReal)
-      return rel !== '' && rel !== '..' && !rel.startsWith('..\\') && !win32.isAbsolute(rel)
+      const allowed = rel !== '' && rel !== '..' && !rel.startsWith('..\\') && !win32.isAbsolute(rel)
+      if (process.env.JARVIS_DEBUG_MEDIA_PATHS === '1') {
+        console.log('[jarvis] media containment diagnostic', JSON.stringify({
+          root: canonicalRoot, file: canonicalReal, relative: rel, allowed,
+        }))
+      }
+      return allowed
     }
     const rel = relative(canonicalRoot, canonicalReal)
     return rel !== '' && rel !== '..' && !rel.startsWith('../') && !isAbsolute(rel)
