@@ -14,6 +14,13 @@ The cloud memory store is deployed to the configured Supabase project. It is sep
 - Expired records are excluded from list and model context. Users can delete individual records.
 - This is authenticated cloud storage with Supabase-managed protections. It is **not end-to-end encrypted**: the cloud function can read the records, and selected records are sent to the configured model provider only when the user enables memory context.
 
+## Multiple household members
+
+- Jarvis Cloud authenticates each person with an individual Supabase account; Isabelle can use her own account on her own device once that account is provisioned.
+- Memories, conversations, preferences, and rate limits are scoped to the authenticated user ID. One household member cannot read or manage another member's personal records through the current API.
+- A shared family workspace or shared household memory is **not implemented**. Do not share one login between spouses; that would combine identity and personal data rather than provide controlled sharing.
+- The current Cloud Access screen supports sign-in, not self-service account registration or spouse invitations. An administrator must provision the second account before Isabelle can sign in.
+
 ## Explicit controls
 
 - Saving a record is a separate, manual action in the Cloud Access panel.
