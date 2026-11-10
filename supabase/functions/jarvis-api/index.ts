@@ -26,6 +26,8 @@ function corsHeaders(origin: string | null): HeadersInit {
   // preview/custom origins remain operator-configurable through the secret.
   const allowedOrigins = new Set([
     'https://jarvis-lauro-fiorenzani.vercel.app',
+    'https://jarvis-git-work-memory-integration-ready-lauro-fiorenzani.vercel.app',
+    'https://jarvis-omiyzyv9b-lauro-fiorenzani.vercel.app',
     ...(Deno.env.get('JARVIS_ALLOWED_ORIGIN') || '').split(',').map((value) => value.trim()).filter(Boolean),
   ])
   const isLocalDevelopmentOrigin = (() => {
