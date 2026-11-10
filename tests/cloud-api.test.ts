@@ -6,6 +6,7 @@ test('cloud client sends bearer auth and version without storing credentials', a
   let captured: RequestInit | undefined
   const client = createCloudApiClient({
     baseUrl: 'https://api.example.test',
+    publishableKey: 'test-publishable-key',
     getAccessToken: async () => 'short-lived-token',
     fetchImpl: async (_input, init) => {
       captured = init
@@ -18,6 +19,7 @@ test('cloud client sends bearer auth and version without storing credentials', a
   assert.equal(result.conversation.id, 'c-1')
   const headers = new Headers(captured?.headers)
   assert.equal(headers.get('Authorization'), 'Bearer short-lived-token')
+  assert.equal(headers.get('apikey'), 'test-publishable-key')
   assert.equal(headers.get('X-Jarvis-Api-Version'), '1')
   assert.equal(captured?.credentials, 'omit')
   assert.equal(captured?.redirect, 'error')
@@ -27,6 +29,7 @@ test('cloud client fails closed when no access token is available', async () => 
   let called = false
   const client = createCloudApiClient({
     baseUrl: 'https://api.example.test',
+    publishableKey: 'test-publishable-key',
     getAccessToken: async () => null,
     fetchImpl: async () => { called = true; return new Response('{}') },
   })
@@ -38,6 +41,7 @@ test('cloud client fails closed when no access token is available', async () => 
 test('cloud client rejects insecure non-local API origins', () => {
   assert.throws(() => createCloudApiClient({
     baseUrl: 'http://api.example.test',
+    publishableKey: 'test-publishable-key',
     getAccessToken: async () => 'token',
   }), /HTTPS/)
 })
@@ -45,6 +49,7 @@ test('cloud client rejects insecure non-local API origins', () => {
 test('cloud client preserves structured server errors', async () => {
   const client = createCloudApiClient({
     baseUrl: 'https://api.example.test',
+    publishableKey: 'test-publishable-key',
     getAccessToken: async () => 'token',
     fetchImpl: async () => new Response(JSON.stringify({
       version: 1,
@@ -147,6 +152,7 @@ test('cloud client validates turn inputs before making network requests', async 
   let called = false
   const client = createCloudApiClient({
     baseUrl: 'https://api.example.test',
+    publishableKey: 'test-publishable-key',
     getAccessToken: async () => 'token',
     fetchImpl: async () => { called = true; return new Response('{}') },
   })
@@ -162,6 +168,7 @@ test('cloud client opens an authenticated SSE stream and supports abort signals'
   const stream = new ReadableStream<Uint8Array>()
   const client = createCloudApiClient({
     baseUrl: 'https://api.example.test',
+    publishableKey: 'test-publishable-key',
     getAccessToken: async () => 'stream-token',
     fetchImpl: async (_input, init) => {
       captured = init
@@ -178,6 +185,7 @@ test('cloud client opens an authenticated SSE stream and supports abort signals'
   assert.equal(body, stream)
   const headers = new Headers(captured?.headers)
   assert.equal(headers.get('Authorization'), 'Bearer stream-token')
+  assert.equal(headers.get('apikey'), 'test-publishable-key')
   assert.equal(headers.get('Accept'), 'text/event-stream')
   assert.equal(captured?.signal, controller.signal)
   assert.equal(captured?.credentials, 'omit')
@@ -186,6 +194,7 @@ test('cloud client opens an authenticated SSE stream and supports abort signals'
 test('cloud client rejects successful responses that are not SSE', async () => {
   const client = createCloudApiClient({
     baseUrl: 'https://api.example.test',
+    publishableKey: 'test-publishable-key',
     getAccessToken: async () => 'token',
     fetchImpl: async () => new Response('{}', {
       status: 200, headers: { 'Content-Type': 'application/json' },
@@ -200,6 +209,7 @@ test('cloud client rejects successful responses that are not SSE', async () => {
 test('cloud client rejects unversioned successful JSON responses', async () => {
   const client = createCloudApiClient({
     baseUrl: 'https://api.example.test',
+    publishableKey: 'test-publishable-key',
     getAccessToken: async () => 'token',
     fetchImpl: async () => new Response(JSON.stringify({ status: 'ok' }), {
       status: 200, headers: { 'Content-Type': 'application/json' },
@@ -216,6 +226,7 @@ test('cloud health check is public and does not request an access token', async 
   let captured: RequestInit | undefined
   const client = createCloudApiClient({
     baseUrl: 'https://api.example.test',
+    publishableKey: 'test-publishable-key',
     getAccessToken: async () => { tokenRequested = true; return null },
     fetchImpl: async (_input, init) => {
       captured = init
@@ -228,12 +239,14 @@ test('cloud health check is public and does not request an access token', async 
   assert.equal(result.status, 'ok')
   assert.equal(tokenRequested, false)
   assert.equal(new Headers(captured?.headers).has('Authorization'), false)
+  assert.equal(new Headers(captured?.headers).get('apikey'), 'test-publishable-key')
 })
 
 test('cloud client sends versioned cancellation only for valid turn IDs', async () => {
   let captured: { input: RequestInfo | URL; init?: RequestInit } | undefined
   const client = createCloudApiClient({
     baseUrl: 'https://api.example.test/functions/v1/jarvis-api',
+    publishableKey: 'test-publishable-key',
     getAccessToken: async () => 'token',
     fetchImpl: async (input, init) => {
       captured = { input, init }
@@ -345,6 +358,7 @@ test('cloud client loads conversation lists and user-scoped history', async () =
   const requests: string[] = []
   const client = createCloudApiClient({
     baseUrl: 'https://project.supabase.co/functions/v1/jarvis-api',
+    publishableKey: 'test-publishable-key',
     getAccessToken: async () => 'token',
     fetchImpl: async (input) => {
       requests.push(String(input))
@@ -376,6 +390,7 @@ test('cloud client exposes explicit user-scoped conversation deletion', async ()
   let captured: { input: RequestInfo | URL; init?: RequestInit } | undefined
   const client = createCloudApiClient({
     baseUrl: 'https://project.supabase.co/functions/v1/jarvis-api',
+    publishableKey: 'test-publishable-key',
     getAccessToken: async () => 'token',
     fetchImpl: async (input, init) => {
       captured = { input, init }
@@ -399,6 +414,7 @@ test('cloud memory API supports explicit save, list and user-requested deletion'
   }
   const client = createCloudApiClient({
     baseUrl: 'https://project.supabase.co/functions/v1/jarvis-api',
+    publishableKey: 'test-publishable-key',
     getAccessToken: async () => 'token',
     fetchImpl: async (input, init) => {
       const url = String(input)
@@ -426,6 +442,7 @@ test('cloud memory client rejects empty or oversized content before network acce
   let called = false
   const client = createCloudApiClient({
     baseUrl: 'https://project.supabase.co/functions/v1/jarvis-api',
+    publishableKey: 'test-publishable-key',
     getAccessToken: async () => 'token',
     fetchImpl: async () => { called = true; return new Response('{}') },
   })
@@ -439,6 +456,7 @@ test('memory context preference is explicitly loaded and persisted', async () =>
   const requests: { url: string; init?: RequestInit }[] = []
   const client = createCloudApiClient({
     baseUrl: 'https://project.supabase.co/functions/v1/jarvis-api',
+    publishableKey: 'test-publishable-key',
     getAccessToken: async () => 'token',
     fetchImpl: async (input, init) => {
       requests.push({ url: String(input), init })
@@ -460,6 +478,7 @@ test('provider status is requested through the authenticated cloud API', async (
   let auth = ''
   const client = createCloudApiClient({
     baseUrl: 'https://project.supabase.co/functions/v1/jarvis-api',
+    publishableKey: 'test-publishable-key',
     getAccessToken: async () => 'private-access-token',
     fetchImpl: async (input, init) => {
       requested = String(input)
