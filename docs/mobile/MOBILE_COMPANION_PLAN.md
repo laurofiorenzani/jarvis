@@ -1,6 +1,6 @@
 # JARVIS mobile companion plan
 
-> **Architecture authority:** `docs/architecture/CLOUD_FIRST_ARCHITECTURE.md` is the canonical source of truth. Read it before changing mobile, backend, hosting, memory, or deployment plans.
+> **Architecture authority:** `docs/architecture/CLOUD_FIRST_ARCHITECTURE.md` is the canonical source of truth. Read it before changing mobile, backend, hosting, memory, or deployment plans. The detailed standalone app and BMW CarPlay roadmap is in [`IOS_APP_AND_CARPLAY_DELIVERY.md`](./IOS_APP_AND_CARPLAY_DELIVERY.md).
 
 ## Product decision
 
