@@ -17,11 +17,11 @@ This note records what is present in the integration branch and separates code-l
 
 ## CI evidence
 
-Historical baseline only: GitHub Actions run [42704074425](https://github.com/laurofiorenzani/jarvis/actions/runs/42704074425) completed successfully on commit `56316718f52f5dde16e4c311ada5a10b1e7055b1`: dependency installation, TypeScript/Vite production build, tests, lint and Supabase Edge Function type-check passed. This predates the cloud-default and auto-restore changes.
+Current-head validation: GitHub Actions run [42908479881](https://github.com/laurofiorenzani/jarvis/actions/runs/42908479881) completed successfully on 10 November 2026 for commit `c669eb5f2fbfe10c5edeaea1a9802492f81b0837`. This run validates the latest branch head at that time, including Node dependency installation, npm audit workflow, production build, unit tests, lint, Deno provider-router tests, Supabase Edge Function type-check, and the configured production health/CORS smoke checks.
 
-The companion cross-platform test run [42704073993](https://github.com/laurofiorenzani/jarvis/actions/runs/42704073993) completed successfully on Ubuntu and Windows for the same historical baseline. It is not validation of the latest branch head.
+The immediately preceding run [42908452674](https://github.com/laurofiorenzani/jarvis/actions/runs/42908452674) was cancelled when a newer push superseded it; it is not a test failure. The successful run above is the authoritative result for the current branch head.
 
-These are repository CI results for an earlier commit only. After the documentation commits through `b87bd29ee2cea3d15b14a159dc38225fa76643b1`, GitHub's commit-check endpoint returned zero check runs and the combined commit status was `pending` with zero status contexts. The workflow-runs listing still showed only the historical `56316718f52f5dde16e4c311ada5a10b1e7055b1` runs. Therefore current-head CI is **not verified**; do not mark the branch validated. These older runs also do not establish successful sign-in from the user's device, live model inference, iOS Keychain integration, or production readiness.
+CI success is repository-level validation. The production smoke test checks health and CORS only; it does not prove live model inference, successful sign-in from a user's device, or deployment of the latest frontend preview.
 
 ## Recovered product decisions and continuity
 
@@ -33,17 +33,18 @@ These are repository CI results for an earlier commit only. After the documentat
 
 ## Next safe engineering steps
 
-1. Run the current branch CI against the latest commit; historical green runs do not validate the current HEAD.
-2. Confirm a live authenticated model inference with a controlled low-token turn, only after confirming server-side provider secrets and free-quota policy. The provider-status endpoint only reports declared configuration, not successful inference.
+1. Confirm a live authenticated model inference with a controlled low-token turn. Recent project logs show successful health and provider-status smoke checks, but no new `POST /turns` from the user and therefore no fresh upstream diagnostic detail yet.
+2. After the next real JARVIS model request, inspect the bounded provider diagnostic. A prior 404 is consistent with a missing model or endpoint; it must not be mislabelled as quota exhaustion or “fixed” by rotating credentials without evidence.
 3. Validate cloud voice input/output, reconnects, conversation history, cancellation, and error states in a real browser session.
-4. Close the account-access gap: configure an authorised Supabase Auth account and production origin allowlist; the UI currently has no account-creation or password-reset flow.
+4. Close the account-access gap: the current UI supports sign-in but does not implement account creation, email-confirmation resend, or password recovery. Existing authorised Supabase Auth users can sign in once their email-confirmation state and redirect configuration are correct.
 5. Build the standalone iPhone app only after the cloud core passes its release checks: add Capacitor/native iOS project on macOS/Xcode, Keychain and native audio adapters, app icon/splash, and physical-device testing. A Safari/PWA shortcut is not the final deliverable.
 6. Keep production secrets, paid resources, network exposure, and personal-data migration behind separate explicit approval. Vendor integrations remain out of scope until the core is stable.
 
 ## Safety boundaries
 
 - Do not merge the open memory pull request into `main` as part of this work.
-- The deployed `jarvis-api` Edge Function is active at version 9 and its `index.ts`, `model-router.ts`, and `deno.json` were compared byte-for-byte with this branch; no redeployment is needed for the current API code. Do not change production secrets, create paid resources, change network exposure, or migrate personal data without a separate critical approval.
+- Supabase Edge Function `jarvis-api` is currently active at deployed version 29. The latest router diagnostics and routing changes on this branch have not been deployed to production; do not claim they are live until a deployment is explicitly completed and verified.
+- Do not change production secrets, create paid resources, change network exposure, or migrate personal data without a separate critical approval.
 - Keep local encrypted memory disabled until all release gates pass.
 
 
