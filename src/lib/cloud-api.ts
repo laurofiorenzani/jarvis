@@ -26,6 +26,7 @@ const API_ERROR_CODES = ['unauthenticated', 'forbidden', 'invalid_request', 'rat
 
 export type CloudApiOptions = {
   baseUrl: string
+  publishableKey: string
   getAccessToken: () => Promise<string | null>
   fetchImpl?: CloudFetch
 }
@@ -74,6 +75,7 @@ function requireText(value: string, field: string, maxLength = 200): string {
 
 export function createCloudApiClient(options: CloudApiOptions) {
   const baseUrl = normaliseBaseUrl(options.baseUrl)
+  if (!options.publishableKey.trim()) throw new Error('Supabase publishable key is required.')
   const fetcher = options.fetchImpl ?? fetch
 
   async function request<T>(path: string, init: RequestInit = {}, authenticated = true): Promise<T> {
@@ -86,6 +88,7 @@ export function createCloudApiClient(options: CloudApiOptions) {
     try {
       const headers = new Headers(init.headers)
       headers.set('Accept', 'application/json')
+      headers.set('apikey', options.publishableKey)
       if (token) headers.set('Authorization', `Bearer ${token}`)
       headers.set('X-Jarvis-Api-Version', String(CLOUD_API_VERSION))
       if (init.body) headers.set('Content-Type', 'application/json')
@@ -190,6 +193,7 @@ export function createCloudApiClient(options: CloudApiOptions) {
           method: 'POST',
           headers: {
             Accept: 'text/event-stream',
+            apikey: options.publishableKey,
             Authorization: `Bearer ${token}`,
             'Content-Type': 'application/json',
             'X-Jarvis-Api-Version': String(CLOUD_API_VERSION),
