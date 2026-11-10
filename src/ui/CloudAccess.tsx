@@ -1,5 +1,5 @@
 import { useRef, useState, type FormEvent } from 'react'
-import type { CloudMemory, MemoryCategory } from '../lib/backend-contract'
+import type { CloudMemory, MemoryCategory, ConversationSummary, ConversationMessage } from '../lib/backend-contract'
 import { env } from '../config'
 import { createCloudRuntime } from '../lib/cloud-runtime'
 import type { CloudRuntimeOptions } from '../lib/cloud-runtime'
@@ -14,7 +14,7 @@ function createVolatileTokenStore() {
   }
 }
 
-export function CloudAccess({ onConnected, onDisconnected }: { onConnected?: () => void; onDisconnected?: () => void }) {
+export function CloudAccess({ onConnected, onDisconnected, onResumeConversation }: { onConnected?: () => void; onDisconnected?: () => void; onResumeConversation?: (messages: ConversationMessage[]) => void }) {
   const [expanded, setExpanded] = useState(false)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -22,6 +22,8 @@ export function CloudAccess({ onConnected, onDisconnected }: { onConnected?: () 
   const [connected, setConnected] = useState(false)
   const [message, setMessage] = useState('')
   const [memories, setMemories] = useState<CloudMemory[]>([])
+  const [conversations, setConversations] = useState<ConversationSummary[]>([])
+  const [conversationBusy, setConversationBusy] = useState(false)
   const [memoryContextEnabled, setMemoryContextEnabled] = useState(false)
   const [providerStatus, setProviderStatus] = useState('MODEL STATUS NOT CHECKED')
   const [memoryContent, setMemoryContent] = useState('')
@@ -46,9 +48,10 @@ export function CloudAccess({ onConnected, onDisconnected }: { onConnected?: () 
     try {
       await runtime.auth.signInWithPassword(email, password)
       await runtime.brain.warm()
-      const [saved, preference] = await Promise.all([runtime.api.listMemories(), runtime.api.getMemoryPreference()])
+      const [saved, preference, recentConversations] = await Promise.all([runtime.api.listMemories(), runtime.api.getMemoryPreference(), runtime.api.listConversations()])
       setMemories(saved.memories)
       setMemoryContextEnabled(preference.contextEnabled)
+      setConversations(recentConversations.conversations)
       try {
         const providers = await runtime.api.getProviderStatus()
         setProviderStatus(providers.configured
@@ -71,6 +74,44 @@ export function CloudAccess({ onConnected, onDisconnected }: { onConnected?: () 
     } finally {
       setBusy(false)
     }
+  }
+
+  const refreshConversations = async () => {
+    const runtime = runtimeRef.current
+    if (!runtime || conversationBusy) return
+    setConversationBusy(true)
+    try {
+      const result = await runtime.api.listConversations()
+      setConversations(result.conversations)
+      setMessage(`CONVERSATIONS LOADED · ${result.conversations.length} AVAILABLE`)
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : 'Conversation history could not be loaded.')
+    } finally {
+      setConversationBusy(false)
+    }
+  }
+
+  const resumeConversation = async (id: string) => {
+    const runtime = runtimeRef.current
+    if (!runtime || conversationBusy) return
+    setConversationBusy(true)
+    try {
+      const result = await runtime.brain.resumeConversation(id)
+      onResumeConversation?.(result.messages)
+      setMessage(`CONVERSATION RESTORED · ${result.messages.length} MESSAGES`)
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : 'Conversation could not be restored.')
+    } finally {
+      setConversationBusy(false)
+    }
+  }
+
+  const startNewConversation = () => {
+    const runtime = runtimeRef.current
+    if (!runtime || conversationBusy) return
+    runtime.brain.resetConversation()
+    onResumeConversation?.([])
+    setMessage('NEW CLOUD CONVERSATION READY')
   }
 
   const toggleMemoryContext = async (enabled: boolean) => {
