@@ -585,8 +585,14 @@ const FILE_ROOTS = fileRoots({
 /** True when `real` sits inside one of the roots, after both are resolved. */
 const withinRoots = (real) =>
   FILE_ROOTS.some((root) => {
-    const rel = relative(root, real)
-    return rel !== '' && !rel.startsWith('..') && !isAbsolute(rel)
+    // Windows paths are case-insensitive. realpath() may return a different
+    // casing for the same directory than the configured root (notably on CI),
+    // so compare canonical casing on both sides before computing the relative path.
+    const comparableRoot = process.platform === 'win32' ? root.toLowerCase() : root
+    const comparableReal = process.platform === 'win32' ? real.toLowerCase() : real
+    const rel = relative(comparableRoot, comparableReal)
+    const parentPrefix = process.platform === 'win32' ? '..\\' : '../'
+    return rel !== '' && rel !== '..' && !rel.startsWith(parentPrefix) && !isAbsolute(rel)
   })
 
 // ---------------------------------------------------------------------------
