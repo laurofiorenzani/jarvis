@@ -38,6 +38,7 @@ export function CloudAccess({ onConnected, onDisconnected, onResumeConversation 
   const [expanded, setExpanded] = useState(() => !hasRestorableTabSession())
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [authMode, setAuthMode] = useState<'signin' | 'signup' | 'reset'>('signin')
   const [keepSessionInTab, setKeepSessionInTab] = useState(false)
   const [canRestoreTabSession, setCanRestoreTabSession] = useState(() => hasRestorableTabSession())
   const [busy, setBusy] = useState(false)
@@ -153,6 +154,57 @@ export function CloudAccess({ onConnected, onDisconnected, onResumeConversation 
       runtimeRef.current = null
       setConnected(false)
       setMessage(error instanceof Error ? error.message : 'Cloud sign-in failed.')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const registerAccount = async (event: FormEvent) => {
+    event.preventDefault()
+    if (busy) return
+    setBusy(true)
+    setMessage('')
+    const runtime = createCloudRuntime({
+      supabaseUrl: env.supabaseUrl,
+      supabasePublishableKey: env.supabasePublishableKey,
+      tokenStore: keepSessionInTab ? createTabTokenStore() : createVolatileTokenStore(),
+    })
+    runtimeRef.current = runtime
+    try {
+      const result = await runtime.auth.signUpWithPassword(email, password, window.location.origin)
+      setPassword('')
+      if (result.needsEmailConfirmation || !result.user?.id) {
+        runtimeRef.current = null
+        setMessage('ACCOUNT REQUEST RECEIVED · CHECK YOUR EMAIL TO CONFIRM, THEN SIGN IN')
+      } else {
+        await activateRuntime(runtime)
+        setMessage('ACCOUNT CREATED · CLOUD ACTIVE')
+      }
+      setAuthMode('signin')
+    } catch (error) {
+      runtimeRef.current = null
+      setMessage(error instanceof Error ? error.message : 'Account registration failed.')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const requestPasswordReset = async (event: FormEvent) => {
+    event.preventDefault()
+    if (busy) return
+    setBusy(true)
+    setMessage('')
+    const runtime = createCloudRuntime({
+      supabaseUrl: env.supabaseUrl,
+      supabasePublishableKey: env.supabasePublishableKey,
+      tokenStore: createVolatileTokenStore(),
+    })
+    try {
+      await runtime.auth.sendPasswordReset(email, window.location.origin)
+      setMessage('IF THE ACCOUNT EXISTS, A PASSWORD RESET EMAIL HAS BEEN SENT.')
+      setAuthMode('signin')
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : 'Password reset request failed.')
     } finally {
       setBusy(false)
     }
@@ -356,30 +408,42 @@ export function CloudAccess({ onConnected, onDisconnected, onResumeConversation 
             </button>
           </div>
         ) : (
-          <form onSubmit={(event) => void signIn(event)} style={{ display: 'grid', gap: 9, paddingTop: 12 }}>
-            <label style={labelStyle}>SUPABASE ACCOUNT EMAIL
+          <form onSubmit={(event) => void (authMode === 'signup' ? registerAccount(event) : authMode === 'reset' ? requestPasswordReset(event) : signIn(event))} style={{ display: 'grid', gap: 9, paddingTop: 12 }}>
+            <label style={labelStyle}>ACCOUNT EMAIL
               <input required type="email" autoComplete="username" value={email}
                 onChange={(event) => setEmail(event.target.value)} style={inputStyle} />
             </label>
-            <label style={labelStyle}>PASSWORD
-              <input required type="password" autoComplete="current-password" value={password}
+            {authMode !== 'reset' && <label style={labelStyle}>PASSWORD {authMode === 'signup' ? '(MINIMUM 10 CHARACTERS)' : ''}
+              <input required minLength={authMode === 'signup' ? 10 : undefined} type="password"
+                autoComplete={authMode === 'signup' ? 'new-password' : 'current-password'} value={password}
                 onChange={(event) => setPassword(event.target.value)} style={inputStyle} />
-            </label>
-            <label style={{ display: 'flex', alignItems: 'flex-start', gap: 8, color: '#83d9e8', letterSpacing: 0, lineHeight: 1.5 }}>
-              <input type="checkbox" checked={keepSessionInTab} onChange={(event) => setKeepSessionInTab(event.target.checked)} />
-              Keep me signed in across page reloads in this tab only
-            </label>
-            <button disabled={busy} type="submit" style={{ ...buttonStyle, opacity: busy ? .55 : 1 }}>
-              {busy ? 'CONNECTING…' : 'AUTHENTICATE & ACTIVATE CLOUD'}
-            </button>
-            {canRestoreTabSession && (
-              <button type="button" disabled={busy} onClick={() => void restoreTabSession()} style={buttonStyle}>
-                {busy ? 'RESTORING…' : 'RESTORE CLOUD SESSION'}
+            </label>}
+            {authMode === 'signin' && <>
+              <label style={{ display: 'flex', alignItems: 'flex-start', gap: 8, color: '#83d9e8', letterSpacing: 0, lineHeight: 1.5 }}>
+                <input type="checkbox" checked={keepSessionInTab} onChange={(event) => setKeepSessionInTab(event.target.checked)} />
+                Keep me signed in across page reloads in this tab only
+              </label>
+              <button disabled={busy} type="submit" style={{ ...buttonStyle, opacity: busy ? .55 : 1 }}>
+                {busy ? 'CONNECTING…' : 'AUTHENTICATE & ACTIVATE CLOUD'}
               </button>
-            )}
+              {canRestoreTabSession && <button type="button" disabled={busy} onClick={() => void restoreTabSession()} style={buttonStyle}>RESTORE CLOUD SESSION</button>}
+            </>}
+            {authMode === 'signup' && <button disabled={busy || password.length < 10} type="submit" style={buttonStyle}>
+              {busy ? 'CREATING ACCOUNT…' : 'CREATE JARVIS ACCOUNT'}
+            </button>}
+            {authMode === 'reset' && <button disabled={busy} type="submit" style={buttonStyle}>
+              {busy ? 'SENDING…' : 'SEND PASSWORD RESET EMAIL'}
+            </button>}
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+              {authMode !== 'signin' && <button type="button" onClick={() => setAuthMode('signin')} style={buttonStyle}>BACK TO SIGN IN</button>}
+              {authMode === 'signin' && <>
+                <button type="button" onClick={() => setAuthMode('signup')} style={buttonStyle}>CREATE ACCOUNT</button>
+                <button type="button" onClick={() => setAuthMode('reset')} style={buttonStyle}>FORGOT PASSWORD?</button>
+              </>}
+            </div>
             {message && <div role="status" style={{ color: '#ffbd91', lineHeight: 1.5 }}>{message}</div>}
             <div style={{ color: '#7797a2', lineHeight: 1.5, letterSpacing: 0 }}>
-              Optional tab-scoped restore. The refresh token stays in this tab's session storage, cleared when the tab closes; page scripts can access it. Leave unchecked for memory-only tokens.
+              Each family member signs in with a separate email and password. Conversations and personal memories remain private to that account.
             </div>
           </form>
         )
