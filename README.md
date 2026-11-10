@@ -48,10 +48,12 @@ First, install, then start it:
 
 ```bash
 npm install
-npm start          # runs the brain and the face together
+npm start          # starts the cloud-first web app (no local bridge required)
 ```
 
-Then open the URL it prints (http://localhost:5173) in **Chrome**, click **INITIALISE**, and say **“Hey Jarvis”**. This local quick-start uses the bridge; set `VITE_BACKEND=bridge` in `.env.local` to select it explicitly. The production/default app mode is now cloud and requires sign-in through the Cloud Access panel.
+Then open the URL it prints (http://localhost:5173) in **Chrome**. The default mode is cloud: expand CLOUD BRAIN, sign in, then click **INITIALISE** and say **“Hey Jarvis”**. No local bridge is started or required.
+
+For optional local-tool development only, set `VITE_BACKEND=bridge` in `.env.local` and run `npm run start:local`. This starts the Node bridge alongside Vite. To test effectful local tools, use `npm run start:local:writes` only after reviewing the bridge permission gate.
 
 Prefer two terminals? Run them separately instead:
 
@@ -298,7 +300,7 @@ npm run bridge:writes
 ```
 
 The script passes `--writes` to the bridge, so it works in Windows `cmd` and
-PowerShell too. With `npm start`, use `npm start -- --writes`. Writes add `Bash`,
+PowerShell too. With the optional local bridge, use `npm run start:local:writes`. Writes add `Bash`,
 `Write`, `Edit` and `NotebookEdit` to the agent's tools. The file tools stay
 inside the same folders; the shell can reach anything your user account can.
 
