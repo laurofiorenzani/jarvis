@@ -32,7 +32,6 @@ import {
   watchMemoryConfirmationCancelled,
   decideMemoryConfirmation,
   connectedLabels,
-  usingBridge,
   usingDirect,
   type Msg,
 } from './lib/brain'
