@@ -24,11 +24,11 @@ These are repository CI results. They do not establish successful sign-in from t
 
 ## Next safe engineering steps
 
-1. Add a cloud conversation-history view and an explicit resume action, using the authenticated list/get endpoints. Keep selection user-controlled; do not silently switch the active conversation.
-2. Persist only the active conversation identifier using an explicitly chosen storage policy. Keep the current volatile-token behavior until a reviewed native secure-storage adapter is available.
-3. Add tests for resume after reload, switching conversations, empty histories, deleted conversations and expired sessions.
-4. Verify the configured provider with a controlled, low-token live inference test only after the correct provider secret and quota policy are confirmed. Never print or commit credentials.
-5. Reconcile the README and migration audit with the implemented cloud sign-in panel, volatile token lifecycle, local-only FreeLLMAPI smoke test and still-unverified deployment/runtime gates.
+1. Review the cloud conversation-history UI and its interaction with the HUD transcript on a real browser/iPhone session.
+2. Add or confirm regression coverage for empty histories, deleted conversations, expired sessions, and a page reload followed by explicit conversation selection.
+3. Verify the configured cloud provider with a controlled, low-token live inference test only after its server-side secret and free-quota policy are confirmed. Never print or commit credentials.
+4. Reconcile the README and migration audit with the implemented cloud sign-in panel, tab-scoped session option, conversation recovery, local-only FreeLLMAPI smoke test and still-unverified deployment/runtime gates.
+5. Keep native iOS Keychain integration, production deployment, and persistent cross-device session recovery as separate future work requiring their own security review.
 
 ## Safety boundaries
 
@@ -46,4 +46,4 @@ These are repository CI results. They do not establish successful sign-in from t
 - Added regression coverage for successful resume, failed history retrieval (which must not switch the active conversation), and concurrent-turn prevention during restore.
 - The browser token store remains volatile. This work restores conversations across page reloads after the user signs in again; it does not silently preserve a browser login session.
 
-The conversation-history and resume implementation is present on `work/memory-integration-ready`. Treat the earlier successful CI runs above as historical evidence only; they predate this implementation. The latest branch head still requires a workflow run tied to that exact head before it can be marked validated.
+The conversation-history and resume implementation is present on `work/memory-integration-ready`. Treat the earlier successful CI runs above as historical evidence only; they predate this implementation. The CI workflow is configured for pushes to `work/**` and pull requests. The available commit-run lookup only returns pull-request-triggered runs, so an empty result from that lookup does not prove that no push-triggered run exists. The latest branch head must be checked directly in GitHub Actions before it can be marked validated.
