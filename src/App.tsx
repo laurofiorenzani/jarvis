@@ -8,7 +8,7 @@ import { MemoryConfirmation } from './ui/MemoryConfirmation'
 import { CloudAccess } from './ui/CloudAccess'
 import type { MemoryConfirmationChallenge } from './lib/bridge'
 import { useStore } from './store'
-import { startVoice, type Voice, type VoiceMode } from './lib/voice'
+import { startVoice, type CloudTranscriber, type Voice, type VoiceMode } from './lib/voice'
 import { createSpeaker, cycleVoice, currentVoiceName } from './lib/tts'
 import * as sfx from './lib/sfx'
 import * as music from './lib/music'
@@ -86,6 +86,7 @@ export default function App() {
   }, [])
   const speaker = useRef<ReturnType<typeof createSpeaker> | null>(null)
   const voice = useRef<Voice | null>(null)
+  const cloudTranscriber = useRef<CloudTranscriber | null>(null)
 
   /**
    * Monotonic turn counter. Every await in a turn checks it on the way out:
@@ -567,7 +568,7 @@ export default function App() {
       onPartial,
       onUtterance,
       onError: onVoiceError,
-    })
+    }, cloudTranscriber.current ?? undefined)
 
     store.getState().setPhase('dormant')
   }
@@ -746,7 +747,8 @@ export default function App() {
       <Hud />
       <CloudAccess
         onConnected={() => store.getState().setConnected(connectedLabels())}
-        onDisconnected={() => store.getState().setConnected(connectedLabels())}
+        onDisconnected={() => { cloudTranscriber.current = null; store.getState().setConnected(connectedLabels()) }}
+        onSpeechApiReady={(transcribe) => { cloudTranscriber.current = transcribe }}
         onResumeConversation={(messages) => {
           useStore.setState({
             turns: messages.map((message) => ({
