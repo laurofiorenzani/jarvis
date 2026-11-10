@@ -75,3 +75,12 @@ bundle audit. Current-head CI still needs to run; no claim is made that a
 production artifact has been inspected or that any previously deployed bundle
 has been purged. Rotate any credential that may already have been exposed in a
 public client bundle.
+
+
+## Repository reconciliation checkpoint — 10 November 2026
+
+The cloud-first application implementation remains on `laurofiorenzani/jarvis`, branch `work/memory-integration-ready` (the source branch of PR #1). The private `laurofiorenzani/jarvis-personal-cloud` repository is the project requirements/security workbench and contains a separate encrypted-memory/Cloudflare prototype on `work/intelligent-memory-next`. These are separate implementations, not a single shared codebase.
+
+Do not merge the Cloudflare prototype into this Supabase application without an explicit architecture decision. The current application branch uses Supabase for cloud auth, conversations and memory. The isolated private prototype uses a different Cloudflare Worker/D1 design and has a different key/identity boundary.
+
+This checkpoint does not change the release gates above: current-head CI, authenticated live inference, account recovery/access, native iOS implementation/device validation, cloud voice proxy, and direct vendor adapters remain unverified or incomplete. No vendor integration should be described as implemented until JARVIS can invoke it directly and a device-confirmed result is observed.
