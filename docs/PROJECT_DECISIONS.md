@@ -18,12 +18,14 @@
 - BMW, Home Assistant, and other device integrations were explicitly deferred until the core JARVIS conversation was reliable.
 - The intended result is that the user talks to JARVIS once; the assistant remains the single conversational interface.
 
-### BMW climate through My BMW Shortcuts
-- The user's My BMW app exposed Shortcuts actions: `Start Climate Control`, `Climatize Vehicle Interior`, `Open Doors`, and `Open Trunk`.
-- The BMW climate control was confirmed to work when manually activated in My BMW.
-- The first planned JARVIS vehicle command was "prepara o carro" and the first controlled action was `Start Climate Control`.
-- The agreed route was to invoke the My BMW-provided Shortcut from the JARVIS-triggered iPhone workflow. My BMW supplies the vehicle action; JARVIS remains the assistant the user speaks to.
-- This was not yet confirmed end-to-end on the vehicle. Distinguish Shortcut launch/completion from confirmed vehicle climate status.
+### Direct integration with My BMW, Blink, and Dreame — clarified 10 November 2026
+- The user explicitly clarified that Shortcuts are NOT the target architecture. JARVIS itself must integrate with the vendor services and invoke actions through internal adapters; the user speaks only to JARVIS.
+- My BMW: JARVIS should invoke remote cabin climate directly through a BMW integration. First command: "prepara o carro". Do not treat opening the My BMW app or launching a Shortcut as completion.
+- Blink: JARVIS should connect to the user's camera account, retrieve camera images/available streams, and show them in the JARVIS interface. Opening Blink alone is not a completed integration.
+- Dreame: JARVIS should control the robot vacuum, including room/zone cleaning such as the living room or kitchen when supported by the exact model and map.
+- Vendor apps may be needed for initial account authorisation, MFA, permissions, or fallback, but ordinary commands and results belong inside JARVIS.
+- Every integration must distinguish requested, accepted, completed, and device-confirmed states. Never report a successful action without a verifiable vendor/device result.
+- The previous Shortcut proposal is superseded by this explicit clarification; preserve it as historical context only, not as the implementation plan.
 
 ### Blink
 - The user identified Blink Shortcuts/actions for device switch/lights, system arm/disarm, motion detection, notification rules, and `Open Quick View for your Blink`.
