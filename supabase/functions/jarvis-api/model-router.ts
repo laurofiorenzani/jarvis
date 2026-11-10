@@ -192,6 +192,37 @@ export async function startFreeModelStream(
             }
           }
           buffer += decoder.decode()
+          // Some compatible providers close the stream without the final blank
+          // line. Parse that trailing SSE frame instead of silently dropping it.
+          if (buffer.trim()) {
+            const dataLine = buffer.split(/\r?\n/).find((line) => line.startsWith('data:'))
+            if (dataLine) {
+              const raw = dataLine.slice(5).trim()
+              if (raw && raw !== '[DONE]') {
+                let parsed: unknown
+                try { parsed = JSON.parse(raw) } catch { throw new Error('provider_stream_malformed') }
+                if (isRecord(parsed)) {
+                  if (isRecord(parsed.error)) throw new Error('provider_stream_error')
+                  const choices = Array.isArray(parsed.choices) ? parsed.choices : []
+                  const choice = choices[0]
+                  if (isRecord(choice) && isRecord(choice.delta)) {
+                    const text = choice.delta.content
+                    if (typeof text === 'string' && text.length) {
+                      delivered = true
+                      emit({ type: 'content_block_delta', delta: { type: 'text_delta', text } })
+                    } else if (Array.isArray(text)) {
+                      for (const part of text) {
+                        if (isRecord(part) && typeof part.text === 'string' && part.text.length) {
+                          delivered = true
+                          emit({ type: 'content_block_delta', delta: { type: 'text_delta', text: part.text } })
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
           emit({ type: 'message_stop' })
           controller.close()
         } catch {
