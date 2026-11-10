@@ -37,27 +37,36 @@ iPhone JARVIS app / desktop JARVIS client
 
 ## Integration strategy
 
-### BMW / My BMW
+### BMW / My BMW — previously agreed first route
 
-The intended user experience is a JARVIS command that requests a vehicle action, especially remote cabin climatization. The My BMW app is the vendor control surface/account, not a separate JARVIS interface.
+The first implementation route already agreed with the user is **Apple Shortcuts actions exposed by the My BMW app**, orchestrated by JARVIS on the iPhone. Do not restart the investigation as if no decision existed.
 
-Important current constraint: BMW's older unofficial ConnectedDrive third-party access was blocked on 29 September 2025. Home Assistant removed its old BMW Connected Drive integration in 2026. BMW CarData is the official EU data-access route, but its published documentation is for vehicle data streams and REST data retrieval; it must not be assumed to provide remote climate-control commands. Therefore:
-1. Investigate a currently supported BMW-authorised remote-services route for this vehicle/account/market.
-2. Separately assess whether an iPhone-side Shortcuts/App Intents hand-off to My BMW can trigger climate reliably, and what user interaction/foreground/device availability it requires. This would be an execution adapter controlled by JARVIS, not another app the user talks to.
-3. Do not automate private My BMW UI, reverse-engineer login flows, store BMW passwords, or claim climate control works until a real authorised end-to-end test succeeds.
-4. If no supported action route is available, expose the capability as unavailable with a clear explanation rather than pretending to execute it.
+Confirmed in the user's My BMW Shortcuts gallery:
+- `Start Climate Control`
+- `Climatize Vehicle Interior`
+- `Open Doors`
+- `Open Trunk`
 
-References: [BMW CarData API documentation](https://bmw-cardata.bmwgroup.com/customer/public/api-documentation), [Home Assistant BMW removal notice](https://www.home-assistant.io/blog/2026/04/01/release-20264/), [BMW ConnectedDrive integration status](https://alerts.home-assistant.io/alerts/bmw_connected_drive/).
+The initial user-facing command is "JARVIS, prepara o carro". The first controlled test is the `Start Climate Control` action. The action is triggered by JARVIS, not by a separate BMW assistant or chat. My BMW remains the vendor app/account that supplies the Shortcuts action; the user speaks only to JARVIS.
 
-### Blink cameras
+Implementation flow:
+1. JARVIS recognises a known BMW intent and resolves it to an allowlisted capability such as `bmw.start_climate`.
+2. JARVIS asks for confirmation where the action policy requires it, then dispatches an authenticated action request to the iPhone app.
+3. The native iOS app invokes the already-created Apple Shortcut using the supported iOS Shortcuts hand-off. It must not scrape or automate My BMW's private UI.
+4. The app reports the Shortcut launch/result state to the JARVIS cloud session. JARVIS must distinguish "dispatched", "shortcut completed", and "vehicle climate confirmed"; do not claim the vehicle is climate-controlled unless the integration provides a reliable confirmation.
+5. If the phone is offline, the app is not available, the Shortcut requires user interaction, or iOS blocks execution, JARVIS reports that honestly and offers the supported next step.
 
-Use a server-side authorised Blink integration or a supported home-automation gateway. Preserve the difference between a still image, a recent clip, and a live stream: the official Home Assistant Blink integration documents camera images and motion events but explicitly does not provide live viewing inside Home Assistant. JARVIS must label the actual media type and never present a still image as live video.
+The previous conversation explicitly noted the My BMW Shortcuts actions and agreed to add `Start Climate Control` to the JARVIS-triggered flow for the first test. Do not replace this with a new third-party ConnectedDrive API investigation as the primary path. A supported BMW API can be considered later as an enhancement, not as a prerequisite for the agreed Shortcut route.
 
-Reference: [Home Assistant Blink integration](https://www.home-assistant.io/integrations/blink/).
+### Blink cameras — previously agreed first route
+
+The user previously identified Blink Shortcuts including `Open Quick View for your Blink`, device switch/lights, system arm/disarm, motion detection, and notification rules. The first goal is for a request such as "JARVIS, mostra a câmara da entrada" to invoke the relevant Blink action from within JARVIS.
+
+Known limitation from the prior work: the camera selection was not available in the Quick View flow, and it was not yet proven that the resulting image could be delivered back into JARVIS for visual analysis. Keep those as explicit validation tasks. A launched Quick View is not proof that JARVIS received a frame; distinguish app hand-off, image acquired, and live video.
 
 ### Dreame vacuum
 
-Evaluate a supported vendor cloud integration or a securely managed home-automation gateway. Capabilities must be discovered from the actual vacuum model and account (start/stop, room/zone selection, dock, status, map availability). Do not assume every model exposes the same commands. Device control must remain server-side and per-user authorised.
+The Dreame integration was agreed as a later JARVIS capability, after the continuous voice conversation and first device integrations. Exact model/API route was not established in the recovered decision record. Do not invent the model or assume universal room/zone support. Add it to the same JARVIS capability registry once the device model and supported action route are known.
 
 ### Home automation gateway (optional)
 
