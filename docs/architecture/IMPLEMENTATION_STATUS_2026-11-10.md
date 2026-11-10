@@ -4,8 +4,8 @@ This note records what is present in the integration branch and separates code-l
 
 ## Confirmed in the repository
 
-- The existing local bridge remains the default backend. `src/config.ts` defaults `VITE_BACKEND` to `bridge`.
-- The app contains an explicit Cloud Access panel. A successful Supabase password sign-in creates the cloud runtime and selects the cloud brain for the current page session; signing out restores the local brain.
+- The production default backend is now `cloud`. `VITE_BACKEND=bridge` explicitly opts into the local developer bridge; `VITE_BACKEND=direct` remains a local-only demo mode.
+- The app contains an explicit Cloud Access panel. A successful Supabase password sign-in creates the cloud runtime and selects the cloud brain for the current page session. Fresh sessions open the sign-in panel by default; previously opted-in tab sessions are automatically restored after reload. Signing out clears the tab-session choice and returns to the configured backend (cloud requires a new sign-in).
 - Cloud authentication uses an injected token store. The browser offers two explicit choices: volatile tokens (sign in again after reload) or an opt-in `sessionStorage` token store scoped to the current tab (restorable after reload in that tab; cleared when the tab session ends). This is not persistent login across browser restarts or devices.
 - The cloud API client supports authenticated conversation creation, listing, retrieval and deletion, plus streamed turns and cancellation.
 - The cloud brain creates conversations lazily and exposes an explicit `resumeConversation(id)` operation. The Cloud Access panel lists saved conversations, refreshes the list, and lets the user explicitly resume one or start a new conversation. After a page reload, the user must first sign in or restore the tab session, then explicitly choose a conversation; no conversation is silently activated.
@@ -16,24 +16,24 @@ This note records what is present in the integration branch and separates code-l
 
 ## CI evidence
 
-At the time of this note, GitHub Actions run [42704074425](https://github.com/laurofiorenzani/jarvis/actions/runs/42704074425) completed successfully: dependency installation, TypeScript/Vite production build, tests, lint and Supabase Edge Function type-check all passed.
+Historical baseline only: GitHub Actions run [42704074425](https://github.com/laurofiorenzani/jarvis/actions/runs/42704074425) completed successfully on commit `56316718f52f5dde16e4c311ada5a10b1e7055b1`: dependency installation, TypeScript/Vite production build, tests, lint and Supabase Edge Function type-check passed. This predates the cloud-default and auto-restore changes.
 
-The companion cross-platform test run [42704073993](https://github.com/laurofiorenzani/jarvis/actions/runs/42704073993) completed successfully on Ubuntu and Windows. Both jobs passed `npm ci`, `npm test` and `npm run build`; the disposable Windows Credential Manager diagnostic passed on Windows and was correctly skipped on Ubuntu.
+The companion cross-platform test run [42704073993](https://github.com/laurofiorenzani/jarvis/actions/runs/42704073993) completed successfully on Ubuntu and Windows for the same historical baseline. It is not validation of the latest branch head.
 
-These are repository CI results. They do not establish successful sign-in from the user's device, live model inference, deployed Supabase configuration, iOS Keychain integration, or production readiness.
+These are repository CI results for an earlier commit only. The latest commits have no associated CI run or commit status yet; do not mark the current branch validated. They also do not establish successful sign-in from the user's device, live model inference, iOS Keychain integration, or production readiness.
 
 ## Next safe engineering steps
 
-1. Review the cloud conversation-history UI and its interaction with the HUD transcript on a real browser/iPhone session.
-2. Add or confirm regression coverage for empty histories, deleted conversations, expired sessions, and a page reload followed by explicit conversation selection.
-3. Verify the configured cloud provider with a controlled, low-token live inference test only after its server-side secret and free-quota policy are confirmed. Never print or commit credentials.
-4. Reconcile the README and migration audit with the implemented cloud sign-in panel, tab-scoped session option, conversation recovery, local-only FreeLLMAPI smoke test and still-unverified deployment/runtime gates.
-5. Keep native iOS Keychain integration, production deployment, and persistent cross-device session recovery as separate future work requiring their own security review.
+1. Validate the new cloud-default routing and session auto-restore with the full CI suite; latest commit checks are currently absent.
+2. Confirm a live authenticated model inference with a controlled low-token turn, only after confirming server-side provider secrets and free-quota policy. The provider-status endpoint only reports declared configuration, not successful inference.
+3. Validate cloud voice input/output, reconnects, conversation history, and error states in a real browser session.
+4. Add Capacitor and native Keychain/audio adapters, then test on a physical iPhone. Do not claim iOS readiness before this.
+5. Keep production Edge Function deployment, secrets, paid resources, and personal-data migration behind separate explicit approval.
 
 ## Safety boundaries
 
 - Do not merge the open memory pull request into `main` as part of this work.
-- Do not deploy migrations or Edge Functions, create paid resources, change network exposure, add secrets, or migrate personal data without a separate critical approval.
+- The deployed `jarvis-api` Edge Function is active at version 9 and its `index.ts`, `model-router.ts`, and `deno.json` were compared byte-for-byte with this branch; no redeployment is needed for the current API code. Do not change production secrets, create paid resources, change network exposure, or migrate personal data without a separate critical approval.
 - Keep local encrypted memory disabled until all release gates pass.
 
 
@@ -44,6 +44,6 @@ These are repository CI results. They do not establish successful sign-in from t
 - Resuming a conversation restores its persisted user/assistant messages into the HUD transcript and sets the Cloud Brain to continue using that same server-side conversation ID.
 - A restore operation temporarily locks the Cloud Brain against concurrent turns, preventing a voice turn from racing a conversation switch.
 - Added regression coverage for successful resume, failed history retrieval (which must not switch the active conversation), and concurrent-turn prevention during restore.
-- The browser token store remains volatile. This work restores conversations across page reloads after the user signs in again; it does not silently preserve a browser login session.
+- The default browser token store remains volatile. A user may explicitly opt into tab-scoped `sessionStorage`; that session is now automatically restored after a page reload in the same tab. It is not persistent across browser restarts or devices.
 
 The conversation-history and resume implementation is present on `work/memory-integration-ready`. Treat the earlier successful CI runs above as historical evidence only; they predate this implementation. The CI workflow is configured for pushes to `work/**` and pull requests. The available commit-run lookup only returns pull-request-triggered runs, so an empty result from that lookup does not prove that no push-triggered run exists. The latest branch head must be checked directly in GitHub Actions before it can be marked validated.
