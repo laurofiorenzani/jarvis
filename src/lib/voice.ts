@@ -1,4 +1,4 @@
-import { BRIDGE_HTTP_URL } from '../config'
+import { BACKEND, BRIDGE_HTTP_URL } from '../config'
 import { getMic } from './audio'
 import { speakingNow, speakingSince } from './tts'
 import { startVad, type Vad } from './vad'
@@ -386,7 +386,9 @@ if (typeof window !== 'undefined') {
  * The microphone is opened once here so a denied permission is reported loudly
  * rather than surfacing later as an unexplained deafness, whichever engine runs.
  */
-export async function startVoice(h: VoiceHandlers): Promise<Voice> {
+export type CloudTranscriber = (audio: Blob) => Promise<string>
+
+export async function startVoice(h: VoiceHandlers, cloudTranscribe?: CloudTranscriber): Promise<Voice> {
   try {
     await getMic()
   } catch (err) {
@@ -398,12 +400,16 @@ export async function startVoice(h: VoiceHandlers): Promise<Voice> {
     )
     return { stop: () => {}, live: () => false }
   }
+  if (BACKEND === 'cloud' && cloudTranscribe) {
+    diag.engine = 'gemini-cloud'
+    return startElevenVoice(h, cloudTranscribe)
+  }
   diag.engine = caps().stt ? 'elevenlabs' : 'browser'
   return caps().stt ? startElevenVoice(h) : startBrowserVoice(h)
 }
 
 /** VAD + ElevenLabs Scribe. */
-async function startElevenVoice(h: VoiceHandlers): Promise<Voice> {
+async function startElevenVoice(h: VoiceHandlers, cloudTranscribe?: CloudTranscriber): Promise<Voice> {
   let lastWake = 0
   let vad: Vad | null = null
 
@@ -450,20 +456,19 @@ async function startElevenVoice(h: VoiceHandlers): Promise<Voice> {
     if (mode === 'deaf') return
     const t0 = performance.now()
     try {
-      const res = await fetch(`${BRIDGE_HTTP_URL}/stt`, {
-        method: 'POST',
-        headers: { 'content-type': blob.type || 'audio/webm' },
-        body: blob,
-      })
+      const said = cloudTranscribe
+        ? await cloudTranscribe(blob)
+        : await (async () => {
+            const res = await fetch(`${BRIDGE_HTTP_URL}/stt`, {
+              method: 'POST',
+              headers: { 'content-type': blob.type || 'audio/webm' },
+              body: blob,
+            })
+            if (!res.ok) throw new Error(`stt ${res.status}`)
+            const { text } = (await res.json()) as { text?: string }
+            return (text ?? '').trim()
+          })()
       diag.idleMs = Math.round(performance.now() - t0)
-      if (!res.ok) {
-        diag.restarts++
-        diag.lastError = `stt ${res.status}`
-        drop(`transcription failed (${res.status})`)
-        return
-      }
-      const { text } = (await res.json()) as { text?: string }
-      const said = (text ?? '').trim()
       diag.lastError = ''
 
       if (!said) {
