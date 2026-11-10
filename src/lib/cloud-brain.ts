@@ -125,12 +125,17 @@ export function createCloudBrain(api: CloudApi) {
       if (busy) throw new CloudApiError('Cannot switch conversations during an active turn.', 409, 'invalid_request')
       if (!id.trim()) throw new CloudApiError('Conversation ID is required.', 400, 'invalid_request')
       if (!api.getConversation) throw new CloudApiError('Conversation recovery is unavailable.', 501, 'service_unavailable')
-      const result = await api.getConversation(id)
-      if (!result.conversation?.id || result.conversation.id !== id || !Array.isArray(result.messages)) {
-        throw new CloudApiError('Cloud returned an invalid conversation.', 502, 'invalid_response')
+      busy = true
+      try {
+        const result = await api.getConversation(id)
+        if (!result.conversation?.id || result.conversation.id !== id || !Array.isArray(result.messages)) {
+          throw new CloudApiError('Cloud returned an invalid conversation.', 502, 'invalid_response')
+        }
+        conversationId = id
+        return result
+      } finally {
+        busy = false
       }
-      conversationId = id
-      return result
     },
 
     resetConversation() {
