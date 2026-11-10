@@ -44,7 +44,7 @@ function hasRestorableTabSession() {
   }
 }
 
-export function CloudAccess({ onConnected, onDisconnected, onResumeConversation }: { onConnected?: () => void; onDisconnected?: () => void; onResumeConversation?: (messages: ConversationMessage[]) => void; onSpeechApiReady?: (transcribe: ((audio: Blob) => Promise<string>) | null) => void }) {
+export function CloudAccess({ onConnected, onDisconnected, onResumeConversation, onSpeechApiReady }: { onConnected?: () => void; onDisconnected?: () => void; onResumeConversation?: (messages: ConversationMessage[]) => void; onSpeechApiReady?: (transcribe: ((audio: Blob) => Promise<string>) | null) => void }) {
   const [expanded, setExpanded] = useState(() => !hasRestorableTabSession())
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
