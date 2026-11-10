@@ -290,7 +290,11 @@ Deno.serve(async (request) => {
 
   if (request.method === 'POST' && path === '/turns/cancel') {
     let body: unknown
-    try { body = await request.json() } catch { return error('invalid_request', 'Request body must be JSON.', 400, false, cors) }
+    try { body = await readBoundedJson(request, 1_024) }
+    catch (cause) {
+      if (cause instanceof Error && cause.message === 'body_too_large') return error('invalid_request', 'Cancellation payload is too large.', 413, false, cors)
+      return error('invalid_request', 'Request body must be valid JSON.', 400, false, cors)
+    }
     if (!isRecord(body) || body.version !== VERSION ||
         typeof body.conversationId !== 'string' || !UUID.test(body.conversationId) ||
         typeof body.turnId !== 'string' || !UUID.test(body.turnId)) {
@@ -306,7 +310,11 @@ Deno.serve(async (request) => {
 
   if (request.method === 'POST' && path === '/turns') {
     let body: unknown
-    try { body = await request.json() } catch { return error('invalid_request', 'Request body must be JSON.', 400, false, cors) }
+    try { body = await readBoundedJson(request, MAX_TEXT + 1_024) }
+    catch (cause) {
+      if (cause instanceof Error && cause.message === 'body_too_large') return error('invalid_request', 'Turn payload is too large.', 413, false, cors)
+      return error('invalid_request', 'Request body must be valid JSON.', 400, false, cors)
+    }
     if (!isRecord(body) || body.version !== VERSION ||
         typeof body.conversationId !== 'string' || !UUID.test(body.conversationId) ||
         typeof body.turnId !== 'string' || !UUID.test(body.turnId) ||
