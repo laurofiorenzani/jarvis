@@ -23,6 +23,14 @@ The companion cross-platform test run [42704073993](https://github.com/laurofior
 
 These are repository CI results for an earlier commit only. The latest commits have no associated CI run or commit status yet; do not mark the current branch validated. They also do not establish successful sign-in from the user's device, live model inference, iOS Keychain integration, or production readiness.
 
+## Recovered product decisions and continuity
+
+- The canonical decision ledger is `docs/PROJECT_DECISIONS.md`; read it before changing project scope or repeating discovery work.
+- The previously agreed BMW route is to have JARVIS invoke the My BMW `Start Climate Control` Shortcut on the iPhone for the first "prepara o carro" test. The user's My BMW Shortcuts gallery also showed `Climatize Vehicle Interior`, `Open Doors`, and `Open Trunk`.
+- Blink Quick View was previously identified, but camera selection and image return to JARVIS were not validated. Dreame remains a planned later capability; exact model/API is not established in the recovered record.
+- These decisions are recorded in source control only. They have not yet been seeded/retrieved as project memory by the running cloud assistant; do not claim runtime recall is fixed until that is implemented and tested.
+- The cloud model router currently streams text only; a tool-call loop, integration registry, authenticated iPhone action channel, native Shortcuts invocation, and vendor result verification are not implemented.
+
 ## Next safe engineering steps
 
 1. Validate the new cloud-default routing and session auto-restore with the full CI suite; latest commit checks are currently absent.
