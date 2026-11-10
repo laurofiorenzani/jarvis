@@ -162,6 +162,47 @@ implicit paid-provider fallback. FreeLLMAPI can serve as one endpoint if it is
 hosted and reachable over HTTPS; its self-hosted router still needs compute,
 so do not deploy it to a paid host under this project.
 
-The first provider may be FreeLLMAPI, followed by direct free-tier endpoints.
-This allows the router to benefit from FreeLLMAPI's own quota-aware routing
-while retaining a second line of fallback if that service is unavailable.
+### FreeLLMAPI cloud-hosting assessment (10 Nov 2026)
+
+Do not deploy the standalone FreeLLMAPI dashboard/API as a public, always-on
+multi-user service for JARVIS under the zero-cost constraint.
+
+Reasons:
+- FreeLLMAPI documents its server as a single-user service protected by one
+  unified API key. Its own deployment guidance warns against exposing it
+  publicly. JARVIS has two separate authenticated users, so a shared upstream
+  key must never become a user-facing account boundary.
+- FreeLLMAPI stores provider credentials and configuration in an encrypted
+  SQLite database that requires a persistent volume and stable encryption key.
+  A container with an ephemeral filesystem is not a safe deployment.
+- Vercel Hobby Sandboxes are not an always-on host: the documented maximum
+  continuous session is 45 minutes on Hobby, and traffic to exposed ports can
+  be billable. They are therefore not a verified zero-cost production host
+  for this service.
+- The Supabase organization and Jarvis project are already on the Free plan.
+  The existing `jarvis-api` Edge Function includes a server-side, ordered
+  OpenAI-compatible provider router. It can call free-tier provider endpoints
+  directly over HTTPS, stream the response, and keep provider keys in Edge
+  Function secrets. This is the safer cloud equivalent for the current
+  two-user architecture; it does not require a separate FreeLLMAPI server.
+
+Keep FreeLLMAPI as a local developer/provider experimentation tool. For cloud
+JARVIS, prefer direct provider entries in `JARVIS_MODEL_PROVIDERS` (for
+example the Google AI Studio configuration in
+`docs/cloud/GOOGLE_AI_STUDIO_PROVIDER.md`). Only configure providers whose
+account-side free quotas and data-use terms have been checked. The router's
+`tier=free` and `billingMode=free_quota_only` labels are assertions, not
+billing enforcement. A strictly zero-cost setup must not have paid billing or
+automatic paid fallback enabled.
+
+The existing Google AI Studio key in the Windows FreeLLMAPI installation is
+not available to Supabase automatically. Cloud activation requires the owner
+to add the key as the `GEMINI_API_KEY` Edge Function secret in the Supabase
+Dashboard; never copy it into GitHub, ChatGPT messages, or browser code. The
+Supabase connector available to this workflow cannot create or inspect Edge
+Function secrets, so that secret-entry step is an owner-only gate.
+
+This deployment remains a free-tier prototype, not a guaranteed always-on
+service: Supabase Free projects may pause after inactivity and Edge Function
+requests have a 150-second wall-clock limit. No paid service or billing
+upgrade is approved.
