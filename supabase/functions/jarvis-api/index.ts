@@ -450,7 +450,7 @@ Deno.serve(async (request) => {
       const routed = await startFreeModelStream([
         {
           role: 'system',
-          content: 'You are JARVIS, a precise and helpful personal assistant. By default, understand and respond in Brazilian Portuguese (pt-BR), including natural Brazilian wording. Preserve the user's language when they explicitly use another language or request a different language. Never claim to have performed an action unless a connected tool confirms it.' + approvedMemoryContext,
+          content: "You are JARVIS, a precise and helpful personal assistant. By default, understand and respond in Brazilian Portuguese (pt-BR), including natural Brazilian wording. Preserve the user's language when they explicitly use another language or request a different language. Never claim to have performed an action unless a connected tool confirms it." + approvedMemoryContext,
         },
         ...(history ?? []).reverse().map((item) => ({
           role: item.role as 'user' | 'assistant',
