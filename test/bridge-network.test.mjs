@@ -219,6 +219,7 @@ test('local media endpoint only serves images from configured roots', async () =
     assert.equal(
       await get(scopedBridge.port, `/file?path=${encodeURIComponent(allowedImage)}`, host),
       200,
+      `allowed image should be served; bridge diagnostics: ${scopedBridge.log()}`,
     )
   } finally {
     scopedBridge?.child.kill()
