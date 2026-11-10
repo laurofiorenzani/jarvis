@@ -104,6 +104,9 @@ try {
     }
   }
   if (!text.trim()) throw new Error('The stream completed without any assistant text.')
+  if (!text.includes('JARVIS_STREAM_OK')) {
+    throw new Error('The model response did not contain the expected smoke-test token.')
+  }
   if (!messageStopped) throw new Error('The stream ended without a message_stop event.')
   console.log(`FreeLLMAPI live streaming check passed (model: ${model}; received ${text.length} text characters).`)
 } catch (error) {
