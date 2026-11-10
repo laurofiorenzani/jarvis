@@ -462,10 +462,10 @@ export function CloudAccess({ onConnected, onDisconnected, onResumeConversation 
           </div>
         ) : (
           <form onSubmit={(event) => void (authMode === 'set-password' ? completePasswordSetup(event) : authMode === 'signup' ? registerAccount(event) : authMode === 'reset' ? requestPasswordReset(event) : signIn(event))} style={{ display: 'grid', gap: 9, paddingTop: 12 }}>
-            <label style={labelStyle}>ACCOUNT EMAIL
+            {authMode !== 'set-password' && <label style={labelStyle}>ACCOUNT EMAIL
               <input required type="email" autoComplete="username" value={email}
                 onChange={(event) => setEmail(event.target.value)} style={inputStyle} />
-            </label>
+            </label>}
             {authMode !== 'reset' && authMode !== 'set-password' && <label style={labelStyle}>PASSWORD {authMode === 'signup' ? '(MINIMUM 10 CHARACTERS)' : ''}
               <input required minLength={authMode === 'signup' ? 10 : undefined} type="password"
                 autoComplete={authMode === 'signup' ? 'new-password' : 'current-password'} value={password}
