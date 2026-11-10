@@ -46,8 +46,10 @@ function bannerWith(overrides) {
   })
 }
 
-test('unset passes every configured server, as before', async () => {
-  assert.match(await bannerWith({}), /config: search, mailer ·/)
+test('unset passes no configured server by default (fail closed)', async () => {
+  // A configured MCP server is not implicitly trusted. It must be explicitly
+  // named in JARVIS_MCP_SERVERS before the bridge exposes it to the agent.
+  assert.match(await bannerWith({}), /config: none ·/)
 })
 
 test('JARVIS_MCP_SERVERS passes only the named servers', async () => {
