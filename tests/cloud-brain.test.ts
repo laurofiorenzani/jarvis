@@ -203,7 +203,7 @@ test('cloud brain treats an aborted SSE reader as a normal cancellation', async 
       start(controller) {
         controller.enqueue(encoder.encode(`data: ${JSON.stringify({
           version: 1, type: 'text.delta', conversationId, turnId, delta: 'Partial answer',
-        })}\\n\\n`))
+        })}\n\n`))
         markStarted()
         signal?.addEventListener('abort', () => {
           controller.error(new DOMException('The operation was aborted.', 'AbortError'))
