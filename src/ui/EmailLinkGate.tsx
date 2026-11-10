@@ -10,7 +10,7 @@ import { getSafeConfirmationUrl } from '../lib/email-confirmation-url'
  */
 export function EmailLinkGate() {
   const [confirmationUrl] = useState(() => {
-    const params = new URLSearchParams(window.location.search)
+    const params = new URLSearchParams(window.location.hash.replace(/^#/, ''))
     return getSafeConfirmationUrl(params.get('confirmation'))
   })
 
