@@ -13,6 +13,7 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "oxlint",
+    "audit": "npm audit --audit-level=low",
     "test": "node --import tsx --test tests/*.test.ts test/*.test.mjs",
     "preview": "vite preview",
     "bridge": "node bridge/server.mjs",
