@@ -136,3 +136,14 @@ The FreeLLMAPI instance previously showed Google AI Studio as the only configure
 5. Validate with synthetic, low-token turns and report the actual upstream model/provider and fallback trail.
 
 No secret values were read, changed, copied, or exposed in this investigation.
+
+## 2026-11-10 follow-up: provider failure diagnostics
+
+- Updated `supabase/functions/jarvis-api/model-router.ts` to capture a bounded (1,200-character) upstream error response for operator logs, with common Google/OpenAI bearer-key patterns redacted.
+- Logs now include provider name, model identifier, HTTP status, and a category distinguishing model/endpoint 404, auth/access 401/403, quota/rate-limit 429, upstream 5xx, and other request rejection. No request prompt, authorization header, or full response body is logged.
+- This corrects the misleading user-facing interpretation that every provider failure means quota exhaustion. A 404 is not classified as quota exhaustion.
+- Fixed the bearer-token redaction expression after checking the committed source.
+- Official Google documentation confirms the OpenAI-compatible route shape is `https://generativelanguage.googleapis.com/v1beta/openai/chat/completions`; the stable model catalogue currently includes `gemini-3.5-flash`, `gemini-3.8-flash`, and `gemini-3.5-transcribe`. The router's URL builder already produces the correct path when configured with the base URL ending in `/v1beta/openai`.
+- The exact cause of the historical 404 remains unconfirmed until the next provider request emits the newly captured upstream error detail. Do not rotate or replace the configured key based only on a 404.
+- Changes committed on `work/memory-integration-ready`: `eb8022923ec9099fa564a26b94bdde6f33d47022` (diagnostics) and `b4d5ee1d99cb2aa8acce4e4ff8972e26dc978e7c` (redaction fix).
+- Not deployed; no production secrets or accounts changed. Automated Deno tests have not yet been executed in this environment.
