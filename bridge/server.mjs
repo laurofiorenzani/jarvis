@@ -8,9 +8,8 @@
  * Two things this buys over calling the Claude API from the browser:
  *   1. No API key. It authenticates exactly the way `claude` does, off your
  *      existing login, and bills to that same account.
- *   2. Every MCP server in your Claude Code config is available, including the
- *      local stdio ones a browser could never reach — higgsfield, elevenlabs,
- *      android, playwright, palmier-pro and the rest.
+ *   2. Only MCP servers explicitly named in JARVIS_MCP_SERVERS are available.
+ *      A server added to Claude Code's config is not silently granted to JARVIS.
  *
  *   node bridge/server.mjs
  */
@@ -237,11 +236,10 @@ function configuredServers() {
 /**
  * Which of those JARVIS actually gets.
  *
- * Every server in your Claude Code config is a server a voice agent that reads
- * the open web can be talked into calling, so "all of them" is a poor default
- * for anyone whose config has grown. JARVIS_MCP_SERVERS names the ones to hand
- * over, comma separated; unset keeps the old behaviour of passing everything
- * configured, and an empty value passes none.
+ * Every server in Claude Code's config is a capability a voice agent that
+ * reads the open web can be talked into calling. JARVIS_MCP_SERVERS is therefore
+ * a mandatory, comma-separated allowlist; unset or empty passes no external
+ * configured servers. Add only integrations intentionally approved for JARVIS.
  */
 const MCP_SERVERS = allowedMcpServers(configuredServers(), process.env.JARVIS_MCP_SERVERS)
 
