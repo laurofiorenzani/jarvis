@@ -9,8 +9,8 @@
  * Vite inlines a blank `.env` entry as an empty string, not as undefined, so
  * `??` never falls through to the default — and .env.example ships every
  * optional key blank, which is exactly the shape that used to bite. A blank
- * VITE_BACKEND silently selected the direct path and then complained about a
- * missing API key. Treat whitespace-only as unset everywhere in this file.
+ * VITE_BACKEND silently selected the default backend, which is now cloud.
+ * Treat whitespace-only as unset everywhere in this file.
  */
 // Vite provides import.meta.env in the browser/build. Node-based tests import
 // this module too, where the property is absent; use an empty env in that case.
