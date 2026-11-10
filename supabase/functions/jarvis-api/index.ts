@@ -87,7 +87,21 @@ Deno.serve(async (request) => {
   if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors })
 
   const url = new URL(request.url)
-  const path = url.pathname.replace(/^\/functions\/v1\/jarvis-api/, '').replace(/^\/v1(?=\/|$)/, '').replace(/\/$/, '') || '/'
+  const rawPath = url.pathname.replace(/\/$/, '') || '/'
+  const functionMarker = '/jarvis-api'
+  const markerIndex = rawPath.lastIndexOf(functionMarker)
+  const suffixPath = markerIndex >= 0 ? rawPath.slice(markerIndex + functionMarker.length) || '/' : rawPath
+  const stripVersion = (value: string) => value.replace(/^\/v1(?=\/|$)/, '').replace(/\/$/, '') || '/'
+  const pathCandidates = [...new Set([rawPath, suffixPath, stripVersion(rawPath), stripVersion(suffixPath)])]
+  const path = stripVersion(suffixPath)
+  const matchesPath = (expected: string) => pathCandidates.includes(expected)
+  const matchPath = (pattern: RegExp) => {
+    for (const candidate of pathCandidates) {
+      const match = candidate.match(pattern)
+      if (match) return match
+    }
+    return null
+  }
   // Supabase may expose the function path to the handler either with or
   // without the /functions/v1/<name> prefix. Match the public health route
   // against both normalized and raw paths so it never falls through to auth.
@@ -128,7 +142,7 @@ Deno.serve(async (request) => {
     return limitError ? null : data === true
   }
 
-  if (request.method === 'GET' && path === '/provider-status') {
+  if (request.method === 'GET' && matchesPath('/provider-status')) {
     const allowed = await consumeLimit('provider_status_minute', 60, 60)
     if (allowed === null) return error('service_unavailable', 'Rate limiter is unavailable.', 503, true, cors)
     if (!allowed) return error('rate_limited', 'Provider status request limit reached.', 429, true, cors)
@@ -139,7 +153,7 @@ Deno.serve(async (request) => {
     }
   }
 
-  if (request.method === 'GET' && path === '/memory-preferences') {
+  if (request.method === 'GET' && matchesPath('/memory-preferences')) {
     const allowed = await consumeLimit('memory_preference_read_minute', 60, 60)
     if (allowed === null) return error('service_unavailable', 'Rate limiter is unavailable.', 503, true, cors)
     if (!allowed) return error('rate_limited', 'Memory preference request limit reached.', 429, true, cors)
@@ -149,7 +163,7 @@ Deno.serve(async (request) => {
     return response({ version: VERSION, contextEnabled: data?.context_enabled === true }, 200, cors)
   }
 
-  if (request.method === 'PUT' && path === '/memory-preferences') {
+  if (request.method === 'PUT' && matchesPath('/memory-preferences')) {
     const allowed = await consumeLimit('memory_preference_write_hour', 30, 3600)
     if (allowed === null) return error('service_unavailable', 'Rate limiter is unavailable.', 503, true, cors)
     if (!allowed) return error('rate_limited', 'Memory preference update limit reached.', 429, true, cors)
@@ -168,7 +182,7 @@ Deno.serve(async (request) => {
 
   // Personal memory is written only through this explicit authenticated endpoint.
   // Chat turns never auto-populate this table; the caller must request a save.
-  if (request.method === 'GET' && path === '/memories') {
+  if (request.method === 'GET' && matchesPath('/memories')) {
     const allowed = await consumeLimit('memory_read_minute', 30, 60)
     if (allowed === null) return error('service_unavailable', 'Rate limiter is unavailable.', 503, true, cors)
     if (!allowed) return error('rate_limited', 'Memory read limit reached.', 429, true, cors)
@@ -188,7 +202,7 @@ Deno.serve(async (request) => {
     }, 200, cors)
   }
 
-  if (request.method === 'POST' && path === '/memories') {
+  if (request.method === 'POST' && matchesPath('/memories')) {
     const allowed = await consumeLimit('memory_write_hour', 30, 3600)
     if (allowed === null) return error('service_unavailable', 'Rate limiter is unavailable.', 503, true, cors)
     if (!allowed) return error('rate_limited', 'Memory write limit reached.', 429, true, cors)
@@ -222,7 +236,7 @@ Deno.serve(async (request) => {
     }, 201, cors)
   }
 
-  const memoryMatch = path.match(/^\/memories\/([0-9a-f-]+)$/i)
+  const memoryMatch = matchPath(/^\/memories\/([0-9a-f-]+)$/i)
   if (request.method === 'DELETE' && memoryMatch) {
     const allowed = await consumeLimit('memory_delete_hour', 30, 3600)
     if (allowed === null) return error('service_unavailable', 'Rate limiter is unavailable.', 503, true, cors)
@@ -236,7 +250,7 @@ Deno.serve(async (request) => {
     return response({ version: VERSION, deleted: true }, 200, cors)
   }
 
-  if (request.method === 'POST' && path === '/conversations') {
+  if (request.method === 'POST' && matchesPath('/conversations')) {
     const allowed = await consumeLimit('conversation_create_hour', 30, 3600)
     if (allowed === null) return error('service_unavailable', 'Rate limiter is unavailable.', 503, true, cors)
     if (!allowed) return error('rate_limited', 'Too many conversations created. Try again later.', 429, true, cors)
@@ -255,7 +269,7 @@ Deno.serve(async (request) => {
     }, 201, cors)
   }
 
-  if (request.method === 'GET' && path === '/conversations') {
+  if (request.method === 'GET' && matchesPath('/conversations')) {
     const allowed = await consumeLimit('conversation_list_minute', 60, 60)
     if (allowed === null) return error('service_unavailable', 'Rate limiter is unavailable.', 503, true, cors)
     if (!allowed) return error('rate_limited', 'Conversation list request limit reached.', 429, true, cors)
@@ -276,7 +290,7 @@ Deno.serve(async (request) => {
     }, 200, cors)
   }
 
-  const conversationMatch = path.match(/^\/conversations\/([0-9a-f-]+)$/i)
+  const conversationMatch = matchPath(/^\/conversations\/([0-9a-f-]+)$/i)
   if (request.method === 'DELETE' && conversationMatch) {
     const allowed = await consumeLimit('conversation_delete_hour', 20, 3600)
     if (allowed === null) return error('service_unavailable', 'Rate limiter is unavailable.', 503, true, cors)
@@ -326,7 +340,7 @@ Deno.serve(async (request) => {
     }, 200, cors)
   }
 
-  if (request.method === 'POST' && path === '/turns/cancel') {
+  if (request.method === 'POST' && matchesPath('/turns/cancel')) {
     const allowed = await consumeLimit('turn_cancel_minute', 30, 60)
     if (allowed === null) return error('service_unavailable', 'Rate limiter is unavailable.', 503, true, cors)
     if (!allowed) return error('rate_limited', 'Turn cancellation request limit reached.', 429, true, cors)
@@ -349,7 +363,7 @@ Deno.serve(async (request) => {
     return response({ version: VERSION, cancelled: Boolean(turn) }, 200, cors)
   }
 
-  if (request.method === 'POST' && path === '/turns') {
+  if (request.method === 'POST' && matchesPath('/turns')) {
     let body: unknown
     try { body = await readBoundedJson(request, MAX_TEXT + 1_024) }
     catch (cause) {
