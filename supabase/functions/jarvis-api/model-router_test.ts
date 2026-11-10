@@ -1,6 +1,8 @@
 import {
   assertConsistentProviderPrivacy,
   assertZdrProviderConfig,
+  classifyProviderFailure,
+  redactProviderDiagnostic,
   ProviderUnavailableError,
   providerRoutingOptions,
   toChatCompletionsUrl,
@@ -59,4 +61,34 @@ Deno.test('Gemini OpenAI-compatible endpoint appends chat completions without an
   const actual = toChatCompletionsUrl('https://generativelanguage.googleapis.com/v1beta/openai')
   const expected = 'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions'
   if (actual !== expected) throw new Error('unexpected Gemini endpoint: ' + actual)
+})
+
+Deno.test('provider errors distinguish missing model from quota exhaustion', () => {
+  const cases: Array<[number, string]> = [
+    [404, 'model_or_endpoint_not_found'],
+    [401, 'authentication_or_access'],
+    [403, 'authentication_or_access'],
+    [429, 'rate_limit_or_quota'],
+    [503, 'temporary_provider_failure'],
+    [400, 'provider_request_rejected'],
+  ]
+  for (const [status, expected] of cases) {
+    if (classifyProviderFailure(status) !== expected) {
+      throw new Error(`HTTP ${status} was not classified as ${expected}`)
+    }
+  }
+})
+
+Deno.test('provider diagnostics redact common API key and bearer token patterns', () => {
+  const input = 'key=AIza' + 'A'.repeat(30) + ' secret=sk-' + 'B'.repeat(24) + ' Authorization: Bearer private-token'
+  const result = redactProviderDiagnostic(input)
+  if (result.includes('AIza') || result.includes('sk-B') || result.includes('private-token')) {
+    throw new Error('provider diagnostic leaked a credential pattern')
+  }
+  if (!result.includes('[REDACTED_KEY]') || !result.includes('Bearer [REDACTED]')) {
+    throw new Error('provider diagnostic did not mark redacted credentials')
+  }
+  if (redactProviderDiagnostic('x'.repeat(1_300)).length !== 1_200) {
+    throw new Error('provider diagnostic exceeded its length bound')
+  }
 })
