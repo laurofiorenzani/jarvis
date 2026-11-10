@@ -21,6 +21,10 @@ The Windows PC is a development, administration, and optional local-tools enviro
 - **Windows local runtime:** Retained for development and explicitly local capabilities (for example, filesystem, desktop automation, or local MCP servers). These capabilities are optional extensions and must not be prerequisites for core chat, memory, or mobile use.
 - **Integrations:** Connect external services through server-side OAuth/token handling or approved secure connectors. Provider credentials and privileged MCP secrets must never be embedded in the iOS bundle or browser JavaScript.
 
+## 2.1 Unified assistant integrations
+
+BMW/My BMW, Blink, Dreame, and future services are capabilities invoked through JARVIS itself. They are not separate assistant apps or chat interfaces. JARVIS owns intent recognition, policy checks, server-side credentials, tool execution, and result reporting; vendor apps are only account/setup/fallback surfaces where unavoidable. See [Unified Assistant Integrations](../integrations/UNIFIED_ASSISTANT_INTEGRATIONS.md) for the canonical integration model and current BMW/Blink/Dreame feasibility constraints.
+
 ## 3. What is explicitly NOT the target
 
 - Do not design the iPhone app to depend on a Windows-hosted JARVIS session.
