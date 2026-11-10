@@ -55,6 +55,34 @@ function isRecord(value: unknown): value is Json {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
 
+async function readBoundedBytes(request: Request, maxBytes: number): Promise<Uint8Array> {
+  if (!request.body) throw new Error('missing_body')
+  const reader = request.body.getReader()
+  const chunks: Uint8Array[] = []
+  let size = 0
+  try {
+    while (true) {
+      const { value, done } = await reader.read()
+      if (done) break
+      size += value.byteLength
+      if (size > maxBytes) { await reader.cancel(); throw new Error('body_too_large') }
+      chunks.push(value)
+    }
+  } finally { reader.releaseLock() }
+  const bytes = new Uint8Array(size)
+  let offset = 0
+  for (const chunk of chunks) { bytes.set(chunk, offset); offset += chunk.byteLength }
+  return bytes
+}
+
+function encodeBase64(bytes: Uint8Array): string {
+  let binary = ''
+  for (let offset = 0; offset < bytes.length; offset += 0x8000) {
+    binary += String.fromCharCode(...bytes.subarray(offset, Math.min(offset + 0x8000, bytes.length)))
+  }
+  return btoa(binary)
+}
+
 async function readBoundedJson(request: Request, maxBytes: number): Promise<unknown> {
   if (!request.body) throw new Error('missing_body')
   const reader = request.body.getReader()
@@ -142,6 +170,47 @@ Deno.serve(async (request) => {
       p_user_id: userId, p_bucket: bucket, p_limit: limit, p_window_seconds: windowSeconds,
     })
     return limitError ? null : data === true
+  }
+
+  if (request.method === 'POST' && matchesPath('/stt')) {
+    const allowed = await consumeLimit('speech_transcription_minute', 30, 60)
+    if (allowed === null) return error('service_unavailable', 'Speech rate limiter is unavailable.', 503, true, cors)
+    if (!allowed) return error('rate_limited', 'Too many speech segments. Please pause briefly.', 429, true, cors)
+    const apiKey = Deno.env.get('GOOGLE_AI_STUDIO_API_KEY')?.trim()
+    if (!apiKey) return error('service_unavailable', 'Speech provider is not configured.', 503, false, cors)
+    const mimeType = (request.headers.get('content-type') || '').split(';')[0].trim().toLowerCase()
+    const allowedAudioTypes = new Set(['audio/webm', 'audio/mp4', 'audio/m4a', 'audio/aac', 'audio/ogg', 'audio/wav', 'audio/mpeg', 'audio/mp3', 'audio/flac'])
+    if (!allowedAudioTypes.has(mimeType)) return error('invalid_request', 'Unsupported audio format.', 415, false, cors)
+    let audio: Uint8Array
+    try { audio = await readBoundedBytes(request, 8 * 1024 * 1024) }
+    catch (cause) {
+      if (cause instanceof Error && cause.message === 'body_too_large') return error('invalid_request', 'Audio segment is too large.', 413, false, cors)
+      return error('invalid_request', 'Audio segment is missing.', 400, false, cors)
+    }
+    if (audio.byteLength < 1_200) return response({ version: VERSION, text: '' }, 200, cors)
+    const upstream = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-transcribe:generateContent', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
+      body: JSON.stringify({
+        contents: [{ role: 'user', parts: [
+          { text: 'Transcribe exactly what the speaker says. Automatically detect the spoken language. Preserve the original language and wording. The speaker may switch between Portuguese and English within the same conversation. Return only the transcript.' },
+          { inlineData: { mimeType, data: encodeBase64(audio) } },
+        ] }],
+        generationConfig: { temperature: 0 },
+      }),
+      signal: AbortSignal.timeout(30_000),
+    }).catch(() => null)
+    if (!upstream) return error('service_unavailable', 'Speech transcription service could not be reached.', 503, true, cors)
+    if (!upstream.ok) {
+      console.warn('[jarvis] speech transcription provider returned non-success status', { status: upstream.status })
+      return error('service_unavailable', 'Speech transcription failed. Please try again.', 503, true, cors)
+    }
+    const payload = await upstream.json().catch(() => null)
+    const transcript = payload && typeof payload === 'object'
+      ? (payload as { candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }> }).candidates?.[0]?.content?.parts?.map((part) => part.text || '').join('').trim()
+      : ''
+    if (typeof transcript !== 'string') return error('service_unavailable', 'Speech transcription returned no text.', 503, true, cors)
+    return response({ version: VERSION, text: transcript }, 200, cors)
   }
 
   if (request.method === 'GET' && matchesPath('/provider-status')) {
@@ -452,7 +521,7 @@ Deno.serve(async (request) => {
       const routed = await startFreeModelStream([
         {
           role: 'system',
-          content: "You are JARVIS, a precise and helpful personal assistant. By default, understand and respond in Brazilian Portuguese (pt-BR), including natural Brazilian wording. Preserve the user's language when they explicitly use another language or request a different language. Never claim to have performed an action unless a connected tool confirms it." + approvedMemoryContext,
+          content: "You are JARVIS, a precise and helpful personal assistant. Detect the language of each user message and reply in that same language. Support Portuguese and English and switch naturally whenever the user switches, including mid-conversation. Use natural Brazilian Portuguese when the user speaks Portuguese. Never force one language when the user is speaking another. Never claim to have performed an action unless a connected tool confirms it." + approvedMemoryContext,
         },
         ...(history ?? []).reverse().map((item) => ({
           role: item.role as 'user' | 'assistant',
