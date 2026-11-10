@@ -314,3 +314,31 @@ test('sign-in supersedes an in-flight session refresh before writing new credent
   assert.equal(values.get('jarvis.supabase.refresh-token'), 'refresh-new')
   assert.equal(await auth.getAccessToken(), 'access-new')
 })
+
+
+test('invite and recovery access tokens can set a new password without creating another account', async () => {
+  const calls: Array<{ url: string; method?: string; authorization?: string; body?: string }> = []
+  const auth = createSupabaseAuth({
+    url: 'https://example.supabase.co',
+    anonKey: 'sb_publishable_test',
+    storage: { get: async () => null, set: async () => {}, remove: async () => {} },
+    fetchImpl: async (input, init) => {
+      calls.push({
+        url: String(input),
+        method: init?.method,
+        authorization: new Headers(init?.headers).get('Authorization') ?? undefined,
+        body: typeof init?.body === 'string' ? init.body : undefined,
+      })
+      return response({ id: 'user-1', email: 'user@example.test' })
+    },
+  })
+
+  await auth.updatePasswordWithToken('one-time-invite-or-recovery-token', 'a-secure-password-12')
+  assert.equal(calls.length, 1)
+  assert.equal(calls[0]?.url, 'https://example.supabase.co/auth/v1/user')
+  assert.equal(calls[0]?.method, 'PUT')
+  assert.equal(calls[0]?.authorization, 'Bearer one-time-invite-or-recovery-token')
+  assert.deepEqual(JSON.parse(calls[0]?.body ?? '{}'), { password: 'a-secure-password-12' })
+  await assert.rejects(auth.updatePasswordWithToken('token', 'short'),
+    (error: unknown) => error instanceof CloudAuthError && error.status === 400)
+})
