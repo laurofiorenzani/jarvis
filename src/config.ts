@@ -211,16 +211,16 @@ export const MCP_SERVERS: McpServer[] = [
   {
     name: 'zapier',
     label: 'Zapier',
-    url: str(viteEnv.VITE_ZAPIER_MCP_URL) ?? '',
-    enabled: Boolean(str(viteEnv.VITE_ZAPIER_MCP_URL)),
+    url: str(BACKEND === 'direct' ? viteEnv.VITE_ZAPIER_MCP_URL : undefined) ?? '',
+    enabled: Boolean(str(BACKEND === 'direct' ? viteEnv.VITE_ZAPIER_MCP_URL : undefined)),
   },
 
   // Alternative/complementary gateway: ~3,000 apps, free for personal use.
   {
     name: 'pipedream',
     label: 'Pipedream',
-    url: str(viteEnv.VITE_PIPEDREAM_MCP_URL) ?? '',
-    enabled: Boolean(str(viteEnv.VITE_PIPEDREAM_MCP_URL)),
+    url: str(BACKEND === 'direct' ? viteEnv.VITE_PIPEDREAM_MCP_URL : undefined) ?? '',
+    enabled: Boolean(str(BACKEND === 'direct' ? viteEnv.VITE_PIPEDREAM_MCP_URL : undefined)),
   },
 
   // Official first-party servers. Each needs its own OAuth token pasted in.
@@ -228,36 +228,36 @@ export const MCP_SERVERS: McpServer[] = [
     name: 'notion',
     label: 'Notion',
     url: 'https://mcp.notion.com/mcp',
-    token: str(viteEnv.VITE_NOTION_TOKEN),
-    enabled: Boolean(str(viteEnv.VITE_NOTION_TOKEN)),
+    token: str(BACKEND === 'direct' ? viteEnv.VITE_NOTION_TOKEN : undefined),
+    enabled: Boolean(str(BACKEND === 'direct' ? viteEnv.VITE_NOTION_TOKEN : undefined)),
   },
   {
     name: 'linear',
     label: 'Linear',
     url: 'https://mcp.linear.app/mcp',
-    token: str(viteEnv.VITE_LINEAR_TOKEN),
-    enabled: Boolean(str(viteEnv.VITE_LINEAR_TOKEN)),
+    token: str(BACKEND === 'direct' ? viteEnv.VITE_LINEAR_TOKEN : undefined),
+    enabled: Boolean(str(BACKEND === 'direct' ? viteEnv.VITE_LINEAR_TOKEN : undefined)),
   },
   {
     name: 'github',
     label: 'GitHub',
     url: 'https://api.githubcopilot.com/mcp/',
-    token: str(viteEnv.VITE_GITHUB_TOKEN),
-    enabled: Boolean(str(viteEnv.VITE_GITHUB_TOKEN)),
+    token: str(BACKEND === 'direct' ? viteEnv.VITE_GITHUB_TOKEN : undefined),
+    enabled: Boolean(str(BACKEND === 'direct' ? viteEnv.VITE_GITHUB_TOKEN : undefined)),
   },
   {
     name: 'stripe',
     label: 'Stripe',
     url: 'https://mcp.stripe.com',
-    token: str(viteEnv.VITE_STRIPE_TOKEN),
-    enabled: Boolean(str(viteEnv.VITE_STRIPE_TOKEN)),
+    token: str(BACKEND === 'direct' ? viteEnv.VITE_STRIPE_TOKEN : undefined),
+    enabled: Boolean(str(BACKEND === 'direct' ? viteEnv.VITE_STRIPE_TOKEN : undefined)),
   },
   {
     name: 'sentry',
     label: 'Sentry',
     url: 'https://mcp.sentry.dev/mcp',
-    token: str(viteEnv.VITE_SENTRY_TOKEN),
-    enabled: Boolean(str(viteEnv.VITE_SENTRY_TOKEN)),
+    token: str(BACKEND === 'direct' ? viteEnv.VITE_SENTRY_TOKEN : undefined),
+    enabled: Boolean(str(BACKEND === 'direct' ? viteEnv.VITE_SENTRY_TOKEN : undefined)),
   },
   // Home Assistant is self-hosted, so this needs a publicly reachable URL
   // (Nabu Casa Cloud, or a Cloudflare tunnel). Worth the setup — "Jarvis, dim
@@ -268,11 +268,11 @@ export const MCP_SERVERS: McpServer[] = [
   {
     name: 'home',
     label: 'Home',
-    url: str(viteEnv.VITE_HOMEASSISTANT_MCP_URL) ?? '',
-    token: str(viteEnv.VITE_HOMEASSISTANT_TOKEN),
+    url: str(BACKEND === 'direct' ? viteEnv.VITE_HOMEASSISTANT_MCP_URL : undefined) ?? '',
+    token: str(BACKEND === 'direct' ? viteEnv.VITE_HOMEASSISTANT_TOKEN : undefined),
     enabled: Boolean(
-      str(viteEnv.VITE_HOMEASSISTANT_MCP_URL) &&
-        str(viteEnv.VITE_HOMEASSISTANT_TOKEN),
+      str(BACKEND === 'direct' ? viteEnv.VITE_HOMEASSISTANT_MCP_URL : undefined) &&
+        str(BACKEND === 'direct' ? viteEnv.VITE_HOMEASSISTANT_TOKEN : undefined),
     ),
   },
 ]
