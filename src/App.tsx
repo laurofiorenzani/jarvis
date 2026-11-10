@@ -33,6 +33,7 @@ import {
   decideMemoryConfirmation,
   connectedLabels,
   usingBridge,
+  usingDirect,
   type Msg,
 } from './lib/brain'
 import { startAnalyser, micLevel } from './lib/audio'
@@ -201,7 +202,7 @@ export default function App() {
 
       // The bridge keeps conversation state in its own session, so history is
       // only threaded through on the direct path.
-      if (!usingBridge) {
+      if (usingDirect) {
         history.current.push({ role: 'user', content: said })
         history.current.push({ role: 'assistant', content: text || '…' })
         if (history.current.length > 16) {
