@@ -118,6 +118,9 @@ Deno.serve(async (request) => {
   }
 
   if (request.method === 'GET' && path === '/provider-status') {
+    const allowed = await consumeLimit('provider_status_minute', 60, 60)
+    if (allowed === null) return error('service_unavailable', 'Rate limiter is unavailable.', 503, true, cors)
+    if (!allowed) return error('rate_limited', 'Provider status request limit reached.', 429, true, cors)
     try {
       return response({ version: VERSION, ...getFreeProviderStatus() }, 200, cors)
     } catch {
@@ -126,6 +129,9 @@ Deno.serve(async (request) => {
   }
 
   if (request.method === 'GET' && path === '/memory-preferences') {
+    const allowed = await consumeLimit('memory_preference_read_minute', 60, 60)
+    if (allowed === null) return error('service_unavailable', 'Rate limiter is unavailable.', 503, true, cors)
+    if (!allowed) return error('rate_limited', 'Memory preference request limit reached.', 429, true, cors)
     const { data, error: preferenceError } = await db.from('jarvis_memory_preferences')
       .select('context_enabled').eq('user_id', userId).maybeSingle()
     if (preferenceError) return error('service_unavailable', 'Memory preferences could not be loaded.', 503, true, cors)
@@ -133,6 +139,9 @@ Deno.serve(async (request) => {
   }
 
   if (request.method === 'PUT' && path === '/memory-preferences') {
+    const allowed = await consumeLimit('memory_preference_write_hour', 30, 3600)
+    if (allowed === null) return error('service_unavailable', 'Rate limiter is unavailable.', 503, true, cors)
+    if (!allowed) return error('rate_limited', 'Memory preference update limit reached.', 429, true, cors)
     let body: unknown
     try { body = await readBoundedJson(request, 1_024) }
     catch { return error('invalid_request', 'Request body must be valid JSON.', 400, false, cors) }
@@ -149,6 +158,9 @@ Deno.serve(async (request) => {
   // Personal memory is written only through this explicit authenticated endpoint.
   // Chat turns never auto-populate this table; the caller must request a save.
   if (request.method === 'GET' && path === '/memories') {
+    const allowed = await consumeLimit('memory_read_minute', 30, 60)
+    if (allowed === null) return error('service_unavailable', 'Rate limiter is unavailable.', 503, true, cors)
+    if (!allowed) return error('rate_limited', 'Memory read limit reached.', 429, true, cors)
     const { data, error: memoryError } = await db.from('jarvis_memories')
       .select('id,category,content,created_at,updated_at,expires_at')
       .eq('user_id', userId)
@@ -201,6 +213,9 @@ Deno.serve(async (request) => {
 
   const memoryMatch = path.match(/^\/memories\/([0-9a-f-]+)$/i)
   if (request.method === 'DELETE' && memoryMatch) {
+    const allowed = await consumeLimit('memory_delete_hour', 30, 3600)
+    if (allowed === null) return error('service_unavailable', 'Rate limiter is unavailable.', 503, true, cors)
+    if (!allowed) return error('rate_limited', 'Memory delete limit reached.', 429, true, cors)
     const memoryId = memoryMatch[1]
     if (!UUID.test(memoryId)) return error('invalid_request', 'Invalid memory ID.', 400, false, cors)
     const { data: deleted, error: deleteError } = await db.from('jarvis_memories')
@@ -230,6 +245,9 @@ Deno.serve(async (request) => {
   }
 
   if (request.method === 'GET' && path === '/conversations') {
+    const allowed = await consumeLimit('conversation_list_minute', 60, 60)
+    if (allowed === null) return error('service_unavailable', 'Rate limiter is unavailable.', 503, true, cors)
+    if (!allowed) return error('rate_limited', 'Conversation list request limit reached.', 429, true, cors)
     const { data, error: dbError } = await db
       .from('jarvis_conversations')
       .select('id,title,created_at,updated_at')
@@ -249,6 +267,9 @@ Deno.serve(async (request) => {
 
   const conversationMatch = path.match(/^\/conversations\/([0-9a-f-]+)$/i)
   if (request.method === 'DELETE' && conversationMatch) {
+    const allowed = await consumeLimit('conversation_delete_hour', 20, 3600)
+    if (allowed === null) return error('service_unavailable', 'Rate limiter is unavailable.', 503, true, cors)
+    if (!allowed) return error('rate_limited', 'Conversation delete limit reached.', 429, true, cors)
     const conversationId = conversationMatch[1]
     if (!UUID.test(conversationId)) return error('invalid_request', 'Invalid conversation ID.', 400, false, cors)
     const { data: deleted, error: deleteError } = await db.from('jarvis_conversations')
@@ -259,6 +280,9 @@ Deno.serve(async (request) => {
   }
 
   if (request.method === 'GET' && conversationMatch) {
+    const allowed = await consumeLimit('conversation_read_minute', 60, 60)
+    if (allowed === null) return error('service_unavailable', 'Rate limiter is unavailable.', 503, true, cors)
+    if (!allowed) return error('rate_limited', 'Conversation read limit reached.', 429, true, cors)
     const conversationId = conversationMatch[1]
     if (!UUID.test(conversationId)) return error('invalid_request', 'Invalid conversation ID.', 400, false, cors)
     const { data: conversation, error: conversationError } = await db
@@ -292,6 +316,9 @@ Deno.serve(async (request) => {
   }
 
   if (request.method === 'POST' && path === '/turns/cancel') {
+    const allowed = await consumeLimit('turn_cancel_minute', 30, 60)
+    if (allowed === null) return error('service_unavailable', 'Rate limiter is unavailable.', 503, true, cors)
+    if (!allowed) return error('rate_limited', 'Turn cancellation request limit reached.', 429, true, cors)
     let body: unknown
     try { body = await readBoundedJson(request, 1_024) }
     catch (cause) {
