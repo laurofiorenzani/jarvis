@@ -36,6 +36,7 @@ import {
   decideTool as decidePolicy,
   fetchTargetProblem,
   fileRoots,
+  allowedMcpServers,
 } from './policy.mjs'
 
 const PORT = Number(process.env.JARVIS_BRIDGE_PORT ?? 8787)
@@ -242,18 +243,7 @@ function configuredServers() {
  * over, comma separated; unset keeps the old behaviour of passing everything
  * configured, and an empty value passes none.
  */
-function allowedServers(all, list) {
-  if (list === undefined) return all
-  const wanted = new Set(
-    list
-      .split(',')
-      .map((s) => s.trim())
-      .filter(Boolean),
-  )
-  return Object.fromEntries(Object.entries(all).filter(([name]) => wanted.has(name)))
-}
-
-const MCP_SERVERS = allowedServers(configuredServers(), process.env.JARVIS_MCP_SERVERS)
+const MCP_SERVERS = allowedMcpServers(configuredServers(), process.env.JARVIS_MCP_SERVERS)
 
 /**
  * Account connectors — the mail, drive, calendar and other integrations
