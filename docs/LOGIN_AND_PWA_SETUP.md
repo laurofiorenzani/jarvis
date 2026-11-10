@@ -12,15 +12,20 @@ been pre-created.
 
 ## Supabase Auth configuration
 
-In Supabase Dashboard, open **Authentication → URL Configuration** for the
-Jarvis project and set:
+In Supabase Dashboard:
 
-- **Site URL:** `https://jarvis-lauro-fiorenzani.vercel.app`
-- **Redirect URLs:** add `https://jarvis-lauro-fiorenzani.vercel.app/**`
+1. Open **Authentication → Providers → Email** and ensure email/password
+   sign-up is enabled.
+2. Open **Authentication → URL Configuration** and set:
+   - **Site URL:** `https://jarvis-lauro-fiorenzani.vercel.app`
+   - **Redirect URLs:** add `https://jarvis-lauro-fiorenzani.vercel.app/**`
 
 Keep email confirmation enabled unless the owner deliberately changes the
 account-recovery policy. The app requests a redirect back to the current
-production origin after email confirmation.
+production origin after email confirmation. After both accounts have been
+created and tested, disable public new-user sign-up in Supabase Auth settings
+to prevent arbitrary additional registrations; existing sign-ins continue to
+work.
 
 ## Create the two separate accounts
 
