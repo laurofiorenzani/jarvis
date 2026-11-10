@@ -601,7 +601,7 @@ const withinRoots = (real) =>
       canonicalReal = canonicalReal.replace(/^\\\\\\?\\/, '').toLowerCase()
     }
     const rel = relative(canonicalRoot, canonicalReal)
-    const parentPrefix = process.platform === 'win32' ? '..\\\\' : '../'
+    const parentPrefix = process.platform === 'win32' ? '..\\' : '../'
     return rel !== '' && rel !== '..' && !rel.startsWith(parentPrefix) && !isAbsolute(rel)
   })
 
