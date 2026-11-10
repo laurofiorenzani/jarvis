@@ -172,14 +172,22 @@ Example privacy-first OpenRouter configuration:
 ```
 
 When `privacyMode` is `"zdr"`, JARVIS sends OpenRouter's
-`provider: { "zdr": true }` request option. OpenRouter must route only to an
-endpoint classified as Zero Data Retention; if no eligible free endpoint is
-available, the request fails rather than falling back to a retaining endpoint.
+`provider: { "zdr": true, "data_collection": "deny" }` request options. The
+router accepts this mode only for the official `openrouter.ai` host and only
+when a server-side API key is configured. OpenRouter documents that request-
+level `zdr: true` can still admit its separate Safety Retention tier unless
+the account or a guardrail is configured for ZDR-only routing. Before sending
+personal conversations, set the OpenRouter account privacy setting to ZDR-only
+and exclude Safety Retention; otherwise do not claim strict zero retention.
+If no eligible free endpoint is available, the request fails rather than
+falling back to a retaining endpoint.
 OpenRouter's Free plan currently offers free models with a 50-request/day cap
 (20/minute); model availability and quota can change. OpenRouter states that
 it does not train on customer data, and ZDR routing is available on every plan.
 This does not provide EU-only processing: the Free plan has no EU in-region
-routing guarantee. Do not use it for data that must remain in the EU.
+routing guarantee. Do not use it for data that must remain in the EU. See the
+[official ZDR guide](https://openrouter.ai/docs/guides/features/zdr) and
+[provider-routing reference](https://openrouter.ai/docs/guides/routing/provider-selection).
 
 References: [OpenRouter free models](https://openrouter.ai/collections/free-models),
 [OpenRouter pricing and privacy](https://openrouter.ai/pricing),
