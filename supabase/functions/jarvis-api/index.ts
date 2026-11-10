@@ -463,6 +463,26 @@ Deno.serve(async (request) => {
             return
           }
           buffer += decoder.decode()
+          // Preserve the final normalized SSE frame if the provider closes
+          // without the customary blank-line terminator.
+          if (buffer.trim()) {
+            const dataLine = buffer.split(/\r?\n/).find((line) => line.startsWith('data:'))
+            if (dataLine) {
+              const raw = dataLine.slice(5).trim()
+              if (raw && raw !== '[DONE]') {
+                let finalEvent: unknown
+                try { finalEvent = JSON.parse(raw) } catch { throw new Error('upstream_stream_malformed') }
+                if (isRecord(finalEvent)) {
+                  if (finalEvent.type === 'error') throw new Error('upstream_model_error')
+                  if (finalEvent.type === 'content_block_delta' && isRecord(finalEvent.delta) &&
+                      finalEvent.delta.type === 'text_delta' && typeof finalEvent.delta.text === 'string') {
+                    answer += finalEvent.delta.text
+                    emit({ version: VERSION, type: 'text.delta', conversationId, turnId, delta: finalEvent.delta.text })
+                  }
+                }
+              }
+            }
+          }
           if (!answer.trim()) throw new Error('empty_model_response')
           const { data: assistantMessage, error: saveError } = await db.from('jarvis_messages')
             .insert({ conversation_id: conversationId, user_id: userId, role: 'assistant', content: answer })
