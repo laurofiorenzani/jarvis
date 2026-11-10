@@ -273,7 +273,10 @@ Deno.serve(async (request) => {
       .select('id,role,content,created_at')
       .eq('conversation_id', conversationId)
       .eq('user_id', userId)
-      .order('created_at', { ascending: true })
+      // Fetch the newest page, then restore chronological order for the client.
+      // Ascending + limit would silently return the oldest 500 messages forever.
+      .order('created_at', { ascending: false })
+      .order('id', { ascending: false })
       .limit(500)
     if (messagesError) return error('service_unavailable', 'Messages could not be loaded.', 503, true, cors)
     return response({
@@ -282,7 +285,7 @@ Deno.serve(async (request) => {
         id: conversation.id, title: conversation.title,
         createdAt: conversation.created_at, updatedAt: conversation.updated_at,
       },
-      messages: (messages ?? []).map((item) => ({
+      messages: (messages ?? []).reverse().map((item) => ({
         id: item.id, role: item.role, content: item.content, createdAt: item.created_at,
       })),
     }, 200, cors)
