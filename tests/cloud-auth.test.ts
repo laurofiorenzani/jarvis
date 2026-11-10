@@ -151,7 +151,6 @@ test('auth rejects malformed token expiry and identity payloads', async () => {
 
 test('sign-out invalidates a refresh already in flight and prevents session resurrection', async () => {
   const values = new Map([['jarvis.supabase.refresh-token', 'refresh-before-signout']])
-  let releaseRefresh!: (value: Response) => void
   let refreshStarted!: () => void
   const started = new Promise<void>((resolve) => { refreshStarted = resolve })
   const auth = createSupabaseAuth({
@@ -163,16 +162,17 @@ test('sign-out invalidates a refresh already in flight and prevents session resu
       remove: async (key) => { values.delete(key) },
     },
     now: () => 1_800_000_000_000,
-    fetchImpl: async () => {
+    fetchImpl: async (_input, init) => {
       refreshStarted()
-      return await new Promise<Response>((resolve) => { releaseRefresh = resolve })
+      return await new Promise<Response>((_resolve, reject) => {
+        init?.signal?.addEventListener('abort', () => reject(new DOMException('Refresh aborted', 'AbortError')), { once: true })
+      })
     },
   })
 
   const pendingRestore = auth.restoreSession()
   await started
   await auth.signOut()
-  releaseRefresh(response(session('late-access', 'late-refresh')))
   assert.equal(await pendingRestore, null)
   assert.equal(values.has('jarvis.supabase.refresh-token'), false)
   assert.equal(await auth.getAccessToken(), null)
