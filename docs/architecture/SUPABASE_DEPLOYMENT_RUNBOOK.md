@@ -125,12 +125,12 @@ template (Confirm signup, Invite user, and Reset password) to point to the
 interstitial while retaining Supabase's generated confirmation URL:
 
 ```html
-<a href="{{ .SiteURL }}/auth/email-link?confirmation={{ .ConfirmationURL | urlquery }}">
+<a href="{{ .SiteURL }}/auth/email-link#confirmation={{ .ConfirmationURL | urlquery }}">
   Continue to JARVIS
 </a>
 ```
 
-Keep `{{ .ConfirmationURL }}` as the source of the one-time URL. Do not
+Keep `{{ .ConfirmationURL }}` as the source of the one-time URL. It is carried in the URL fragment, so the browser does not send the token to Vercel in the HTTP request. Do not
 manually construct the `/auth/v1/verify` URL or expose a token in any other
 place. Set the Auth Site URL to
 `https://jarvis-lauro-fiorenzani.vercel.app` and ensure that exact origin is
