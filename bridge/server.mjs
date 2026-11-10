@@ -591,8 +591,12 @@ const withinRoots = (real) =>
     let canonicalRoot = root
     let canonicalReal = real
     try {
-      canonicalRoot = realpathSync(root)
-      canonicalReal = realpathSync(real)
+      // Native Windows realpath resolves 8.3 aliases (for example
+      // RUNNER~1) to the same long path used for the file itself. The JS
+      // fallback can preserve the alias on the directory and reject a valid
+      // child even though both paths point to the same location.
+      canonicalRoot = realpathSync.native(root)
+      canonicalReal = realpathSync.native(real)
     } catch {
       return false
     }
