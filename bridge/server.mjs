@@ -535,6 +535,33 @@ function elevenKey() {
 
 const VOICE_ID = process.env.JARVIS_VOICE_ID ?? 'JBFqnCBsd6RMkjVDRZzb'
 
+// Local, per-process quotas protect the user's paid speech API account from a
+// runaway tab or accidental request loop. This is deliberately independent of
+// Origin validation: an allowed app origin can still issue too many requests.
+const SPEECH_LIMITS = Object.freeze({
+  '/tts': { requests: 30, windowMs: 60_000 },
+  '/stt': { requests: 12, windowMs: 60_000 },
+})
+const speechUsage = new Map()
+
+function consumeSpeechQuota(route, now = Date.now()) {
+  const limit = SPEECH_LIMITS[route]
+  if (!limit) return { allowed: false, retryAfter: 60 }
+  const current = speechUsage.get(route)
+  const window = !current || now - current.startedAt >= limit.windowMs
+    ? { startedAt: now, count: 0 }
+    : current
+  if (window.count >= limit.requests) {
+    return {
+      allowed: false,
+      retryAfter: Math.max(1, Math.ceil((limit.windowMs - (now - window.startedAt)) / 1000)),
+    }
+  }
+  window.count += 1
+  speechUsage.set(route, window)
+  return { allowed: true, retryAfter: 0 }
+}
+
 /**
  * Where /file is permitted to read from, and how big a read may get.
  *
@@ -752,6 +779,14 @@ const handleRequest = async (req, res) => {
     return res.end('forbidden')
   }
   const cors = corsFor(req)
+
+  if (req.method === 'POST' && (req.url === '/tts' || req.url === '/stt')) {
+    const quota = consumeSpeechQuota(req.url)
+    if (!quota.allowed) {
+      res.writeHead(429, { ...cors, 'retry-after': String(quota.retryAfter) })
+      return res.end('speech request limit exceeded')
+    }
+  }
 
   if (req.method === 'OPTIONS') {
     res.writeHead(204, cors)
