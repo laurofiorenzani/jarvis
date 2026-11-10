@@ -2,7 +2,7 @@
 
 ## Product requirement
 
-The iPhone deliverable is a standalone, installable iOS application with a JARVIS home-screen icon, native app lifecycle, secure device credentials, and direct cloud connectivity. A Safari bookmark, PWA, or page that the user must open in a browser is not the final product.
+The preferred iPhone deliverable is a standalone, installable iOS application with a JARVIS home-screen icon, native app lifecycle, secure device credentials, and direct cloud connectivity. However, a responsive cloud-hosted web app/PWA is an approved and release-capable fallback if native iOS delivery is blocked, delayed, or impractical. The web app must be installable where supported, work in Safari on both iPhones and in desktop browsers, and use the same cloud backend with strict per-user data isolation. Native packaging must never block delivery of a working Jarvis.
 
 The CarPlay experience is a separate, minimal native companion interface. It is not the full holographic iPhone HUD mirrored onto the vehicle display.
 
@@ -31,17 +31,18 @@ Apple's CarPlay framework is limited to supported app categories and approved te
 
 ## Delivery phases
 
-1. **Cloud core gate:** one authenticated, synthetic end-to-end chat succeeds using a server-side provider; user data isolation and rate limits are verified.
-2. **Capacitor foundation:** add Capacitor 8 core/CLI/iOS, config, generated native iOS project, app identifiers, icons/splash, build/sync scripts and a macOS simulator build.
-3. **Native iPhone adapters:** Keychain, push-to-talk audio capture/playback, audio session handling, lifecycle/reconnect, deep links, safe areas, permissions and privacy manifest.
-4. **Physical-device validation:** install on an iPhone, test login/logout, token expiry/revocation, voice, Bluetooth, interruptions, background/foreground, poor network and Windows-off operation.
-5. **CarPlay entitlement and companion:** create a native CarPlay scene/template flow only after Apple confirms eligibility; test with CarPlay simulator and the BMW iX1.
-6. **Release:** signing, TestFlight, privacy disclosures, App Store review and staged rollout.
+1. **Web release gate:** responsive web app works on desktop and both iPhones, with authenticated synthetic end-to-end chat, voice fallback, user data isolation, and rate limits verified.
+2. **Cloud core gate:** one authenticated, synthetic end-to-end chat succeeds using a server-side provider; user data isolation and rate limits are verified.
+3. **Capacitor foundation:** add Capacitor 8 core/CLI/iOS, config, generated native iOS project, app identifiers, icons/splash, build/sync scripts and a macOS simulator build.
+4. **Native iPhone adapters:** Keychain, push-to-talk audio capture/playback, audio session handling, lifecycle/reconnect, deep links, safe areas, permissions and privacy manifest.
+5. **Physical-device validation:** install on an iPhone, test login/logout, token expiry/revocation, voice, Bluetooth, interruptions, background/foreground, poor network and Windows-off operation.
+6. **CarPlay entitlement and companion:** create a native CarPlay scene/template flow only after Apple confirms eligibility; test with CarPlay simulator and the BMW iX1.
+7. **Release:** signing, TestFlight, privacy disclosures, App Store review and staged rollout.
 
 ## Current status and limitations
 
 - Cloud API and cloud client adapters exist; authenticated live inference is not yet verified.
-- The web HUD is cloud-default but is not itself the final iPhone deliverable.
+- The responsive web HUD is the guaranteed cross-device delivery path and may be the first production release. Native iOS is an enhancement, not a prerequisite.
 - No Capacitor dependency, Capacitor config, native iOS project, Keychain adapter, native voice adapter, signed IPA, or TestFlight build exists yet.
 - No CarPlay entitlement has been requested or granted, and no CarPlay implementation exists.
 - The current development environment can edit repository files through GitHub but does not provide macOS/Xcode. Do not claim an iOS project was built or a native app tested until a macOS/Xcode build and physical-device test are recorded.
