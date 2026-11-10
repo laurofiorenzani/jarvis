@@ -555,24 +555,16 @@ const IMAGE_TYPES = {
 
 const MAX_FILE_BYTES = 25 * 1024 * 1024
 
-const FILE_ROOTS = [
-  homedir(),
-  WORKSPACE,
-  // Both temp directories, because on macOS os.tmpdir() is the per-user
-  // $TMPDIR under /var/folders while half the tools that take a screenshot
-  // still write it to /tmp. Dropping one of them loses real panels.
-  tmpdir(),
-  '/tmp',
-  ...(process.env.JARVIS_FILE_ROOTS ?? '')
+// Keep the image endpoint narrower than the general file tools: screenshots
+// may live in the Jarvis workspace or temp directories, but the user's entire
+// home directory is not a media folder. Additional locations require an
+// explicit JARVIS_FILE_ROOTS opt-in.
+const FILE_ROOTS = fileRoots({
+  workspace: WORKSPACE,
+  extra: (process.env.JARVIS_FILE_ROOTS ?? '')
     .split(',')
-    .map((s) => s.trim())
+    .map((root) => root.trim())
     .filter(Boolean),
-].map((root) => {
-  try {
-    return realpathSync(root)
-  } catch {
-    return resolvePath(root)
-  }
 })
 
 /** True when `real` sits inside one of the roots, after both are resolved. */
