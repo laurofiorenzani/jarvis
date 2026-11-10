@@ -147,3 +147,33 @@ test('auth rejects malformed token expiry and identity payloads', async () => {
       (error: unknown) => error instanceof CloudAuthError && error.status === 502)
   }
 })
+
+
+test('sign-out invalidates a refresh already in flight and prevents session resurrection', async () => {
+  const values = new Map([['jarvis.supabase.refresh-token', 'refresh-before-signout']])
+  let releaseRefresh!: (value: Response) => void
+  let refreshStarted!: () => void
+  const started = new Promise<void>((resolve) => { refreshStarted = resolve })
+  const auth = createSupabaseAuth({
+    url: 'https://example.supabase.co',
+    anonKey: 'sb_publishable_test',
+    storage: {
+      get: async (key) => values.get(key) ?? null,
+      set: async (key, value) => { values.set(key, value) },
+      remove: async (key) => { values.delete(key) },
+    },
+    now: () => 1_800_000_000_000,
+    fetchImpl: async () => {
+      refreshStarted()
+      return await new Promise<Response>((resolve) => { releaseRefresh = resolve })
+    },
+  })
+
+  const pendingRestore = auth.restoreSession()
+  await started
+  await auth.signOut()
+  releaseRefresh(response(session('late-access', 'late-refresh')))
+  assert.equal(await pendingRestore, null)
+  assert.equal(values.has('jarvis.supabase.refresh-token'), false)
+  assert.equal(await auth.getAccessToken(), null)
+})
