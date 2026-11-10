@@ -136,6 +136,26 @@ export function createCloudApiClient(options: CloudApiOptions) {
   }
 
   return {
+    transcribeAudio: async (audio: Blob): Promise<string> => {
+      if (!(audio instanceof Blob) || audio.size < 1 || audio.size > 8 * 1024 * 1024) throw new CloudApiError('Audio segment is empty or too large.', 413, 'invalid_request')
+      const token = await options.getAccessToken()
+      if (!token?.trim()) throw new CloudApiError('Sign-in is required.', 401, 'unauthenticated')
+      let response: Response
+      try {
+        response = await fetcher(`${baseUrl}/v1/stt`, {
+          method: 'POST',
+          headers: { apikey: options.publishableKey, Authorization: `Bearer ${token}`, 'Content-Type': audio.type || 'audio/mp4', 'X-Jarvis-Api-Version': String(CLOUD_API_VERSION) },
+          body: audio, credentials: 'omit', redirect: 'error',
+        })
+      } catch { throw new CloudApiError('Speech service could not be reached.', 0, 'network_error', undefined, true) }
+      const payload: unknown = await response.json().catch(() => null)
+      if (!response.ok) {
+        const body = payload as ApiError | null
+        throw new CloudApiError(body?.error?.message || 'Speech transcription failed.', response.status, body?.error?.code || 'service_unavailable', body?.error?.requestId, true)
+      }
+      if (!payload || typeof payload !== 'object' || typeof (payload as { text?: unknown }).text !== 'string') throw new CloudApiError('Speech service returned an invalid transcript.', response.status, 'invalid_response')
+      return (payload as { text: string }).text.trim()
+    },
     health: async () => {
       const result = await request<CloudHealth>('/v1/health', {}, false)
       if (result.version !== CLOUD_API_VERSION || !['ok', 'degraded'].includes(result.status)) {
