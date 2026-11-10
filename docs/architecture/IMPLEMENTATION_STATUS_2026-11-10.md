@@ -108,3 +108,31 @@ This checkpoint does not change the release gates above: current-head CI, authen
 ### Critical user-owned dependency
 
 Cloud inference is blocked until the owner configures the two Supabase Edge Function secrets above and confirms the Google AI Studio project's free-tier/data-use settings. No secrets were read, changed, or exposed by this checkpoint.
+
+
+## Correction — existing Google provider configuration recovered from prior session and Supabase logs
+
+The earlier statement that cloud inference is blocked because the owner has not configured `GOOGLE_AI_STUDIO_API_KEY` and `JARVIS_MODEL_PROVIDERS` was incorrect. Prior session history records that both secrets were already added to Supabase Edge Function secrets, and the authenticated provider-status endpoint returned HTTP 200 with the provider declared. Do not ask the owner to recreate those secrets or repeat setup unless a later check proves they were removed.
+
+### Actual observed failure
+
+- Supabase Edge Function logs for version 27 show authenticated `POST /v1/turns` returning HTTP 503.
+- The corresponding model-router log explicitly says provider `Google Gemini` returned HTTP **404**, followed by `All configured free model providers failed or exhausted their quota.` This is not evidence of quota exhaustion. The generic terminal message conflates upstream 404 with quota/rate-limit failures.
+- Version 28 logs show the authenticated `GET /v1/provider-status` route returned HTTP 200 (114-byte JSON response), consistent with the provider being configured. Version 29 is now active.
+- The next diagnostic is to distinguish a wrong Gemini model identifier from a wrong OpenAI-compatible endpoint path. The configured secret values cannot be read back through the available Supabase tools; do not guess or overwrite them. Add safe upstream error classification/diagnostics in the router, preserving redaction, and validate the model and URL against Google's current official API documentation before changing the secret.
+
+### FreeLLMAPI capabilities to port (not to deploy as-is)
+
+The recovered FreeLLMAPI README describes an MIT-licensed, self-hosted, single-user gateway with multiple provider adapters, model catalogue, smart ranking, per-key RPM/RPD/TPM/TPD quota tracking, cooldowns, up to 20 fallback attempts, sticky sessions, streaming, tool-call rescue, and optional fusion. Its architecture documentation explicitly says there is no multi-tenant auth and warns against exposing the service publicly. The Jarvis cloud should port the useful routing ideas and provider adapters into its authenticated server-side architecture, not expose the local FreeLLMAPI dashboard or unified key to two users.
+
+The FreeLLMAPI instance previously showed Google AI Studio as the only configured provider, with seven Gemini/Gemma models selected and an aggregate catalogue budget figure. That figure is a catalogue estimate, not guaranteed usable quota, and seven models behind one Google key do not create seven independent Google free-tier allowances. Other providers need their own API keys and terms review; the local encrypted FreeLLMAPI database cannot be copied from a README or inferred from the unified key.
+
+### Updated next steps
+
+1. Correctly diagnose and fix the Google Gemini 404 before asking for any configuration action.
+2. Port multi-provider fallback, per-model/per-key cooldowns and quota-aware routing into Jarvis, with state isolated by provider key and shared safely across both authorised user accounts.
+3. Add independent provider keys only when they are already present in the operator's approved FreeLLMAPI configuration or the owner explicitly authorises adding them; never assume one Google key unlocks all 34 providers.
+4. Preserve free-only routing and reject paid endpoints/billing modes. Do not use the FreeLLMAPI single-user HTTP service as a public two-user backend.
+5. Validate with synthetic, low-token turns and report the actual upstream model/provider and fallback trail.
+
+No secret values were read, changed, copied, or exposed in this investigation.
