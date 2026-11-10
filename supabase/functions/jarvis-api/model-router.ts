@@ -63,6 +63,10 @@ function configuredProviders(): Provider[] {
     const apiKeyEnv = typeof item.apiKeyEnv === 'string' ? item.apiKeyEnv : undefined
     const apiKey = apiKeyEnv ? Deno.env.get(apiKeyEnv)?.trim() : undefined
     if (apiKeyEnv && !apiKey) continue
+    // A ZDR assertion is meaningful only for OpenRouter's documented routing
+    // control, and it must use an authenticated server-side key.
+    if (item.privacyMode === 'zdr' &&
+        (url.hostname !== 'openrouter.ai' || !apiKeyEnv || !apiKey)) continue
     providers.push({
       name: item.name.trim().slice(0, 60),
       baseUrl: url.toString().replace(/\/$/, ''),
@@ -91,7 +95,9 @@ export function getFreeProviderStatus(): {
 
 /** Request-level privacy controls for OpenRouter-compatible endpoints. */
 export function providerRoutingOptions(privacyMode?: 'zdr'): Record<string, unknown> {
-  return privacyMode === 'zdr' ? { provider: { zdr: true } } : {}
+  return privacyMode === 'zdr'
+    ? { provider: { zdr: true, data_collection: 'deny' } }
+    : {}
 }
 
 function retryableStatus(status: number): boolean {
