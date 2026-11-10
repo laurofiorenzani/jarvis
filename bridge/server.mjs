@@ -26,7 +26,7 @@ import { visionServer } from './vision.mjs'
 import { homedir, tmpdir } from 'node:os'
 import { mkdirSync, readFileSync, realpathSync } from 'node:fs'
 import { readFile, realpath, stat } from 'node:fs/promises'
-import { isAbsolute, join, relative, resolve as resolvePath } from 'node:path'
+import { isAbsolute, join, relative, resolve as resolvePath, win32 } from 'node:path'
 import { openRemote, proxyError, vetTarget, PROXY_UA } from './net.mjs'
 import { probeUrl, renderPage } from './page.mjs'
 import {
@@ -597,12 +597,24 @@ const withinRoots = (real) =>
       return false
     }
     if (process.platform === 'win32') {
-      canonicalRoot = canonicalRoot.replace(/^\\\\\?\\/, '').toLowerCase()
-      canonicalReal = canonicalReal.replace(/^\\\\\?\\/, '').toLowerCase()
+      // realpathSync may return the Win32 extended-length form (\\\\?\\C:\\...),
+      // while another path to the same file may be returned without that prefix.
+      // Strip the prefix by literal comparison, then use win32 path semantics
+      // and case-insensitive comparison for the containment check.
+      const extendedPrefix = '\\\\?\\'
+      const normalizeWindowsPath = (value) => {
+        const withoutPrefix = value.startsWith(extendedPrefix)
+          ? value.slice(extendedPrefix.length)
+          : value
+        return win32.normalize(withoutPrefix).toLowerCase()
+      }
+      canonicalRoot = normalizeWindowsPath(canonicalRoot)
+      canonicalReal = normalizeWindowsPath(canonicalReal)
+      const rel = win32.relative(canonicalRoot, canonicalReal)
+      return rel !== '' && rel !== '..' && !rel.startsWith('..\\') && !win32.isAbsolute(rel)
     }
     const rel = relative(canonicalRoot, canonicalReal)
-    const parentPrefix = process.platform === 'win32' ? '..\\' : '../'
-    return rel !== '' && rel !== '..' && !rel.startsWith(parentPrefix) && !isAbsolute(rel)
+    return rel !== '' && rel !== '..' && !rel.startsWith('../') && !isAbsolute(rel)
   })
 
 // ---------------------------------------------------------------------------
