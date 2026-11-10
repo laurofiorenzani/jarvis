@@ -129,6 +129,23 @@ function retryableStatus(status: number): boolean {
     status === 429 || status >= 500
 }
 
+/** Classify upstream failures without conflating missing models with exhausted quota. */
+export function classifyProviderFailure(status: number): string {
+  if (status === 404) return 'model_or_endpoint_not_found'
+  if (status === 401 || status === 403) return 'authentication_or_access'
+  if (status === 429) return 'rate_limit_or_quota'
+  if (status === 408 || status === 409 || status === 425 || status >= 500) return 'temporary_provider_failure'
+  return 'provider_request_rejected'
+}
+
+/** Redact common credential formats before writing bounded provider error details to logs. */
+export function redactProviderDiagnostic(value: string): string {
+  return value.slice(0, 1_200)
+    .replace(/AIza[0-9A-Za-z_-]{20,}/g, '[REDACTED_KEY]')
+    .replace(/sk-[0-9A-Za-z_-]{16,}/g, '[REDACTED_KEY]')
+    .replace(/Bearer\s+[^\s"']+/gi, 'Bearer [REDACTED]')
+}
+
 export function toChatCompletionsUrl(baseUrl: string): string {
   // Google Gemini's OpenAI-compatible endpoint is rooted at /v1beta/openai,
   // not /v1. Appending /v1/chat/completions creates a 404.
@@ -194,10 +211,7 @@ export async function startFreeModelStream(
       let upstreamDetail = ''
       try {
         const rawDetail = await upstream.text()
-        upstreamDetail = rawDetail.slice(0, 1_200)
-          .replace(/AIza[0-9A-Za-z_-]{20,}/g, '[REDACTED_KEY]')
-          .replace(/sk-[0-9A-Za-z_-]{16,}/g, '[REDACTED_KEY]')
-          .replace(/Bearer\s+[^\s"']+/gi, 'Bearer [REDACTED]')
+        upstreamDetail = redactProviderDiagnostic(rawDetail)
       } catch { /* diagnostic body is optional */ }
       lastFailure = new Error('Provider returned HTTP ' + upstream.status)
       console.warn('[jarvis] model provider returned non-success status', {
@@ -205,10 +219,7 @@ export async function startFreeModelStream(
         model: provider.model,
         status: upstream.status,
         detail: upstreamDetail,
-        classification: upstream.status === 404 ? 'model_or_endpoint_not_found'
-          : upstream.status === 401 || upstream.status === 403 ? 'authentication_or_access'
-          : upstream.status === 429 ? 'rate_limit_or_quota'
-          : upstream.status >= 500 ? 'provider_server_error' : 'provider_request_rejected',
+        classification: classifyProviderFailure(upstream.status),
       })
       if (retryableStatus(upstream.status)) continue
       // Configuration/auth errors are isolated to this provider; try the next
