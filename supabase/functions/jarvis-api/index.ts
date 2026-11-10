@@ -458,7 +458,10 @@ Deno.serve(async (request) => {
         })),
       ], AbortSignal.any([upstreamAbort.signal, AbortSignal.timeout(130_000)]))
       upstream = routed.response
-    } catch {
+    } catch (cause) {
+      console.warn('[jarvis] model provider unavailable', {
+        reason: cause instanceof Error ? cause.message : 'unknown',
+      })
       await db.from('jarvis_turns').update({ status: 'failed', error_code: 'service_unavailable' })
         .eq('id', turnId).eq('user_id', userId).eq('status', 'running')
       return error('service_unavailable', 'Model provider could not be reached.', 503, true, cors)
