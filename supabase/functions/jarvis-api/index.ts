@@ -513,9 +513,25 @@ Deno.serve(async (request) => {
             .insert({ conversation_id: conversationId, user_id: userId, role: 'assistant', content: answer })
             .select('id,role,content,created_at').single()
           if (saveError || !assistantMessage) throw new Error('assistant_persist_failed')
-          await db.from('jarvis_turns').update({
+          const { data: completedTurn, error: completionError } = await db.from('jarvis_turns').update({
             status: 'completed', response_text: answer, completed_at: new Date().toISOString(),
-          }).eq('id', turnId).eq('user_id', userId)
+          }).eq('id', turnId).eq('user_id', userId).eq('status', 'running').select('id').maybeSingle()
+          if (completionError) throw new Error('turn_completion_persist_failed')
+          if (!completedTurn) {
+            // Cancellation wins if it changed the durable state before this
+            // conditional completion update. Remove the message we just wrote.
+            await db.from('jarvis_messages').delete()
+              .eq('id', assistantMessage.id).eq('user_id', userId)
+            const { data: state } = await db.from('jarvis_turns')
+              .select('status,cancel_requested_at')
+              .eq('id', turnId).eq('user_id', userId).maybeSingle()
+            if (state?.status === 'cancelled' || state?.cancel_requested_at) {
+              emit({ version: VERSION, type: 'turn.cancelled', conversationId, turnId })
+              controller.close()
+              return
+            }
+            throw new Error('turn_state_changed_before_completion')
+          }
           await db.from('jarvis_conversations').update({ updated_at: new Date().toISOString() })
             .eq('id', conversationId).eq('user_id', userId)
           emit({
@@ -528,22 +544,32 @@ Deno.serve(async (request) => {
           controller.close()
         } catch {
           const { data: state } = await db.from('jarvis_turns')
-            .select('cancel_requested_at')
+            .select('status,cancel_requested_at')
             .eq('id', turnId).eq('user_id', userId).maybeSingle()
-          const wasCancelled = Boolean(state?.cancel_requested_at)
-          await db.from('jarvis_turns').update({
-            status: wasCancelled ? 'cancelled' : 'failed',
-            error_code: wasCancelled ? null : 'internal_error',
-            completed_at: new Date().toISOString(),
-          }).eq('id', turnId).eq('user_id', userId)
-          if (!wasCancelled) try {
-            emit({
-              version: VERSION, type: 'turn.failed', conversationId, turnId,
-              code: 'internal_error', message: 'The response could not be completed.',
-              retryable: true,
-            })
-            controller.close()
-          } catch { /* Client disconnected; durable state was still updated. */ }
+          const wasCancelled = state?.status === 'cancelled' || Boolean(state?.cancel_requested_at)
+          if (wasCancelled) {
+            await db.from('jarvis_turns').update({
+              status: 'cancelled', error_code: null,
+              completed_at: new Date().toISOString(),
+            }).eq('id', turnId).eq('user_id', userId).in('status', ['accepted', 'running'])
+            try {
+              emit({ version: VERSION, type: 'turn.cancelled', conversationId, turnId })
+              controller.close()
+            } catch { /* Client disconnected; durable cancellation was still recorded. */ }
+          } else {
+            await db.from('jarvis_turns').update({
+              status: 'failed', error_code: 'internal_error',
+              completed_at: new Date().toISOString(),
+            }).eq('id', turnId).eq('user_id', userId).in('status', ['accepted', 'running'])
+            try {
+              emit({
+                version: VERSION, type: 'turn.failed', conversationId, turnId,
+                code: 'internal_error', message: 'The response could not be completed.',
+                retryable: true,
+              })
+              controller.close()
+            } catch { /* Client disconnected; durable state was still updated. */ }
+          }
         } finally {
           reader.releaseLock()
         }
