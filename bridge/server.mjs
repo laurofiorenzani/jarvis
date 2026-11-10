@@ -1087,8 +1087,6 @@ const handleRequest = async (req, res) => {
             : 'webm'
       const form = new FormData()
       form.append('model_id', 'scribe_v1')
-      // JARVIS defaults to Brazilian Portuguese; Scribe accepts ISO 639-3.
-      form.append('language_code', 'por')
       form.append(
         'file',
         new Blob([Buffer.concat(chunks)], { type }),
