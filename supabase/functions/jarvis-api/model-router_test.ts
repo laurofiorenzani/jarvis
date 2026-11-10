@@ -3,6 +3,7 @@ import {
   assertZdrProviderConfig,
   classifyProviderFailure,
   redactProviderDiagnostic,
+  rotateProviderOrder,
   ProviderUnavailableError,
   providerRoutingOptions,
   toChatCompletionsUrl,
@@ -91,4 +92,20 @@ Deno.test('provider diagnostics redact common API key and bearer token patterns'
   if (redactProviderDiagnostic('x'.repeat(1_300)).length !== 1_200) {
     throw new Error('provider diagnostic exceeded its length bound')
   }
+})
+
+Deno.test('free model routing rotates its starting provider fairly', () => {
+  const providers = ['gemini-fast', 'gemini-pro', 'gemma']
+  const expected = [
+    ['gemini-fast', 'gemini-pro', 'gemma'],
+    ['gemini-pro', 'gemma', 'gemini-fast'],
+    ['gemma', 'gemini-fast', 'gemini-pro'],
+    ['gemini-fast', 'gemini-pro', 'gemma'],
+  ]
+  expected.forEach((order, cursor) => {
+    if (JSON.stringify(rotateProviderOrder(providers, cursor)) !== JSON.stringify(order)) {
+      throw new Error(`unexpected provider order at cursor ${cursor}`)
+    }
+  })
+  if (rotateProviderOrder([], 0).length !== 0) throw new Error('empty provider list should remain empty')
 })
