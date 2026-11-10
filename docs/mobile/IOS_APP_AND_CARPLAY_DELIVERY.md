@@ -16,7 +16,7 @@ The CarPlay experience is a separate, minimal native companion interface. It is 
 - Wake word: do not promise continuous listening while locked or backgrounded. The initial reliable interaction is user-initiated push-to-talk.
 - Privacy: no provider, Claude, MCP, bridge, or Windows vault secrets in the IPA or web bundle.
 
-Capacitor 8's official setup currently specifies Node.js 22+ and macOS with Xcode 26+ for iOS development. The native iOS project must be generated, opened, built, and signed in an Apple-compatible macOS/Xcode environment. The repository currently has no Capacitor packages/configuration or iOS project.
+Capacitor 8's official setup currently specifies Node.js 22+ and macOS with Xcode 26+ for iOS development. See the [Capacitor 8 environment requirements](https://capacitorjs.com/docs/getting-started/environment-setup) and [iOS setup](https://capacitorjs.com/docs/ios). The native iOS project must be generated, opened, built, and signed in an Apple-compatible macOS/Xcode environment. The repository currently has no Capacitor packages/configuration or iOS project.
 
 ## BMW CarPlay experience
 
@@ -27,7 +27,7 @@ The intended CarPlay interaction is a safe, glanceable voice assistant:
 - No full-screen holographic animation, free-form web HUD, keyboard-heavy interaction, or distracting visual conversation while driving.
 - Vehicle control actions are not part of the first CarPlay release; My BMW integration remains a separately permissioned capability and must not be represented as a CarPlay API.
 
-Apple's CarPlay framework is limited to supported app categories and approved templates/entitlements. Apple's current developer overview lists categories including audio, communication, navigation, parking, EV charging, food ordering, fueling, public safety, quick food ordering, voice-based conversational, and driving-task apps. This does not guarantee that a general-purpose assistant will be approved. The team must request the relevant CarPlay entitlement and confirm Apple's decision before promising CarPlay distribution.
+Apple's CarPlay framework is limited to supported app categories and approved templates/entitlements. See [Apple's CarPlay developer overview](https://developer.apple.com/documentation/CarPlay) and [CarPlay developer programme](https://developer.apple.com/carplay/). Apple's current developer overview lists categories including audio, communication, navigation, parking, EV charging, food ordering, fueling, public safety, quick food ordering, voice-based conversational, and driving-task apps. This does not guarantee that a general-purpose assistant will be approved. The team must request the relevant CarPlay entitlement and confirm Apple's decision before promising CarPlay distribution.
 
 ## Delivery phases
 
