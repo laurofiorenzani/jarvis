@@ -1,0 +1,51 @@
+name: Security lockfile maintenance
+
+on:
+  push:
+    branches: [work/memory-integration-ready]
+    paths:
+      - "package.json"
+      - "package-lock.json"
+      - ".github/workflows/security-lockfile.yml"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: security-lockfile-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  update-compatible-lockfile:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install locked dependencies without lifecycle scripts
+        run: npm ci --ignore-scripts
+
+      - name: Apply compatible npm security updates without lifecycle scripts
+        run: npm audit fix --ignore-scripts || true
+
+      - name: Commit lockfile only when it changed
+        shell: bash
+        run: |
+          if git diff --quiet -- package-lock.json; then
+            echo "No compatible lockfile updates."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add package-lock.json
+          git commit -m "chore: apply compatible npm security fixes"
+          git push origin "HEAD:${GITHUB_REF_NAME}"
