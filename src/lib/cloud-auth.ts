@@ -68,6 +68,8 @@ export function createSupabaseAuth(options: SupabaseAuthOptions) {
   let session: AuthSession | null = null
   let refreshInFlight: Promise<AuthSession | null> | null = null
   let refreshAbortController: AbortController | null = null
+  let signInInFlight: Promise<{ user: AuthSession['user'] }> | null = null
+  let signInAbortController: AbortController | null = null
   // Invalidates refresh work that was started before an explicit sign-out.
   let authEpoch = 0
 
@@ -172,14 +174,27 @@ export function createSupabaseAuth(options: SupabaseAuthOptions) {
     async signInWithPassword(email: string, password: string) {
       if (!email.trim() || !password) throw new CloudAuthError('Email and password are required.', 400)
       const signInEpoch = ++authEpoch
-      const payload = await authRequest('token?grant_type=password', {
-        email: email.trim(), password,
-      })
-      if (signInEpoch !== authEpoch) throw new CloudAuthError('Sign-in was superseded by another authentication action.', 409)
-      const next = parseSession(payload)
-      if (!await saveSession(next, signInEpoch)) throw new CloudAuthError('Sign-in was superseded by another authentication action.', 409)
-      if (signInEpoch !== authEpoch) throw new CloudAuthError('Sign-in was superseded by another authentication action.', 409)
-      return { user: next.user }
+      // A newer sign-in supersedes any older password request.
+      signInAbortController?.abort()
+      const abortController = new AbortController()
+      signInAbortController = abortController
+      const operation = (async () => {
+        const payload = await authRequest('token?grant_type=password', {
+          email: email.trim(), password,
+        }, undefined, abortController.signal)
+        if (signInEpoch !== authEpoch) throw new CloudAuthError('Sign-in was superseded by another authentication action.', 409)
+        const next = parseSession(payload)
+        if (!await saveSession(next, signInEpoch)) throw new CloudAuthError('Sign-in was superseded by another authentication action.', 409)
+        if (signInEpoch !== authEpoch) throw new CloudAuthError('Sign-in was superseded by another authentication action.', 409)
+        return { user: next.user }
+      })()
+      signInInFlight = operation
+      try {
+        return await operation
+      } finally {
+        if (signInAbortController === abortController) signInAbortController = null
+        if (signInInFlight === operation) signInInFlight = null
+      }
     },
     getAccessToken,
     async restoreSession() {
@@ -192,11 +207,14 @@ export function createSupabaseAuth(options: SupabaseAuthOptions) {
       const signOutEpoch = ++authEpoch
       const accessToken = session?.access_token
       const pendingRefresh = refreshInFlight
+      const pendingSignIn = signInInFlight
       refreshAbortController?.abort()
+      signInAbortController?.abort()
       session = null
       // Let an already-started storage write settle before the final removal.
       // Its epoch check prevents it from installing an in-memory session.
       if (pendingRefresh) await pendingRefresh.catch(() => null)
+      if (pendingSignIn) await pendingSignIn.catch(() => null)
       if (signOutEpoch === authEpoch) await options.storage.remove(REFRESH_TOKEN_KEY)
       try {
         if (accessToken) await authRequest('logout', {}, accessToken)
