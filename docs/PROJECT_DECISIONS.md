@@ -6,7 +6,7 @@
 
 - JARVIS is the one personal assistant, one conversation, and one user-facing command surface.
 - BMW/My BMW, Blink, Dreame, and future services are capabilities JARVIS invokes. They are not separate assistants or chat apps.
-- The iPhone deliverable is a standalone installable native iOS app with its own icon and lifecycle, not a Safari bookmark or a PWA as the final product.
+- The preferred iPhone deliverable is a standalone installable native iOS app with its own icon and lifecycle. However, a cloud-hosted responsive web app/PWA is an explicitly approved fallback and must be treated as a supported, usable release surface if native iOS delivery is blocked, delayed, or impractical. The project must not be held hostage by App Store approval, Xcode availability, signing, or native packaging. The web app must work on desktop and both iPhones with per-user authentication and isolated data.
 - Normal JARVIS operation is cloud-first and must not require the Windows PC or a local bridge to be running.
 - The holographic HUD belongs to the iPhone JARVIS app. Any optional CarPlay surface is restricted and secondary; it is not the way JARVIS controls My BMW.
 - Build the continuous JARVIS conversation first, then progressively enable device integrations through the same assistant.
@@ -69,3 +69,4 @@ Do not automatically store every conversation or sensitive credential as memory.
 
 - 2026-11-10: Recorded the user's explicit correction that vendor services must be controlled directly by JARVIS; earlier Shortcut/Quick View ideas are historical and superseded.
 - 2026-11-10: Reprioritised work to stabilise the cloud conversation, voice, auth, and history before any vendor integrations.
+- 2026-11-10: User explicitly confirmed responsive web app/PWA as the guaranteed cross-device fallback if native iOS delivery is not possible; native iOS remains preferred but is not a launch blocker.
