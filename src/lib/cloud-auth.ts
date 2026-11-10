@@ -73,11 +73,11 @@ export function createSupabaseAuth(options: SupabaseAuthOptions) {
   // Invalidates refresh work that was started before an explicit sign-out.
   let authEpoch = 0
 
-  async function authRequest(path: string, body?: Record<string, unknown>, accessToken?: string, signal?: AbortSignal) {
+  async function authRequest(path: string, body?: Record<string, unknown>, accessToken?: string, signal?: AbortSignal, method?: 'GET' | 'POST' | 'PUT') {
     let response: Response
     try {
       response = await fetcher(`${baseUrl}/auth/v1/${path}`, {
-        method: body ? 'POST' : 'GET',
+        method: method ?? (body ? 'POST' : 'GET'),
         headers: {
           apikey: options.anonKey,
           Accept: 'application/json',
@@ -199,6 +199,11 @@ export function createSupabaseAuth(options: SupabaseAuthOptions) {
       }
       const path = redirect ? 'recover?redirect_to=' + encodeURIComponent(redirect.toString()) : 'recover'
       await authRequest(path, { email: email.trim() })
+    },
+    async updatePasswordWithToken(accessToken: string, password: string) {
+      if (!accessToken.trim()) throw new CloudAuthError('The password setup link is missing or expired. Request a new link.', 401)
+      if (password.length < 12) throw new CloudAuthError('Use a password with at least 12 characters.', 400)
+      await authRequest('user', { password }, accessToken, undefined, 'PUT')
     },
     async signInWithPassword(email: string, password: string) {
       if (!email.trim() || !password) throw new CloudAuthError('Email and password are required.', 400)
