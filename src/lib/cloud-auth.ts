@@ -191,6 +191,18 @@ export function createSupabaseAuth(options: SupabaseAuthOptions) {
       if (!await saveSession(next, epoch)) throw new CloudAuthError('Sign-up was superseded.', 409)
       return { user: next.user, needsEmailConfirmation: false }
     },
+    async resendSignupConfirmation(email: string, redirectTo?: string) {
+      if (!email.trim()) throw new CloudAuthError('Email is required.', 400)
+      const redirect = redirectTo ? new URL(redirectTo) : undefined
+      if (redirect && (redirect.protocol !== 'https:' && redirect.hostname !== 'localhost' && redirect.hostname !== '127.0.0.1')) {
+        throw new CloudAuthError('Email confirmation redirect must use HTTPS.', 400)
+      }
+      await authRequest('resend', {
+        type: 'signup',
+        email: email.trim(),
+        ...(redirect ? { options: { emailRedirectTo: redirect.toString() } } : {}),
+      })
+    },
     async sendPasswordReset(email: string, redirectTo?: string) {
       if (!email.trim()) throw new CloudAuthError('Email is required.', 400)
       const redirect = redirectTo ? new URL(redirectTo) : undefined
