@@ -21,6 +21,8 @@ type ProviderConfig = {
   tier: 'free'
   billingMode: 'free_quota_only'
   apiKeyEnv?: string
+  /** Enforce OpenRouter Zero Data Retention endpoints when privacy matters. */
+  privacyMode?: 'zdr'
 }
 
 type Provider = ProviderConfig & { apiKey?: string }
@@ -56,7 +58,8 @@ function configuredProviders(): Provider[] {
     // Secrets are server-side only. Reject non-HTTPS endpoints and URL-embedded
     // credentials to avoid accidental credential leakage and local SSRF targets.
     if (url.protocol !== 'https:' || url.username || url.password ||
-        url.search || url.hash || !item.name.trim() || !item.model.trim()) continue
+        url.search || url.hash || !item.name.trim() || !item.model.trim() ||
+        (item.privacyMode !== undefined && item.privacyMode !== 'zdr')) continue
     const apiKeyEnv = typeof item.apiKeyEnv === 'string' ? item.apiKeyEnv : undefined
     const apiKey = apiKeyEnv ? Deno.env.get(apiKeyEnv)?.trim() : undefined
     if (apiKeyEnv && !apiKey) continue
@@ -68,6 +71,7 @@ function configuredProviders(): Provider[] {
       billingMode: 'free_quota_only',
       ...(apiKeyEnv ? { apiKeyEnv } : {}),
       ...(apiKey ? { apiKey } : {}),
+      ...(item.privacyMode === 'zdr' ? { privacyMode: 'zdr' as const } : {}),
     })
   }
   return providers
@@ -83,6 +87,11 @@ export function getFreeProviderStatus(): {
     configured: providers.length > 0,
     providers: providers.map(({ name, model }) => ({ name, model })),
   }
+}
+
+/** Request-level privacy controls for OpenRouter-compatible endpoints. */
+export function providerRoutingOptions(privacyMode?: 'zdr'): Record<string, unknown> {
+  return privacyMode === 'zdr' ? { provider: { zdr: true } } : {}
 }
 
 function retryableStatus(status: number): boolean {
@@ -128,6 +137,7 @@ export async function startFreeModelStream(
           messages,
           stream: true,
           temperature: 0.4,
+          ...providerRoutingOptions(provider.privacyMode),
         }),
         // The 25-second deadline applies only to connection/response headers.
         // Keep the caller's signal attached for the full stream lifetime, but
