@@ -220,3 +220,26 @@ test('cloud brain treats an aborted SSE reader as a normal cancellation', async 
   assert.equal(result.text, 'Partial answer')
   assert.equal(cancelCalls, 1)
 })
+
+
+test('cloud brain treats cancellation while waiting for stream headers as normal', async () => {
+  let markStarted!: () => void
+  const started = new Promise<void>((resolve) => { markStarted = resolve })
+  let cancelCalls = 0
+  const brain = createCloudBrain({
+    health: async () => ({ status: 'ok' }),
+    createConversation: async () => ({ conversation: { id: 'headers-cancel-conversation' } }),
+    streamTurn: async (_input, signal) => new Promise<ReadableStream<Uint8Array>>((_resolve, reject) => {
+      markStarted()
+      signal?.addEventListener('abort', () => reject(new DOMException('Aborted before headers', 'AbortError')), { once: true })
+    }),
+    cancelTurn: async () => { cancelCalls++; return { cancelled: true } },
+  })
+
+  const pending = brain.ask('Cancel before headers', [], handlers())
+  await started
+  brain.cancel()
+  const result = await pending
+  assert.equal(result.text, '')
+  assert.equal(cancelCalls, 1)
+})
