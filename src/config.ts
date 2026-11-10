@@ -87,7 +87,7 @@ export const BRIDGE_HTTP_URL = BRIDGE_WS_URL.replace(/^ws/, 'http')
  *   round trip plus generation, which is the difference between a conversation
  *   and a walkie-talkie. Turn it on when you want the voice more than the pace.
  */
-export const USE_ELEVENLABS = flag(
+export const USE_ELEVENLABS = BACKEND !== 'cloud' && flag(
   'VITE_USE_ELEVENLABS',
   viteEnv.VITE_USE_ELEVENLABS,
   false,
@@ -131,8 +131,10 @@ export const KOKORO_VOICE = choice(
 )
 
 export const env = {
-  anthropicKey: str(viteEnv.VITE_ANTHROPIC_API_KEY) ?? '',
-  elevenKey: str(viteEnv.VITE_ELEVENLABS_API_KEY) ?? '',
+  // Browser-exposed provider keys are permitted only in explicit local demo mode.
+  // Cloud and bridge modes never read these VITE_* secrets into the client config.
+  anthropicKey: BACKEND === 'direct' ? str(viteEnv.VITE_ANTHROPIC_API_KEY) ?? '' : '',
+  elevenKey: BACKEND === 'direct' ? str(viteEnv.VITE_ELEVENLABS_API_KEY) ?? '' : '',
   elevenVoiceId:
     str(viteEnv.VITE_ELEVENLABS_VOICE_ID) ?? 'JBFqnCBsd6RMkjVDRZzb',
   porcupineKey: str(viteEnv.VITE_PICOVOICE_ACCESS_KEY) ?? '',
