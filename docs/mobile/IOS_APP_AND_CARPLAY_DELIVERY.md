@@ -25,7 +25,7 @@ The intended CarPlay interaction is a safe, glanceable voice assistant:
 - Voice-led requests and spoken responses, with large touch targets and minimal text.
 - Navigation hand-off to Apple Maps or Waze using supported URL/deep-link flows.
 - No full-screen holographic animation, free-form web HUD, keyboard-heavy interaction, or distracting visual conversation while driving.
-- Vehicle control actions are not part of the first CarPlay release; My BMW integration remains a separately permissioned capability and must not be represented as a CarPlay API.
+- BMW climate and other vehicle actions are JARVIS integrations invoked through the assistant, not separate apps and not CarPlay APIs. CarPlay is only an optional, restricted interface to JARVIS; it is not the integration mechanism for My BMW. The BMW action route must be validated independently before promising remote climatization.
 
 Apple's CarPlay framework is limited to supported app categories and approved templates/entitlements. See [Apple's CarPlay developer overview](https://developer.apple.com/documentation/CarPlay) and [CarPlay developer programme](https://developer.apple.com/carplay/). Apple's current developer overview lists categories including audio, communication, navigation, parking, EV charging, food ordering, fueling, public safety, quick food ordering, voice-based conversational, and driving-task apps. This does not guarantee that a general-purpose assistant will be approved. The team must request the relevant CarPlay entitlement and confirm Apple's decision before promising CarPlay distribution.
 
