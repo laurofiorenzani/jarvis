@@ -63,11 +63,19 @@ Privacy-first free option documented in
 - Add `JARVIS_MODEL_PROVIDERS` as a Supabase Edge Function secret using the
   runbook's `openrouter/free` example with `privacyMode: "zdr"`.
 
-The router then requests only Zero Data Retention provider endpoints. If no
-eligible free endpoint is available, JARVIS fails closed rather than sending
-the prompt to a provider without ZDR. OpenRouter Free is quota-limited and does
-not provide EU-only routing; do not send data requiring EU-only processing.
-Do not buy credits or enable paid billing for this prototype.
+The router sends OpenRouter's `provider.zdr: true` and
+`provider.data_collection: "deny"` controls, and accepts ZDR mode only for the
+official OpenRouter host with a server-side key. Important: OpenRouter says
+request-level ZDR can still admit its separate Safety Retention tier unless
+the account or a guardrail is configured for ZDR-only routing. Before using
+private family conversations, set the OpenRouter account privacy mode to
+**ZDR only** and exclude Safety Retention. If you cannot verify that setting,
+do not treat the route as strict zero-retention. If no eligible free endpoint
+is available, JARVIS fails closed rather than downgrading to standard routing.
+
+OpenRouter Free is quota-limited and does not provide EU-only routing; do not
+send data that must remain in the EU. Do not buy credits or enable paid billing
+for this prototype.
 
 Never paste API keys into ChatGPT, GitHub, source code, Vite variables, or the
 browser. Add them only in Supabase Dashboard → Edge Functions → Secrets.
