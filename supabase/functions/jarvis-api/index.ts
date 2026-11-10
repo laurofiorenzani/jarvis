@@ -420,6 +420,7 @@ Deno.serve(async (request) => {
       async start(controller) {
         let buffer = ''
         let answer = ''
+        let assistantMessageId: string | null = null
         let cancelled = false
         const emit = (event: Json) => controller.enqueue(encoder.encode(`data: ${JSON.stringify(event)}\n\n`))
         emit({ version: VERSION, type: 'turn.started', conversationId, turnId })
@@ -513,6 +514,7 @@ Deno.serve(async (request) => {
             .insert({ conversation_id: conversationId, user_id: userId, role: 'assistant', content: answer })
             .select('id,role,content,created_at').single()
           if (saveError || !assistantMessage) throw new Error('assistant_persist_failed')
+          assistantMessageId = assistantMessage.id
           const { data: completedTurn, error: completionError } = await db.from('jarvis_turns').update({
             status: 'completed', response_text: answer, completed_at: new Date().toISOString(),
           }).eq('id', turnId).eq('user_id', userId).eq('status', 'running').select('id').maybeSingle()
@@ -548,6 +550,8 @@ Deno.serve(async (request) => {
             .eq('id', turnId).eq('user_id', userId).maybeSingle()
           const wasCancelled = state?.status === 'cancelled' || Boolean(state?.cancel_requested_at)
           if (wasCancelled) {
+            if (assistantMessageId) await db.from('jarvis_messages').delete()
+              .eq('id', assistantMessageId).eq('user_id', userId)
             await db.from('jarvis_turns').update({
               status: 'cancelled', error_code: null,
               completed_at: new Date().toISOString(),
@@ -557,6 +561,10 @@ Deno.serve(async (request) => {
               controller.close()
             } catch { /* Client disconnected; durable cancellation was still recorded. */ }
           } else {
+            if (state?.status !== 'completed' && assistantMessageId) {
+              await db.from('jarvis_messages').delete()
+                .eq('id', assistantMessageId).eq('user_id', userId)
+            }
             await db.from('jarvis_turns').update({
               status: 'failed', error_code: 'internal_error',
               completed_at: new Date().toISOString(),
