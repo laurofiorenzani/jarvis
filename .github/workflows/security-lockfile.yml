@@ -31,6 +31,9 @@ jobs:
           node-version: 22
           cache: npm
 
+      - name: Refresh lockfile for root dependency overrides
+        run: npm install --package-lock-only --ignore-scripts
+
       - name: Install locked dependencies without lifecycle scripts
         run: npm ci --ignore-scripts
 
