@@ -6,9 +6,9 @@ This note records what is present in the integration branch and separates code-l
 
 - The existing local bridge remains the default backend. `src/config.ts` defaults `VITE_BACKEND` to `bridge`.
 - The app contains an explicit Cloud Access panel. A successful Supabase password sign-in creates the cloud runtime and selects the cloud brain for the current page session; signing out restores the local brain.
-- Cloud authentication uses an injected token store. The current browser panel deliberately uses an in-memory/volatile store, so refresh tokens are not persisted across page reloads.
+- Cloud authentication uses an injected token store. The browser offers two explicit choices: volatile tokens (sign in again after reload) or an opt-in `sessionStorage` token store scoped to the current tab (restorable after reload in that tab; cleared when the tab session ends). This is not persistent login across browser restarts or devices.
 - The cloud API client supports authenticated conversation creation, listing, retrieval and deletion, plus streamed turns and cancellation.
-- The current cloud brain creates a conversation lazily and retains its conversation ID only in the brain instance. It does not restore a previous conversation after a page reload, and the current Cloud Access panel does not provide a conversation-history/resume selector.
+- The cloud brain creates conversations lazily and exposes an explicit `resumeConversation(id)` operation. The Cloud Access panel lists saved conversations, refreshes the list, and lets the user explicitly resume one or start a new conversation. After a page reload, the user must first sign in or restore the tab session, then explicitly choose a conversation; no conversation is silently activated.
 - The cloud memory panel supports explicit manual save, list, deletion and an opt-in setting for including approved memories in model context. It is not the same subsystem as the local encrypted-memory bridge.
 - The local FreeLLMAPI smoke test targets a loopback endpoint (default `http://127.0.0.1:3001`) and refuses non-loopback endpoints before sending its API key. This validates a local adapter only; it does not prove that the cloud model router is configured or that a live provider call succeeds.
 - The cloud provider-status panel reports whether provider configuration is declared and which model names are configured. This is not a live inference test and must not be presented as proof that a provider is reachable or that free-tier quotas are available.
@@ -46,4 +46,4 @@ These are repository CI results. They do not establish successful sign-in from t
 - Added regression coverage for successful resume, failed history retrieval (which must not switch the active conversation), and concurrent-turn prevention during restore.
 - The browser token store remains volatile. This work restores conversations across page reloads after the user signs in again; it does not silently preserve a browser login session.
 
-The new code has been committed to `work/memory-integration-ready`. GitHub Actions validation for these latest commits is still pending; the earlier successful CI runs predate this implementation and are not evidence that the new code has passed.
+The conversation-history and resume implementation is present on `work/memory-integration-ready`. Treat the earlier successful CI runs above as historical evidence only; they predate this implementation. The latest branch head still requires a workflow run tied to that exact head before it can be marked validated.
