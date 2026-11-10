@@ -14,6 +14,8 @@ export function selectCloudBrain(brain: CloudBrain): void {
 
 /** Return to the configured default backend after signing out of cloud. */
 export function selectConfiguredBrain(): void {
+  // Do not let a response keep streaming after the user signs out.
+  activeCloudBrain?.cancel()
   activeCloudBrain = null
 }
 
