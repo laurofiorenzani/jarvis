@@ -190,3 +190,33 @@ test('cloud brain blocks new turns while a conversation is being restored', asyn
   await restoring
   assert.equal(brain.getConversationId(), 'existing')
 })
+
+
+test('cloud brain treats an aborted SSE reader as a normal cancellation', async () => {
+  let markStarted!: () => void
+  const started = new Promise<void>((resolve) => { markStarted = resolve })
+  let cancelCalls = 0
+  const brain = createCloudBrain({
+    health: async () => ({ status: 'ok' }),
+    createConversation: async () => ({ conversation: { id: 'cancel-conversation' } }),
+    streamTurn: async ({ turnId, conversationId }, signal) => new ReadableStream<Uint8Array>({
+      start(controller) {
+        controller.enqueue(encoder.encode(`data: ${JSON.stringify({
+          version: 1, type: 'text.delta', conversationId, turnId, delta: 'Partial answer',
+        })}\\n\\n`))
+        markStarted()
+        signal?.addEventListener('abort', () => {
+          controller.error(new DOMException('The operation was aborted.', 'AbortError'))
+        }, { once: true })
+      },
+    }),
+    cancelTurn: async () => { cancelCalls++; return { cancelled: true } },
+  })
+
+  const pending = brain.ask('Stop this response', [], handlers())
+  await started
+  brain.cancel()
+  const result = await pending
+  assert.equal(result.text, 'Partial answer')
+  assert.equal(cancelCalls, 1)
+})
