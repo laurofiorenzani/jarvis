@@ -147,6 +147,28 @@ test('refuses HTTP requests addressed to a foreign Host (DNS rebinding)', async 
   assert.equal(await get(bridge.port, '/health', { host: `[::1]:${bridge.port}` }), 200)
 })
 
+test('paid speech proxy rejects requests without a browser Origin', async () => {
+  for (const route of ['/tts', '/stt']) {
+    const status = await new Promise((resolve, reject) => {
+      const req = request({
+        host: '127.0.0.1',
+        port: bridge.port,
+        path: route,
+        method: 'POST',
+        headers: { host: `127.0.0.1:${bridge.port}`, 'content-type': 'application/json' },
+        timeout: 3000,
+      }, (res) => {
+        res.resume()
+        resolve(res.statusCode)
+      })
+      req.on('error', reject)
+      req.on('timeout', () => req.destroy(new Error('timeout')))
+      req.end('{}')
+    })
+    assert.equal(status, 403, `${route} must require an allowed Origin`)
+  }
+})
+
 test('local media endpoint does not expose arbitrary images from the home directory', async () => {
   const outside = mkdtempSync(join(homedir(), '.jarvis-media-test-'))
   const privateImage = join(outside, 'private.png')
