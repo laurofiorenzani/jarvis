@@ -35,3 +35,15 @@ These are repository CI results. They do not establish successful sign-in from t
 - Do not merge the open memory pull request into `main` as part of this work.
 - Do not deploy migrations or Edge Functions, create paid resources, change network exposure, add secrets, or migrate personal data without a separate critical approval.
 - Keep local encrypted memory disabled until all release gates pass.
+
+
+## Conversation recovery implementation added
+
+- The Cloud Brain now exposes an explicit `resumeConversation(id)` operation. It fetches the conversation through the authenticated API, validates that the returned ID matches the requested ID, and only then switches the active conversation.
+- The Cloud Access panel now loads the user's conversation summaries after sign-in, supports manual refresh, displays saved conversations, and offers explicit resume and new-conversation actions.
+- Resuming a conversation restores its persisted user/assistant messages into the HUD transcript and sets the Cloud Brain to continue using that same server-side conversation ID.
+- A restore operation temporarily locks the Cloud Brain against concurrent turns, preventing a voice turn from racing a conversation switch.
+- Added regression coverage for successful resume, failed history retrieval (which must not switch the active conversation), and concurrent-turn prevention during restore.
+- The browser token store remains volatile. This work restores conversations across page reloads after the user signs in again; it does not silently preserve a browser login session.
+
+The new code has been committed to `work/memory-integration-ready`. GitHub Actions validation for these latest commits is still pending; the earlier successful CI runs predate this implementation and are not evidence that the new code has passed.
