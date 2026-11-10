@@ -12,6 +12,7 @@ import type { AskHandlers } from './anthropic'
 type CloudApi = {
   health: () => Promise<{ status: 'ok' | 'degraded' }>
   createConversation: () => Promise<{ conversation: { id: string } }>
+  getConversation?: (id: string) => Promise<{ conversation: { id: string }; messages: { id: string; role: 'user' | 'assistant'; content: string; createdAt: string }[] }>
   streamTurn: (
     input: { conversationId: string; turnId: string; text: string },
     signal?: AbortSignal,
@@ -118,6 +119,18 @@ export function createCloudBrain(api: CloudApi) {
 
     getConversationId() {
       return conversationId
+    },
+
+    async resumeConversation(id: string) {
+      if (busy) throw new CloudApiError('Cannot switch conversations during an active turn.', 409, 'invalid_request')
+      if (!id.trim()) throw new CloudApiError('Conversation ID is required.', 400, 'invalid_request')
+      if (!api.getConversation) throw new CloudApiError('Conversation recovery is unavailable.', 501, 'service_unavailable')
+      const result = await api.getConversation(id)
+      if (!result.conversation?.id || result.conversation.id !== id || !Array.isArray(result.messages)) {
+        throw new CloudApiError('Cloud returned an invalid conversation.', 502, 'invalid_response')
+      }
+      conversationId = id
+      return result
     },
 
     resetConversation() {
