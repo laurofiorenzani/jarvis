@@ -597,8 +597,8 @@ const withinRoots = (real) =>
       return false
     }
     if (process.platform === 'win32') {
-      canonicalRoot = canonicalRoot.replace(/^\\\\\\?\\/, '').toLowerCase()
-      canonicalReal = canonicalReal.replace(/^\\\\\\?\\/, '').toLowerCase()
+      canonicalRoot = canonicalRoot.replace(/^\\\\\?\\/, '').toLowerCase()
+      canonicalReal = canonicalReal.replace(/^\\\\\?\\/, '').toLowerCase()
     }
     const rel = relative(canonicalRoot, canonicalReal)
     const parentPrefix = process.platform === 'win32' ? '..\\' : '../'
