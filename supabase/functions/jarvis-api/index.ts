@@ -405,12 +405,12 @@ Deno.serve(async (request) => {
       upstream = routed.response
     } catch {
       await db.from('jarvis_turns').update({ status: 'failed', error_code: 'service_unavailable' })
-        .eq('id', turnId).eq('user_id', userId)
+        .eq('id', turnId).eq('user_id', userId).eq('status', 'running')
       return error('service_unavailable', 'Model provider could not be reached.', 503, true, cors)
     }
     if (!upstream.ok || !upstream.body) {
       await db.from('jarvis_turns').update({ status: 'failed', error_code: 'service_unavailable' })
-        .eq('id', turnId).eq('user_id', userId)
+        .eq('id', turnId).eq('user_id', userId).eq('status', 'running')
       return error('service_unavailable', 'Model provider could not start the response.', 503, true, cors)
     }
 
