@@ -27,7 +27,7 @@ Read [the JARVIS project decision ledger](../PROJECT_DECISIONS.md) before changi
 
 ## 2.1 Unified assistant integrations
 
-BMW/My BMW, Blink, Dreame, and future services are capabilities invoked through JARVIS itself. They are not separate assistant apps or chat interfaces. JARVIS owns intent recognition, policy checks, server-side credentials, tool execution, and result reporting; vendor apps are only account/setup/fallback surfaces where unavoidable. See [Unified Assistant Integrations](../integrations/UNIFIED_ASSISTANT_INTEGRATIONS.md) for the canonical integration model and current BMW/Blink/Dreame feasibility constraints.
+BMW/My BMW, Blink, Dreame, and future services are capabilities invoked directly by JARVIS through internal service adapters and authorised APIs/protocols. The user speaks only to JARVIS; Apple Shortcuts or manually opening vendor apps are not the target integration architecture. Vendor apps may be required only for initial account authorisation, MFA, permissions, or fallback. JARVIS owns intent recognition, policy checks, server-side credentials, tool execution, and verified result reporting. See [Unified Assistant Integrations](../integrations/UNIFIED_ASSISTANT_INTEGRATIONS.md) for the canonical integration model and vendor feasibility constraints.
 
 ## 3. What is explicitly NOT the target
 
