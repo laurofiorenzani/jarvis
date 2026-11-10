@@ -238,3 +238,46 @@ test('sign-out aborts a password sign-in request that has not returned', async (
   assert.equal(values.has('jarvis.supabase.refresh-token'), false)
   assert.equal(await auth.getAccessToken(), null)
 })
+
+
+test('overlapping sign-ins serialize token writes and keep the newest session', async () => {
+  const values = new Map<string, string>()
+  let firstWriteStarted!: () => void
+  const firstStarted = new Promise<void>((resolve) => { firstWriteStarted = resolve })
+  let releaseFirstWrite!: () => void
+  const firstWriteGate = new Promise<void>((resolve) => { releaseFirstWrite = resolve })
+  let writes = 0
+  const auth = createSupabaseAuth({
+    url: 'https://example.supabase.co',
+    anonKey: 'sb_publishable_test',
+    storage: {
+      get: async (key) => values.get(key) ?? null,
+      set: async (key, value) => {
+        writes++
+        if (writes === 1) {
+          firstWriteStarted()
+          await firstWriteGate
+        }
+        values.set(key, value)
+      },
+      remove: async (key) => { values.delete(key) },
+    },
+    fetchImpl: async (_input, init) => {
+      const body = JSON.parse(String(init?.body)) as { email: string }
+      return response(session(
+        body.email === 'first@example.test' ? 'access-first' : 'access-second',
+        body.email === 'first@example.test' ? 'refresh-first' : 'refresh-second',
+      ))
+    },
+  })
+
+  const first = auth.signInWithPassword('first@example.test', 'password')
+  await firstStarted
+  const second = auth.signInWithPassword('second@example.test', 'password')
+  releaseFirstWrite()
+  await assert.rejects(first, (error: unknown) =>
+    error instanceof CloudAuthError && error.status === 409)
+  await second
+  assert.equal(values.get('jarvis.supabase.refresh-token'), 'refresh-second')
+  assert.equal(await auth.getAccessToken(), 'access-second')
+})
