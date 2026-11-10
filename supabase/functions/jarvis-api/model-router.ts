@@ -27,6 +27,15 @@ type ProviderConfig = {
 
 type Provider = ProviderConfig & { apiKey?: string }
 
+/** Per-isolate round robin prevents every Edge invocation favouring model zero. */
+let providerCursor = 0
+
+export function rotateProviderOrder<T>(providers: T[], cursor: number): T[] {
+  if (providers.length < 2) return [...providers]
+  const start = ((cursor % providers.length) + providers.length) % providers.length
+  return [...providers.slice(start), ...providers.slice(0, start)]
+}
+
 export class ProviderUnavailableError extends Error {
   constructor(message = 'No free model provider is currently available.') {
     super(message)
@@ -168,7 +177,8 @@ export async function startFreeModelStream(
   if (!providers.length) throw new ProviderUnavailableError()
 
   let lastFailure: unknown
-  for (const provider of providers) {
+  const orderedProviders = rotateProviderOrder(providers, providerCursor++)
+  for (const provider of orderedProviders) {
     if (signal.aborted) throw new DOMException('The request was cancelled.', 'AbortError')
     let upstream: Response
     const connectController = new AbortController()
