@@ -147,3 +147,13 @@ No secret values were read, changed, copied, or exposed in this investigation.
 - The exact cause of the historical 404 remains unconfirmed until the next provider request emits the newly captured upstream error detail. Do not rotate or replace the configured key based only on a 404.
 - Changes committed on `work/memory-integration-ready`: `eb8022923ec9099fa564a26b94bdde6f33d47022` (diagnostics) and `b4d5ee1d99cb2aa8acce4e4ff8972e26dc978e7c` (redaction fix).
 - Not deployed; no production secrets or accounts changed. Automated Deno tests have not yet been executed in this environment.
+
+## Provider router follow-up implementation
+
+- Extracted `classifyProviderFailure()` so 404 is model/endpoint-not-found, 401/403 is access/auth, 429 is quota/rate-limit, 408/409/425/5xx are temporary provider failures, and other statuses are request rejection.
+- Extracted bounded `redactProviderDiagnostic()` and added tests for common Google/OpenAI key patterns, bearer tokens, and the 1,200-character bound.
+- Replaced the misleading terminal error that said all provider failures were quota exhaustion. It now says providers are unavailable and directs operators to diagnostics for model, endpoint, access, or quota errors.
+- Added per-isolate round-robin starting order across configured free provider entries. This distributes starts across the configured models within a warm Edge isolate; it is not a global quota ledger and does not guarantee fair distribution across cold starts or separate isolates.
+- Added tests for round-robin order and provider failure classification.
+- GitHub Actions run `42908027920` passed all CI steps for the earlier diagnostics/doc commit. Newer commits trigger fresh CI; latest run observed during this update: `42908439893`, still in progress. Do not treat the new tests as passed until that run completes.
+- No production deployment or secret changes performed. No database migration required for this per-isolate routing improvement.
