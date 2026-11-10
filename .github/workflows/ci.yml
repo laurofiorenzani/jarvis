@@ -38,6 +38,21 @@ jobs:
           npm audit --json > npm-audit.json || true
           node -e 'const r=require("./npm-audit.json"); for (const [name,v] of Object.entries(r.vulnerabilities || {})) console.log(JSON.stringify({name,severity:v.severity,range:v.range,fixAvailable:v.fixAvailable,via:(v.via || []).map(x => typeof x === "string" ? x : {title:x.title,url:x.url,range:x.range})}))'
 
+      - name: Apply non-breaking dependency security fixes for validation
+        shell: bash
+        run: |
+          npm audit fix || true
+          npm audit --json > npm-audit-after.json || true
+          node -e 'const r=require("./npm-audit-after.json"); console.log(JSON.stringify(r.metadata?.vulnerabilities || r.error || {})); for (const [name,v] of Object.entries(r.vulnerabilities || {})) console.log(JSON.stringify({name,severity:v.severity,range:v.range,fixAvailable:v.fixAvailable}))'
+
+      - name: Upload validated security-updated lockfile
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: jarvis-security-updated-lockfile
+          path: package-lock.json
+          if-no-files-found: error
+
       - name: Typecheck and production build
         run: npm run build
 
