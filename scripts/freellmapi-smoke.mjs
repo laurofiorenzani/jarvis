@@ -88,6 +88,21 @@ try {
     }
   }
 
+  buffer += decoder.decode()
+  if (buffer.startsWith('data:')) {
+    const payload = buffer.slice(5).trim()
+    if (payload && payload !== '[DONE]') {
+      let event
+      try {
+        event = JSON.parse(payload)
+      } catch {
+        throw new Error('FreeLLMAPI emitted malformed final server-sent event data.')
+      }
+      if (event.type === 'error') throw new Error(event.error?.message || 'FreeLLMAPI emitted a stream error.')
+      if (event.type === 'content_block_delta' && event.delta?.type === 'text_delta') text += event.delta.text || ''
+      if (event.type === 'message_stop') messageStopped = true
+    }
+  }
   if (!text.trim()) throw new Error('The stream completed without any assistant text.')
   if (!messageStopped) throw new Error('The stream ended without a message_stop event.')
   console.log(`FreeLLMAPI live streaming check passed (model: ${model}; received ${text.length} text characters).`)
