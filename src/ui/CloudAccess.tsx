@@ -52,6 +52,7 @@ export function CloudAccess({ onConnected, onDisconnected, onResumeConversation 
   const [memoryCategory, setMemoryCategory] = useState<MemoryCategory>('preference')
   const [memoryBusy, setMemoryBusy] = useState(false)
   const runtimeRef = useRef<ReturnType<typeof createCloudRuntime> | null>(null)
+  const autoRestorePending = useRef(hasRestorableTabSession())
   const autoRestoreStarted = useRef(false)
   const restoreSessionRef = useRef<(() => Promise<void>) | null>(null)
 
@@ -108,7 +109,7 @@ export function CloudAccess({ onConnected, onDisconnected, onResumeConversation 
   restoreSessionRef.current = restoreTabSession
 
   useEffect(() => {
-    if (!env.supabaseUrl || !env.supabasePublishableKey || !canRestoreTabSession || autoRestoreStarted.current) return
+    if (!env.supabaseUrl || !env.supabasePublishableKey || !autoRestorePending.current || !canRestoreTabSession || autoRestoreStarted.current) return
     autoRestoreStarted.current = true
     void restoreSessionRef.current?.()
   }, [canRestoreTabSession])
