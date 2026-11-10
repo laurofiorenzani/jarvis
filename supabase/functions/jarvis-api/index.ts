@@ -88,7 +88,15 @@ Deno.serve(async (request) => {
 
   const url = new URL(request.url)
   const path = url.pathname.replace(/^\/functions\/v1\/jarvis-api/, '').replace(/^\/v1(?=\/|$)/, '').replace(/\/$/, '') || '/'
-  if (request.method === 'GET' && path === '/health') {
+  // Supabase may expose the function path to the handler either with or
+  // without the /functions/v1/<name> prefix. Match the public health route
+  // against both normalized and raw paths so it never falls through to auth.
+  const isHealthRoute = path === '/health' ||
+    url.pathname === '/health' ||
+    url.pathname === '/v1/health' ||
+    url.pathname.endsWith('/jarvis-api/health') ||
+    url.pathname.endsWith('/jarvis-api/v1/health')
+  if (request.method === 'GET' && isHealthRoute) {
     return response({ version: VERSION, status: 'ok' }, 200, cors)
   }
 
