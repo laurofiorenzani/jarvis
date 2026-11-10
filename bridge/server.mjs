@@ -585,13 +585,23 @@ const FILE_ROOTS = fileRoots({
 /** True when `real` sits inside one of the roots, after both are resolved. */
 const withinRoots = (real) =>
   FILE_ROOTS.some((root) => {
-    // Windows paths are case-insensitive. realpath() may return a different
-    // casing for the same directory than the configured root (notably on CI),
-    // so compare canonical casing on both sides before computing the relative path.
-    const comparableRoot = process.platform === 'win32' ? root.toLowerCase() : root
-    const comparableReal = process.platform === 'win32' ? real.toLowerCase() : real
-    const rel = relative(comparableRoot, comparableReal)
-    const parentPrefix = process.platform === 'win32' ? '..\\' : '../'
+    // Re-resolve both sides with the same sync API. On Windows, async and sync
+    // realpath can produce different drive casing / extended-path prefixes.
+    // Comparing those raw strings can make a valid child look like another drive.
+    let canonicalRoot = root
+    let canonicalReal = real
+    try {
+      canonicalRoot = realpathSync(root)
+      canonicalReal = realpathSync(real)
+    } catch {
+      return false
+    }
+    if (process.platform === 'win32') {
+      canonicalRoot = canonicalRoot.replace(/^\\\\\\?\\/, '').toLowerCase()
+      canonicalReal = canonicalReal.replace(/^\\\\\\?\\/, '').toLowerCase()
+    }
+    const rel = relative(canonicalRoot, canonicalReal)
+    const parentPrefix = process.platform === 'win32' ? '..\\\\' : '../'
     return rel !== '' && rel !== '..' && !rel.startsWith(parentPrefix) && !isAbsolute(rel)
   })
 
