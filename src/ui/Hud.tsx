@@ -310,6 +310,30 @@ export function Hud() {
 
       {error && <div className="error">{error}</div>}
 
+      <form
+        className="text-composer"
+        onSubmit={(event) => {
+          event.preventDefault()
+          const form = event.currentTarget
+          const input = form.elements.namedItem('message') as HTMLInputElement | null
+          const message = input?.value.trim() ?? ''
+          if (!message) return
+          window.dispatchEvent(new CustomEvent('jarvis:send-text', { detail: message }))
+          form.reset()
+          input?.blur()
+        }}
+      >
+        <input
+          name="message"
+          type="text"
+          autoComplete="off"
+          enterKeyHint="send"
+          aria-label="Message JARVIS"
+          placeholder="Message JARVIS…"
+        />
+        <button type="submit" aria-label="Send message">SEND</button>
+      </form>
+
       <footer className="hud-bottom">
         <span className="hint">
           say <b>“hey jarvis”</b> · <kbd>Space</kbd> to talk · <kbd>G</kbd> hands
