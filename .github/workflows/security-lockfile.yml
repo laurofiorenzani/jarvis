@@ -37,6 +37,20 @@ jobs:
       - name: Apply compatible npm security updates without lifecycle scripts
         run: npm audit fix --ignore-scripts || true
 
+      - name: Validate updated dependency tree
+        run: |
+          npm run build
+          npm test
+          npm run lint
+
+      - name: Set up Deno
+        uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+
+      - name: Type-check Supabase Edge Function
+        run: deno check supabase/functions/jarvis-api/index.ts
+
       - name: Commit lockfile only when it changed
         shell: bash
         run: |
