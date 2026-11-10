@@ -24,13 +24,6 @@ secrets have been added. No personal conversations have been migrated or
 seeded. The free plan is suitable for a low-traffic prototype, subject to
 Supabase's quotas, inactivity/pause policy and regional availability.
 
-This does **not** yet prove that a user can sign in, that model-provider secrets
-are configured, or that a model response can be generated and persisted. Those
-are explicit validation gates below. No user conversations have been migrated
-or seeded. The free plan is sufficient for an initial private prototype,
-subject to Supabase's current quotas, inactivity/pause policy and regional
-availability.
-
 ## Architecture
 
 - Supabase Auth verifies user identity and issues short-lived access tokens.
@@ -43,7 +36,7 @@ availability.
   configured HTTPS OpenAI-compatible endpoints.
 - Windows/local tools remain outside this cloud function.
 
-## Setup required before deployment
+## Setup required for a fresh environment
 
 1. Create a Supabase project on the free plan; do not select a paid compute tier.
 2. Apply `supabase/migrations/20261109000100_jarvis_cloud_v1.sql`.
@@ -127,7 +120,12 @@ References: [Supabase billing and quotas](https://supabase.com/docs/guides/platf
 
 ## Manual deployment (no paid resources)
 
-The repository does not deploy automatically. After creating the free project:
+For this existing project, the Vercel web/PWA deployment and Supabase Edge
+Function are already active. Vercel handles frontend deployments from the
+connected GitHub branch; Supabase backend deployments remain explicitly
+operator-controlled. The steps below are for recovery or a separate fresh
+environment—do not re-run the migration on the existing project without first
+checking its migration state.
 
 1. In Supabase SQL Editor, run the migration file in
    `supabase/migrations/20261109000100_jarvis_cloud_v1.sql`.
