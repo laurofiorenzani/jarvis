@@ -22,6 +22,16 @@ function createTabTokenStore() {
   }
 }
 
+function readPasswordSetupToken(): string | null {
+  try {
+    const params = new URLSearchParams(window.location.hash.replace(/^#/, ''))
+    const type = params.get('type')
+    return type === 'invite' || type === 'recovery' ? params.get('access_token') : null
+  } catch {
+    return null
+  }
+}
+
 const TAB_SESSION_CHOICE = 'jarvis.cloud.keep-session-in-tab'
 const REFRESH_TOKEN_KEY = 'jarvis.supabase.refresh-token'
 
@@ -38,7 +48,11 @@ export function CloudAccess({ onConnected, onDisconnected, onResumeConversation 
   const [expanded, setExpanded] = useState(() => !hasRestorableTabSession())
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [authMode, setAuthMode] = useState<'signin' | 'signup' | 'reset'>('signin')
+  const [passwordSetupToken, setPasswordSetupToken] = useState<string | null>(readPasswordSetupToken)
+  const [newPassword, setNewPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
+  const [authMode, setAuthMode] = useState<'signin' | 'signup' | 'reset' | 'set-password'>(() =>
+    readPasswordSetupToken() ? 'set-password' : 'signin')
   const [keepSessionInTab, setKeepSessionInTab] = useState(false)
   const [canRestoreTabSession, setCanRestoreTabSession] = useState(() => hasRestorableTabSession())
   const [busy, setBusy] = useState(false)
@@ -205,6 +219,39 @@ export function CloudAccess({ onConnected, onDisconnected, onResumeConversation 
       setAuthMode('signin')
     } catch (error) {
       setMessage(error instanceof Error ? error.message : 'Password reset request failed.')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const completePasswordSetup = async (event: FormEvent) => {
+    event.preventDefault()
+    if (busy || !passwordSetupToken) return
+    if (newPassword.length < 12) {
+      setMessage('USE A PASSWORD WITH AT LEAST 12 CHARACTERS')
+      return
+    }
+    if (newPassword !== confirmPassword) {
+      setMessage('PASSWORDS DO NOT MATCH')
+      return
+    }
+    setBusy(true)
+    setMessage('')
+    const runtime = createCloudRuntime({
+      supabaseUrl: env.supabaseUrl,
+      supabasePublishableKey: env.supabasePublishableKey,
+      tokenStore: createVolatileTokenStore(),
+    })
+    try {
+      await runtime.auth.updatePasswordWithToken(passwordSetupToken, newPassword)
+      setPasswordSetupToken(null)
+      setNewPassword('')
+      setConfirmPassword('')
+      setPassword('')
+      setAuthMode('signin')
+      setMessage('PASSWORD SET SUCCESSFULLY · SIGN IN WITH YOUR EMAIL AND NEW PASSWORD')
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : 'Password could not be updated. Request a new link.')
     } finally {
       setBusy(false)
     }
@@ -408,12 +455,12 @@ export function CloudAccess({ onConnected, onDisconnected, onResumeConversation 
             </button>
           </div>
         ) : (
-          <form onSubmit={(event) => void (authMode === 'signup' ? registerAccount(event) : authMode === 'reset' ? requestPasswordReset(event) : signIn(event))} style={{ display: 'grid', gap: 9, paddingTop: 12 }}>
+          <form onSubmit={(event) => void (authMode === 'set-password' ? completePasswordSetup(event) : authMode === 'signup' ? registerAccount(event) : authMode === 'reset' ? requestPasswordReset(event) : signIn(event))} style={{ display: 'grid', gap: 9, paddingTop: 12 }}>
             <label style={labelStyle}>ACCOUNT EMAIL
               <input required type="email" autoComplete="username" value={email}
                 onChange={(event) => setEmail(event.target.value)} style={inputStyle} />
             </label>
-            {authMode !== 'reset' && <label style={labelStyle}>PASSWORD {authMode === 'signup' ? '(MINIMUM 10 CHARACTERS)' : ''}
+            {authMode !== 'reset' && authMode !== 'set-password' && <label style={labelStyle}>PASSWORD {authMode === 'signup' ? '(MINIMUM 10 CHARACTERS)' : ''}
               <input required minLength={authMode === 'signup' ? 10 : undefined} type="password"
                 autoComplete={authMode === 'signup' ? 'new-password' : 'current-password'} value={password}
                 onChange={(event) => setPassword(event.target.value)} style={inputStyle} />
@@ -435,7 +482,7 @@ export function CloudAccess({ onConnected, onDisconnected, onResumeConversation 
               {busy ? 'SENDING…' : 'SEND PASSWORD RESET EMAIL'}
             </button>}
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-              {authMode !== 'signin' && <button type="button" onClick={() => setAuthMode('signin')} style={buttonStyle}>BACK TO SIGN IN</button>}
+              {authMode !== 'signin' && authMode !== 'set-password' && <button type="button" onClick={() => setAuthMode('signin')} style={buttonStyle}>BACK TO SIGN IN</button>}
               {authMode === 'signin' && <>
                 <button type="button" onClick={() => setAuthMode('signup')} style={buttonStyle}>CREATE ACCOUNT</button>
                 <button type="button" onClick={() => setAuthMode('reset')} style={buttonStyle}>FORGOT PASSWORD?</button>
