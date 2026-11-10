@@ -179,7 +179,7 @@ Deno.serve(async (request) => {
     const apiKey = Deno.env.get('GOOGLE_AI_STUDIO_API_KEY')?.trim()
     if (!apiKey) return error('service_unavailable', 'Speech provider is not configured.', 503, false, cors)
     const mimeType = (request.headers.get('content-type') || '').split(';')[0].trim().toLowerCase()
-    const allowedAudioTypes = new Set(['audio/webm', 'audio/mp4', 'audio/m4a', 'audio/aac', 'audio/ogg', 'audio/wav', 'audio/mpeg', 'audio/mp3', 'audio/flac'])
+    const allowedAudioTypes = new Set(['audio/webm', 'audio/mp4', 'audio/m4a', 'audio/x-m4a', 'audio/aac', 'audio/x-aac', 'audio/ogg', 'audio/wav', 'audio/mpeg', 'audio/mp3', 'audio/flac'])
     if (!allowedAudioTypes.has(mimeType)) return error('invalid_request', 'Unsupported audio format.', 415, false, cors)
     let audio: Uint8Array
     try { audio = await readBoundedBytes(request, 8 * 1024 * 1024) }
