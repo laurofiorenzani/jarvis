@@ -197,10 +197,8 @@ export function createSupabaseAuth(options: SupabaseAuthOptions) {
       if (redirect && (redirect.protocol !== 'https:' && redirect.hostname !== 'localhost' && redirect.hostname !== '127.0.0.1')) {
         throw new CloudAuthError('Password reset redirect must use HTTPS.', 400)
       }
-      await authRequest('recover', {
-        email: email.trim(),
-        ...(redirect ? { redirect_to: redirect.toString() } : {}),
-      })
+      const path = redirect ? 'recover?redirect_to=' + encodeURIComponent(redirect.toString()) : 'recover'
+      await authRequest(path, { email: email.trim() })
     },
     async signInWithPassword(email: string, password: string) {
       if (!email.trim() || !password) throw new CloudAuthError('Email and password are required.', 400)
