@@ -19,9 +19,12 @@ enhancement.
 
 This does **not** yet prove that a real user can complete sign-up/sign-in, that
 a model provider is configured, or that a model response can be generated and
-persisted. Supabase Auth currently has zero users, and no model-provider
-secrets have been added. No personal conversations have been migrated or
-seeded. The free plan is suitable for a low-traffic prototype, subject to
+persisted. Supabase Auth has **two existing user accounts** as verified by a count-only,
+read-only query on 10 November 2026. Preserve both accounts: do not recreate,
+delete, invite again, or change either account as part of routine deployment.
+The `public` conversation, message, turn, and memory tables currently contain
+zero rows; no personal conversations or memories have been migrated or seeded.
+No model-provider secrets have been added. The free plan is suitable for a low-traffic prototype, subject to
 Supabase's quotas, inactivity/pause policy and regional availability.
 
 ## Architecture
