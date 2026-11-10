@@ -9,7 +9,7 @@
     "node": ">=20"
   },
   "scripts": {
-    "start": "node scripts/start.mjs",
+    "start": "vite",
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "oxlint",
@@ -20,7 +20,9 @@
     "setup": "node scripts/setup.mjs",
     "bridge:memory": "node scripts/start-memory.mjs",
     "memory:doctor": "node scripts/memory-doctor.mjs",
-    "freellmapi:smoke": "node scripts/freellmapi-smoke.mjs"
+    "freellmapi:smoke": "node scripts/freellmapi-smoke.mjs",
+    "start:local": "node scripts/start.mjs",
+    "start:local:writes": "node scripts/start.mjs --writes"
   },
   "dependencies": {
     "@anthropic-ai/claude-agent-sdk": "^0.3.220",
