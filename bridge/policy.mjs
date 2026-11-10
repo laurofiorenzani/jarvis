@@ -128,6 +128,20 @@ const VETO_EXEMPT = new Set([
   'openrouter__send-feedback',
 ])
 
+/**
+ * Explicit MCP server allowlist. An unset variable is deny-all: adding a new
+ * server to Claude Code must never silently grant it to the voice assistant.
+ */
+export function allowedMcpServers(all, list) {
+  const wanted = new Set(
+    (typeof list === 'string' ? list : '')
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean),
+  )
+  return Object.fromEntries(Object.entries(all).filter(([name]) => wanted.has(name)))
+}
+
 export function decideTool(name, allowWrites = false) {
   if (READ_ONLY_BUILTINS.has(name)) return true
   if (WRITE_BUILTINS.has(name)) return allowWrites
