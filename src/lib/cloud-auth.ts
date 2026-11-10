@@ -177,8 +177,11 @@ export function createSupabaseAuth(options: SupabaseAuthOptions) {
       // A newer sign-in supersedes the previous request and waits for any
       // in-progress token-store write before starting its own write.
       const previousSignIn = signInInFlight
+      const previousRefresh = refreshInFlight
       signInAbortController?.abort()
+      refreshAbortController?.abort()
       if (previousSignIn) await previousSignIn.catch(() => null)
+      if (previousRefresh) await previousRefresh.catch(() => null)
       if (signInEpoch !== authEpoch) {
         throw new CloudAuthError('Sign-in was superseded by another authentication action.', 409)
       }
