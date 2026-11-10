@@ -67,6 +67,8 @@ export function createSupabaseAuth(options: SupabaseAuthOptions) {
   const now = options.now ?? Date.now
   let session: AuthSession | null = null
   let refreshInFlight: Promise<AuthSession | null> | null = null
+  // Invalidates refresh work that was started before an explicit sign-out.
+  let authEpoch = 0
 
   async function authRequest(path: string, body?: Record<string, unknown>, accessToken?: string) {
     let response: Response
@@ -126,15 +128,20 @@ export function createSupabaseAuth(options: SupabaseAuthOptions) {
 
   async function refresh(): Promise<AuthSession | null> {
     if (refreshInFlight) return refreshInFlight
+    const startedAtEpoch = authEpoch
     refreshInFlight = (async () => {
       const refreshToken = await options.storage.get(REFRESH_TOKEN_KEY)
+      if (startedAtEpoch !== authEpoch) return null
       if (!refreshToken) { session = null; return null }
       try {
         const payload = await authRequest('token?grant_type=refresh_token', { refresh_token: refreshToken })
+        if (startedAtEpoch !== authEpoch) return null
         const next = parseSession(payload)
         await saveSession(next)
+        if (startedAtEpoch !== authEpoch) return null
         return next
       } catch (error) {
+        if (startedAtEpoch !== authEpoch) return null
         if (error instanceof CloudAuthError && [400, 401, 403].includes(error.status)) {
           await options.storage.remove(REFRESH_TOKEN_KEY)
           session = null
@@ -155,11 +162,14 @@ export function createSupabaseAuth(options: SupabaseAuthOptions) {
   return {
     async signInWithPassword(email: string, password: string) {
       if (!email.trim() || !password) throw new CloudAuthError('Email and password are required.', 400)
+      const signInEpoch = ++authEpoch
       const payload = await authRequest('token?grant_type=password', {
         email: email.trim(), password,
       })
+      if (signInEpoch !== authEpoch) throw new CloudAuthError('Sign-in was superseded by another authentication action.', 409)
       const next = parseSession(payload)
       await saveSession(next)
+      if (signInEpoch !== authEpoch) throw new CloudAuthError('Sign-in was superseded by another authentication action.', 409)
       return { user: next.user }
     },
     getAccessToken,
@@ -168,12 +178,15 @@ export function createSupabaseAuth(options: SupabaseAuthOptions) {
       return next ? { user: next.user } : null
     },
     async signOut() {
+      // Invalidate pending refresh/sign-in work immediately. Do not refresh here:
+      // a late refresh response must never recreate a session after local sign-out.
+      const signOutEpoch = ++authEpoch
+      const accessToken = session?.access_token
+      session = null
       try {
-        const accessToken = await getAccessToken()
         if (accessToken) await authRequest('logout', {}, accessToken)
       } catch { /* Local sign-out must still complete when offline. */ }
-      session = null
-      await options.storage.remove(REFRESH_TOKEN_KEY)
+      if (signOutEpoch === authEpoch) await options.storage.remove(REFRESH_TOKEN_KEY)
     },
   }
 }
