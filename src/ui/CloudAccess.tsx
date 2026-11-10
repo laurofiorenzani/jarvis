@@ -3,7 +3,7 @@ import type { CloudMemory, MemoryCategory, ConversationSummary, ConversationMess
 import { env } from '../config'
 import { createCloudRuntime } from '../lib/cloud-runtime'
 import type { CloudRuntimeOptions } from '../lib/cloud-runtime'
-import { selectCloudBrain, selectLocalBrain } from '../lib/brain'
+import { selectCloudBrain, selectConfiguredBrain } from '../lib/brain'
 
 function createVolatileTokenStore() {
   const values = new Map<string, string>()
@@ -95,7 +95,7 @@ export function CloudAccess({ onConnected, onDisconnected, onResumeConversation 
       await activateRuntime(runtime)
       setMessage('TAB SESSION RESTORED · CLOUD API HEALTHY')
     } catch (error) {
-      selectLocalBrain()
+      selectConfiguredBrain()
       await runtime.auth.signOut().catch(() => {})
       runtimeRef.current = null
       setConnected(false)
@@ -148,7 +148,7 @@ export function CloudAccess({ onConnected, onDisconnected, onResumeConversation 
         ? 'AUTHENTICATED · TAB SESSION RESTORE ENABLED · CLEARED WHEN TAB CLOSES'
         : 'AUTHENTICATED · VOLATILE TOKENS · SIGN IN AGAIN AFTER PAGE RELOAD')
     } catch (error) {
-      selectLocalBrain()
+      selectConfiguredBrain()
       await runtime.auth.signOut().catch(() => {})
       runtimeRef.current = null
       setConnected(false)
@@ -249,12 +249,12 @@ export function CloudAccess({ onConnected, onDisconnected, onResumeConversation 
   const signOut = async () => {
     if (busy) return
     setBusy(true)
-    selectLocalBrain()
+    selectConfiguredBrain()
     try {
       await runtimeRef.current?.auth.signOut()
-      setMessage('LOCAL BRAIN RESTORED · LOCAL SESSION CLEARED')
+      setMessage('CLOUD SIGNED OUT · SIGN IN AGAIN TO CONTINUE')
     } catch {
-      setMessage('LOCAL BRAIN RESTORED · LOCAL TOKENS CLEARED')
+      setMessage('CLOUD SIGNED OUT · LOCAL TOKENS CLEARED')
     } finally {
       runtimeRef.current = null
       setConnected(false)
@@ -352,7 +352,7 @@ export function CloudAccess({ onConnected, onDisconnected, onResumeConversation 
               {!memories.length && <div style={{ color: '#7797a2' }}>No saved memories.</div>}
             </div>
             <button type="button" disabled={busy} onClick={() => void signOut()} style={buttonStyle}>
-              {busy ? 'DISCONNECTING…' : 'SWITCH TO LOCAL BRAIN'}
+              {busy ? 'SIGNING OUT…' : 'SIGN OUT OF CLOUD'}
             </button>
           </div>
         ) : (
