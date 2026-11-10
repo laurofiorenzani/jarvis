@@ -342,3 +342,25 @@ test('invite and recovery access tokens can set a new password without creating 
   await assert.rejects(auth.updatePasswordWithToken('token', 'short'),
     (error: unknown) => error instanceof CloudAuthError && error.status === 400)
 })
+
+test('resend signup confirmation calls Supabase resend endpoint without creating a duplicate account', async () => {
+  let requestUrl = ''
+  let requestBody: Record<string, unknown> | null = null
+  const auth = createSupabaseAuth({
+    url: 'https://example.supabase.co',
+    anonKey: 'sb_publishable_test',
+    storage: { get: async () => null, set: async () => {}, remove: async () => {} },
+    fetchImpl: async (input, init) => {
+      requestUrl = String(input)
+      requestBody = JSON.parse(String(init?.body)) as Record<string, unknown>
+      return response({ message: 'If the email exists, a confirmation email has been sent.' })
+    },
+  })
+  await auth.resendSignupConfirmation(' user@example.test ', 'https://jarvis.example.test')
+  assert.match(requestUrl, /\/auth\/v1\/resend$/)
+  assert.deepEqual(requestBody, {
+    type: 'signup',
+    email: 'user@example.test',
+    options: { emailRedirectTo: 'https://jarvis.example.test/' },
+  })
+})
