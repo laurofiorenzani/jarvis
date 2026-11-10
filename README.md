@@ -51,7 +51,7 @@ npm install
 npm start          # runs the brain and the face together
 ```
 
-Then open the URL it prints (http://localhost:5173) in **Chrome**, click **INITIALISE**, and say **“Hey Jarvis”**.
+Then open the URL it prints (http://localhost:5173) in **Chrome**, click **INITIALISE**, and say **“Hey Jarvis”**. This local quick-start uses the bridge; set `VITE_BACKEND=bridge` in `.env.local` to select it explicitly. The production/default app mode is now cloud and requires sign-in through the Cloud Access panel.
 
 Prefer two terminals? Run them separately instead:
 
@@ -254,7 +254,7 @@ Everything is optional in bridge mode. Frontend settings live in `.env.local`
 
 | Variable | Effect |
 |---|---|
-| `VITE_BACKEND` | `bridge` (default) or `direct` |
+| `VITE_BACKEND` | `cloud` (default), `bridge` (local development), or `direct` (local demo only) |
 | `VITE_BRIDGE_URL` | Where to reach the bridge |
 | `VITE_TTS_ENGINE` | `system` or `kokoro` |
 | `VITE_KOKORO_VOICE` | Voice for the Kokoro engine |
