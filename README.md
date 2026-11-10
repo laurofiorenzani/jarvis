@@ -60,19 +60,19 @@ Then open the URL it prints (http://localhost:5173) in **Chrome**. The default m
 
 For optional local-tool development only, set `VITE_BACKEND=bridge` in `.env.local` and run `npm run start:local`. This starts the Node bridge alongside Vite. To test effectful local tools, use `npm run start:local:writes` only after reviewing the bridge permission gate.
 
-Prefer two terminals? Run them separately instead:
+Prefer two terminals for optional local bridge development? First set `VITE_BACKEND=bridge` in `.env.local`, then run the bridge and UI separately:
 
 ```bash
 npm install
 ```
 
-Terminal 1 — the brain:
+Terminal 1 — the local bridge:
 
 ```bash
 npm run bridge
 ```
 
-Terminal 2 — the face:
+Terminal 2 — the web HUD:
 
 ```bash
 npm run dev
