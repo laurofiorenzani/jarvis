@@ -210,7 +210,7 @@ test('local media endpoint only serves images from configured roots', async () =
     // Give this bridge a dedicated workspace root. This tests the same
     // canonicalized root on Windows and POSIX without relying on OS temp
     // directory aliases or platform-specific TEMP path casing.
-    scopedBridge = await startBridge({ JARVIS_WORKSPACE: allowed })
+    scopedBridge = await startBridge({ JARVIS_WORKSPACE: allowed, JARVIS_DEBUG_MEDIA_PATHS: '1' })
     const host = { host: `127.0.0.1:${scopedBridge.port}` }
     assert.equal(
       await get(scopedBridge.port, `/file?path=${encodeURIComponent(privateImage)}`, host),
