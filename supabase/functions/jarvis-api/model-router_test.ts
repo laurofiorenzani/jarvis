@@ -3,6 +3,7 @@ import {
   assertZdrProviderConfig,
   ProviderUnavailableError,
   providerRoutingOptions,
+  toChatCompletionsUrl,
 } from './model-router.ts'
 
 Deno.test('default provider routing does not add privacy overrides', () => {
@@ -52,4 +53,10 @@ Deno.test('provider failover cannot mix ZDR and standard privacy tiers', () => {
 Deno.test('provider failover allows multiple endpoints with the same privacy tier', () => {
   assertConsistentProviderPrivacy([{ privacyMode: 'zdr' }, { privacyMode: 'zdr' }])
   assertConsistentProviderPrivacy([{}, {}])
+})
+
+Deno.test('Gemini OpenAI-compatible endpoint appends chat completions without an extra v1 segment', () => {
+  const actual = toChatCompletionsUrl('https://generativelanguage.googleapis.com/v1beta/openai')
+  const expected = 'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions'
+  if (actual !== expected) throw new Error('unexpected Gemini endpoint: ' + actual)
 })
