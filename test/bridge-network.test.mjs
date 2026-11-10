@@ -207,9 +207,10 @@ test('local media endpoint only serves images from configured roots', async () =
   try {
     writeFileSync(privateImage, 'private')
     writeFileSync(allowedImage, 'temporary')
-    // A temp directory is allowed only because this test explicitly configures
-    // it as a media root. The endpoint must not grant blanket tmp/home access.
-    scopedBridge = await startBridge({ JARVIS_FILE_ROOTS: allowed })
+    // The bridge permits its OS temp root by design. Use that built-in root
+    // rather than an extra configured root so Windows path canonicalization
+    // cannot make the fixture disagree with the root's realpath.
+    scopedBridge = await startBridge()
     const host = { host: `127.0.0.1:${scopedBridge.port}` }
     assert.equal(
       await get(scopedBridge.port, `/file?path=${encodeURIComponent(privateImage)}`, host),
