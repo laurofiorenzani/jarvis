@@ -209,6 +209,33 @@ export function CloudAccess({ onConnected, onDisconnected, onResumeConversation 
             <div style={{ color: '#7797a2', marginBottom: 10, letterSpacing: 0 }}>
               Off by default. When enabled, up to 20 non-expired saved memories may be sent to the configured AI provider with your message.
             </div>
+            <section aria-label="Saved cloud conversations" style={{ borderTop: '1px solid #214653', borderBottom: '1px solid #214653', padding: '10px 0', marginBottom: 12 }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 8 }}>
+                <strong style={{ color: '#83d9e8' }}>SAVED CONVERSATIONS · {conversations.length}</strong>
+                <button type="button" disabled={conversationBusy} onClick={() => void refreshConversations()} style={{ ...buttonStyle, padding: '5px 7px' }}>
+                  {conversationBusy ? 'LOADING…' : 'REFRESH'}
+                </button>
+              </div>
+              <button type="button" disabled={conversationBusy} onClick={startNewConversation}
+                style={{ ...buttonStyle, width: '100%', marginBottom: 8 }}>
+                + NEW CLOUD CONVERSATION
+              </button>
+              <div style={{ display: 'grid', gap: 6, maxHeight: 190, overflowY: 'auto' }}>
+                {conversations.map((conversation) => (
+                  <button key={conversation.id} type="button" disabled={conversationBusy}
+                    onClick={() => void resumeConversation(conversation.id)}
+                    style={{ ...buttonStyle, textAlign: 'left', letterSpacing: 0, opacity: conversationBusy ? .6 : 1 }}>
+                    <span style={{ display: 'block', color: '#c1dce2', overflowWrap: 'anywhere' }}>
+                      {conversation.title || 'Untitled conversation'}
+                    </span>
+                    <span style={{ display: 'block', color: '#7797a2', fontSize: 9, marginTop: 4 }}>
+                      UPDATED {new Date(conversation.updatedAt).toLocaleString()}
+                    </span>
+                  </button>
+                ))}
+                {!conversations.length && <div style={{ color: '#7797a2', letterSpacing: 0 }}>No saved cloud conversations yet.</div>}
+              </div>
+            </section>
             <form onSubmit={(event) => void saveMemory(event)} style={{ display: 'grid', gap: 8, marginBottom: 12 }}>
               <label style={labelStyle}>SAVE A MEMORY (MANUAL ONLY)
                 <select value={memoryCategory} onChange={(event) => setMemoryCategory(event.target.value as MemoryCategory)} style={inputStyle}>
