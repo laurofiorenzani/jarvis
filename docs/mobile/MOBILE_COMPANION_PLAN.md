@@ -34,21 +34,30 @@ Working branch: `work/memory-integration-ready`. Do not merge to `main` without 
 1. **Audit current coupling:** complete. The existing bridge, local memory, MCP tools and browser-direct path are documented; the bridge remains local-only.
 2. **Define cloud contracts:** initial v1 API, auth, conversation and streaming contracts are implemented.
 3. **Build cloud backend foundation:** Supabase schema, RLS, rate limits and the `jarvis-api` Edge Function are deployed. The provider router is implemented, but provider credentials and a real authenticated model turn are not yet verified.
-4. **Move core memory and integrations:** pending. Cloud memory, device enrollment and cloud tool registry are not implemented; no personal memory has been migrated.
-5. **Migrate clients:** cloud API, auth and cloud-brain adapters exist but are not yet wired into the running HUD. Capacitor iOS target and native audio/Keychain adapters are pending.
-6. **Verify independence:** pending. Core chat must be proven with Windows powered off before calling the mobile path ready.
-7. **Release:** physical-device testing, macOS/Xcode signing, TestFlight, privacy disclosures, then App Store readiness.
+4. **Finish cloud client foundation:** implemented in the working branch. Cloud API/auth/brain are wired into the HUD and cloud is the default backend. Real model inference is still unverified.
+5. **Build the native iPhone app:** pending. Add Capacitor 8 runtime/CLI and iOS platform, create the Xcode project, adapt the HUD for WKWebView, add native secure session storage and push-to-talk/audio adapters, app icon/splash and deep-link handling. This is an installable app, not a Safari shortcut or PWA.
+6. **CarPlay companion:** separate native iOS workstream after the iPhone app foundation. Build a minimal voice-led CarPlay interface using Apple's approved templates and request the appropriate entitlement; do not assume an arbitrary full HUD can be mirrored to CarPlay.
+7. **Verify independence:** prove core chat works with Windows powered off and test foreground/background, audio interruptions, reconnects and secure logout on a physical iPhone.
+8. **Release:** macOS/Xcode simulator and physical-device builds, signing, TestFlight, privacy disclosures, then App Store readiness.
 
 ## iOS constraints
 
-- Capacitor reuses the React/Vite HUD in a native iOS container; the interface itself remains web-rendered.
+- The deliverable is a standalone installable iOS app with its own JARVIS icon and native app lifecycle. It must not require opening a website in Safari.
+- Use Capacitor 8 to reuse the React/Vite HUD in a native iOS container; the interface itself remains web-rendered inside WKWebView. This is a native app shell, not a fully SwiftUI-rendered interface.
 - Microphone access must be permissioned and visibly user-initiated.
 - Push-to-talk is the baseline. Do not promise always-on wake-word operation while backgrounded or locked.
 - Handle audio interruptions, route changes, foreground/background transitions, and reconnects.
 - Do not embed provider, MCP, bridge, or Windows vault secrets in the app bundle.
 
+## CarPlay constraints
+
+- CarPlay is a separate approved native interface, not the iPhone HUD projected unchanged.
+- Use Apple's supported CarPlay templates and the specific app category/entitlement Apple approves. Voice-based conversational and driving-task apps may be eligible, but approval is not guaranteed.
+- The intended BMW experience is a minimal voice-led assistant surface with spoken responses and navigation hand-off to Apple Maps/Waze; never require visual interaction while driving.
+
 ## Acceptance criteria
 
+- JARVIS is installed from a signed app build, launches from its own home-screen icon, and does not require Safari.
 - iPhone connects directly to cloud JARVIS; Windows is not required.
 - Core chat and approved memory continue working while Windows is off.
 - User can install a signed iOS app with JARVIS identity/HUD.
@@ -59,4 +68,4 @@ Working branch: `work/memory-integration-ready`. Do not merge to `main` without 
 
 ## Current status
 
-Architecture and cloud backend foundation implemented. Supabase schema and API are deployed (`jarvis-api` version 9); cloud auth/API/brain adapters and regression tests exist. The HUD includes a Cloud Access panel and switches to the cloud brain after explicit sign-in, and the production/default backend is now cloud; the local bridge requires explicit `VITE_BACKEND=bridge` selection. A real authenticated model inference is not yet verified and no provider configuration is confirmed. Cloud memory security/lifecycle hardening, device enrollment/revocation, cloud tool/integration registry, Capacitor, native Keychain/audio adapters, physical-device testing, Xcode signing and TestFlight remain pending.
+Architecture and cloud backend foundation implemented. Supabase schema and API are deployed (`jarvis-api` version 9); cloud auth/API/brain adapters and regression tests exist. The HUD includes a Cloud Access panel and switches to the cloud brain after explicit sign-in, and the production/default backend is now cloud; the local bridge requires explicit `VITE_BACKEND=bridge` selection. A real authenticated model inference is not yet verified and no provider configuration is confirmed. Cloud memory security/lifecycle hardening, device enrollment/revocation, cloud tool/integration registry, native iPhone app work (Capacitor dependency/config, iOS project, Keychain/audio adapters, app icon, Xcode build/signing and TestFlight), physical-device testing, and CarPlay entitlement/template work remain pending. No PWA or Safari shortcut is considered the final iPhone deliverable.
