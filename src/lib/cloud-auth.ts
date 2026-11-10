@@ -121,9 +121,11 @@ export function createSupabaseAuth(options: SupabaseAuthOptions) {
     }
   }
 
-  async function saveSession(next: AuthSession) {
+  async function saveSession(next: AuthSession, expectedEpoch: number) {
     await options.storage.set(REFRESH_TOKEN_KEY, next.refresh_token)
+    if (expectedEpoch !== authEpoch) return false
     session = next
+    return true
   }
 
   async function refresh(): Promise<AuthSession | null> {
@@ -137,7 +139,7 @@ export function createSupabaseAuth(options: SupabaseAuthOptions) {
         const payload = await authRequest('token?grant_type=refresh_token', { refresh_token: refreshToken })
         if (startedAtEpoch !== authEpoch) return null
         const next = parseSession(payload)
-        await saveSession(next)
+        if (!await saveSession(next, startedAtEpoch)) return null
         if (startedAtEpoch !== authEpoch) return null
         return next
       } catch (error) {
@@ -168,7 +170,7 @@ export function createSupabaseAuth(options: SupabaseAuthOptions) {
       })
       if (signInEpoch !== authEpoch) throw new CloudAuthError('Sign-in was superseded by another authentication action.', 409)
       const next = parseSession(payload)
-      await saveSession(next)
+      if (!await saveSession(next, signInEpoch)) throw new CloudAuthError('Sign-in was superseded by another authentication action.', 409)
       if (signInEpoch !== authEpoch) throw new CloudAuthError('Sign-in was superseded by another authentication action.', 409)
       return { user: next.user }
     },
@@ -182,11 +184,15 @@ export function createSupabaseAuth(options: SupabaseAuthOptions) {
       // a late refresh response must never recreate a session after local sign-out.
       const signOutEpoch = ++authEpoch
       const accessToken = session?.access_token
+      const pendingRefresh = refreshInFlight
       session = null
+      // Let an already-started storage write settle before the final removal.
+      // Its epoch check prevents it from installing an in-memory session.
+      if (pendingRefresh) await pendingRefresh.catch(() => null)
+      if (signOutEpoch === authEpoch) await options.storage.remove(REFRESH_TOKEN_KEY)
       try {
         if (accessToken) await authRequest('logout', {}, accessToken)
       } catch { /* Local sign-out must still complete when offline. */ }
-      if (signOutEpoch === authEpoch) await options.storage.remove(REFRESH_TOKEN_KEY)
     },
   }
 }
