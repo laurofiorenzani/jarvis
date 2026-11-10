@@ -13,6 +13,8 @@ laptop only has to draw the interface. **ElevenLabs is an optional add-on** that
 gives JARVIS a much better voice and sharper hearing; without it he speaks and
 listens through the browser's own speech, and everything still works.
 
+> **Cloud-first product direction (current):** the intended production JARVIS runs in the cloud and the iPhone connects directly to it. Windows and the local bridge are development/administration and optional local-tool environments only; they are not required for normal cloud operation. The Supabase cloud API is deployed and the HUD has an explicit Cloud Access sign-in path, but cloud-first startup, live provider inference, secure native iOS storage/audio, Capacitor packaging, and physical-device validation are still in progress. The local quick-start below documents the developer bridge workflow; it is **not** the production deployment or iPhone setup guide. See [the canonical cloud-first architecture](docs/architecture/CLOUD_FIRST_ARCHITECTURE.md) and [implementation status](docs/architecture/IMPLEMENTATION_STATUS_2026-11-10.md).
+
 ---
 
 ## Requirements
