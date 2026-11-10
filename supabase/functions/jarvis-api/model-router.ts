@@ -197,7 +197,7 @@ export async function startFreeModelStream(
         upstreamDetail = rawDetail.slice(0, 1_200)
           .replace(/AIza[0-9A-Za-z_-]{20,}/g, '[REDACTED_KEY]')
           .replace(/sk-[0-9A-Za-z_-]{16,}/g, '[REDACTED_KEY]')
-          .replace(/Bearer\\s+[^\\s"']+/gi, 'Bearer [REDACTED]')
+          .replace(/Bearer\s+[^\s"']+/gi, 'Bearer [REDACTED]')
       } catch { /* diagnostic body is optional */ }
       lastFailure = new Error('Provider returned HTTP ' + upstream.status)
       console.warn('[jarvis] model provider returned non-success status', {
