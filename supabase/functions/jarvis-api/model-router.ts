@@ -129,10 +129,12 @@ function retryableStatus(status: number): boolean {
     status === 429 || status >= 500
 }
 
-function toChatCompletionsUrl(baseUrl: string): string {
+export function toChatCompletionsUrl(baseUrl: string): string {
+  // Google Gemini's OpenAI-compatible endpoint is rooted at /v1beta/openai,
+  // not /v1. Appending /v1/chat/completions creates a 404.
   return baseUrl.endsWith('/chat/completions')
     ? baseUrl
-    : baseUrl.endsWith('/v1')
+    : baseUrl.endsWith('/v1') || baseUrl.endsWith('/openai')
       ? baseUrl + '/chat/completions'
       : baseUrl + '/v1/chat/completions'
 }
