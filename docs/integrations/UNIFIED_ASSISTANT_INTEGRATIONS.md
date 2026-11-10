@@ -90,12 +90,12 @@ Reference: [Home Assistant integrations](https://www.home-assistant.io/docs/apps
 
 ## Delivery order
 
-1. Build the generic server-side integration registry, capability schema, tool execution policy, audit events, and connection state model.
-2. Prove one low-risk read-only integration end to end before enabling device control.
-3. Add Blink camera status/image retrieval with explicit still-vs-live semantics.
-4. Investigate and validate BMW climate action feasibility for the user's exact EU vehicle/account; only then implement the supported adapter.
-5. Add Dreame capabilities after identifying exact model and supported API/hub route.
-6. Add further integrations incrementally, all invoked through JARVIS.
+1. Build the generic server-side integration registry, typed tool-call execution loop, tool policy, audit events, and per-user connection state.
+2. Implement secure connection management and a read-only device discovery/status path before enabling remote actions.
+3. Build the BMW adapter for the supported climate route after confirming exact vehicle/account capability and risk.
+4. Build Blink snapshot/recording retrieval first; validate live-view feasibility separately.
+5. Identify the exact Dreame model and implement vacuum/room actions through the same registry.
+6. Add further integrations incrementally, all invoked and surfaced through JARVIS.
 
 ## Current implementation truth
 
