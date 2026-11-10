@@ -17,7 +17,7 @@ model inference still needs provider configuration and end-to-end validation.
 Cloud speech currently uses browser-native speech; server-side ElevenLabs
 proxying is not yet integrated into the cloud path. Capacitor, native iOS
 Keychain/audio, physical-device testing, signing, and TestFlight remain pending.
-See [the cloud-first architecture](docs/architecture/CLOUD_FIRST_ARCHITECTURE.md),
+See [the cloud-first architecture](docs/architecture/CLOUD_FIRST_ARCHITECTURE.md), [the camera and live-vision architecture](docs/architecture/CAMERA_LIVE_VISION.md),
 [implementation status](docs/architecture/IMPLEMENTATION_STATUS_2026-11-10.md), and
 the [Google AI Studio provider guide](docs/cloud/GOOGLE_AI_STUDIO_PROVIDER.md),
 which documents the server-side setup and its free-tier privacy trade-off.
