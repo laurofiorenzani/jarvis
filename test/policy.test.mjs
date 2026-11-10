@@ -46,6 +46,7 @@ test('read-only mode refuses a shell command the CLI would auto-approve', () => 
 })
 
 test('file tools are confined to the workspace and temp roots', () => {
+  assert.ok(!roots.includes(homedir()), 'the default file roots must not expose the whole home directory')
   writeFileSync(join(workspace, 'note.txt'), 'hi')
   assert.equal(allowed('Read', { file_path: join(workspace, 'note.txt') }), true)
   assert.equal(allowed('Read', { file_path: 'note.txt' }), true) // relative to cwd
