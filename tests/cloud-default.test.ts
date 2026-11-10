@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { BACKEND, USE_ELEVENLABS, env } from '../src/config'
+import { BACKEND, USE_ELEVENLABS, env, activeServers } from '../src/config'
 import { ask, cancel, connectedLabels, isConnected, usingBridge, usingDirect, warm } from '../src/lib/brain'
 
 test('production default is cloud and does not start the local bridge', async () => {
@@ -23,4 +23,9 @@ test('cloud mode refuses unauthenticated turns instead of falling back locally',
     ask('Hello', [], { onText: () => {}, onTool: () => {} }),
     /Cloud sign-in required/,
   )
+})
+
+
+test('cloud builds never activate demo MCP endpoints or credentials', () => {
+  assert.deepEqual(activeServers(), [])
 })
