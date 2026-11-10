@@ -184,24 +184,20 @@ export type McpServer = {
 }
 
 /**
- * These are passed to the Messages API `mcp_servers` parameter. Anthropic dials
- * the servers itself, so there is no CORS to fight and no local bridge to run —
- * which is what makes a backend-free JARVIS possible.
+ * Demo-only remote MCP servers for the explicit browser-direct backend.
+ * They are never configured in the cloud or bridge backends. The cloud runtime
+ * has its own server-side API boundary; it does not read this list.
  *
- * Only *remote HTTP* MCP servers work here. Local stdio servers (filesystem,
- * Blender, Playwright) need a machine to run on and are out of scope for a
- * browser-only build.
+ * Only remote HTTP MCP servers work here. Local stdio servers (filesystem,
+ * Blender, Playwright) need a machine to run on and are outside this demo path.
  *
- * READ THIS BEFORE FILLING ANY OF THESE IN. Every one of them ships to the
- * browser. In direct mode Vite inlines each token below into the JavaScript
- * bundle, and the Zapier and Pipedream URLs *are* secrets — the URL is the
- * credential. Anyone who opens devtools on a deployed build gets your Notion,
- * Linear, GitHub, Stripe, Sentry and Home Assistant access, not just the
- * Anthropic key. This is fine for a demo on your own machine or a recording;
- * it is not fine for anything public. The bridge backend (the default) reads
- * none of this — it uses your Claude Code MCP config, where the secrets stay on
- * your machine — so if you want these integrations without the exposure, run
- * `npm run bridge` instead of filling in this block.
+ * SECURITY: every value configured here is exposed in the browser bundle.
+ * In direct mode Vite inlines tokens and private endpoint URLs into JavaScript.
+ * Anyone who can load that build can inspect and reuse those credentials.
+ * Never populate these values for a public deployment. Use this mode only for
+ * isolated local demos with disposable, least-privilege credentials. For the
+ * production cloud backend, add integrations behind authenticated server-side
+ * adapters instead of putting vendor credentials in VITE_* variables.
  */
 export const MCP_SERVERS: McpServer[] = [
   // The single highest-leverage integration: one URL, ~8,000 apps, managed
