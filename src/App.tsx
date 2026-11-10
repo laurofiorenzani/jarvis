@@ -233,6 +233,24 @@ export default function App() {
     }
   }
 
+  // Text composer shares the exact same turn pipeline as speech.
+  useEffect(() => {
+    const onTextTurn = (event: Event) => {
+      const detail = (event as CustomEvent<string>).detail
+      const message = typeof detail === 'string' ? detail.trim() : ''
+      if (!message) return
+      if (store.getState().phase === 'offline' || store.getState().phase === 'boot') {
+        store.getState().setError('Power on JARVIS before sending a text message.')
+        return
+      }
+      void respond(message)
+    }
+    window.addEventListener('jarvis:send-text', onTextTurn)
+    return () => window.removeEventListener('jarvis:send-text', onTextTurn)
+    // respond is stable for the lifetime of this mounted App instance.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
   // -- voice events ---------------------------------------------------------
 
   /** What the voice loop should do with what it hears, derived from phase. */
