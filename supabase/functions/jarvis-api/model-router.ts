@@ -48,6 +48,19 @@ export function assertConsistentProviderPrivacy(
   }
 }
 
+/** ZDR is only meaningful on OpenRouter and must be authenticated server-side. */
+export function assertZdrProviderConfig(
+  hostname: string,
+  apiKeyEnv?: string,
+  apiKey?: string,
+): void {
+  if (hostname !== 'openrouter.ai' || !apiKeyEnv || !apiKey) {
+    throw new ProviderUnavailableError(
+      'ZDR provider requires the official OpenRouter host and a configured server-side API key.',
+    )
+  }
+}
+
 function configuredProviders(): Provider[] {
   const raw = Deno.env.get('JARVIS_MODEL_PROVIDERS')?.trim()
   if (!raw) return []
@@ -72,11 +85,11 @@ function configuredProviders(): Provider[] {
         (item.privacyMode !== undefined && item.privacyMode !== 'zdr')) continue
     const apiKeyEnv = typeof item.apiKeyEnv === 'string' ? item.apiKeyEnv : undefined
     const apiKey = apiKeyEnv ? Deno.env.get(apiKeyEnv)?.trim() : undefined
+    if (item.privacyMode === 'zdr') {
+      // Do not skip an invalid ZDR entry and fall back to a standard provider.
+      assertZdrProviderConfig(url.hostname, apiKeyEnv, apiKey)
+    }
     if (apiKeyEnv && !apiKey) continue
-    // A ZDR assertion is meaningful only for OpenRouter's documented routing
-    // control, and it must use an authenticated server-side key.
-    if (item.privacyMode === 'zdr' &&
-        (url.hostname !== 'openrouter.ai' || !apiKeyEnv || !apiKey)) continue
     providers.push({
       name: item.name.trim().slice(0, 60),
       baseUrl: url.toString().replace(/\/$/, ''),
