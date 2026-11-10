@@ -124,6 +124,12 @@ export function CloudAccess({ onConnected, onDisconnected, onResumeConversation 
   restoreSessionRef.current = restoreTabSession
 
   useEffect(() => {
+    if (passwordSetupToken) {
+      window.history.replaceState(null, '', window.location.pathname + window.location.search)
+    }
+  }, [passwordSetupToken])
+
+  useEffect(() => {
     if (!env.supabaseUrl || !env.supabasePublishableKey || !autoRestorePending.current || !canRestoreTabSession || autoRestoreStarted.current) return
     autoRestoreStarted.current = true
     void restoreSessionRef.current?.()
@@ -481,6 +487,19 @@ export function CloudAccess({ onConnected, onDisconnected, onResumeConversation 
             {authMode === 'reset' && <button disabled={busy} type="submit" style={buttonStyle}>
               {busy ? 'SENDING…' : 'SEND PASSWORD RESET EMAIL'}
             </button>}
+            {authMode === 'set-password' && <>
+              <label style={labelStyle}>NEW PASSWORD (MINIMUM 12 CHARACTERS)
+                <input required minLength={12} type="password" autoComplete="new-password"
+                  value={newPassword} onChange={(event) => setNewPassword(event.target.value)} style={inputStyle} />
+              </label>
+              <label style={labelStyle}>CONFIRM NEW PASSWORD
+                <input required minLength={12} type="password" autoComplete="new-password"
+                  value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} style={inputStyle} />
+              </label>
+              <button disabled={busy || newPassword.length < 12 || newPassword !== confirmPassword} type="submit" style={buttonStyle}>
+                {busy ? 'UPDATING…' : 'SET PASSWORD & CONTINUE'}
+              </button>
+            </>}
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
               {authMode !== 'signin' && authMode !== 'set-password' && <button type="button" onClick={() => setAuthMode('signin')} style={buttonStyle}>BACK TO SIGN IN</button>}
               {authMode === 'signin' && <>
@@ -490,7 +509,7 @@ export function CloudAccess({ onConnected, onDisconnected, onResumeConversation 
             </div>
             {message && <div role="status" style={{ color: '#ffbd91', lineHeight: 1.5 }}>{message}</div>}
             <div style={{ color: '#7797a2', lineHeight: 1.5, letterSpacing: 0 }}>
-              Each family member signs in with a separate email and password. Conversations and personal memories remain private to that account.
+              {authMode === 'set-password' ? 'Your secure invitation or recovery link is ready. Choose a password to activate this account.' : 'Each family member signs in with a separate email and password. Conversations and personal memories remain private to that account.'}
             </div>
           </form>
         )
