@@ -1,21 +1,28 @@
 # Supabase deployment runbook (free-tier capable)
 
-This runbook describes the deployed private prototype and the remaining
-operator checks. As of 10 November 2026, the Supabase organization is on the
-Free plan and the `Jarvis` project (`undmhmdwhxvjgvezvucy`, region
-`eu-west-3`) is active and healthy. The `jarvis-api` Edge Function is active
-(version 9), and all six application tables have RLS enabled. The deployed
-`index.ts`, `model-router.ts`, and `deno.json` were compared with the
-working branch and matched byte-for-byte.
+This runbook describes the deployed cloud-first prototype and its remaining
+owner-only setup gates. As of 10 November 2026, the Supabase `Jarvis` project
+(`undmhmdwhxvjgvezvucy`, region `eu-west-3`) is ACTIVE_HEALTHY on the Free
+plan. The `jarvis-api` Edge Function is active (version 13), with application-
+level Supabase Auth bearer validation, production-origin CORS and the required
+`apikey` CORS header. Its public health route and production CORS are covered
+by a passing deployed smoke test. The deployed function files match the
+working branch.
 
-The Vercel `jarvis` project is linked to this GitHub repository on the Hobby
-plan, and the current branch has a READY production-target deployment. However,
-Vercel SSO deployment protection is enabled for all non-custom domains, and no
-Vercel project environment variables are configured. The default
-`vercel.app` aliases therefore must not be treated as the spouse-accessible
-public release until access protection and the app's public authentication
-boundary are deliberately reviewed. No Vercel access-protection setting was
-changed as part of this work.
+The Vercel `jarvis` project is on the Hobby plan. SSO deployment protection
+has been disabled as explicitly authorised. The stable public PWA origin is
+`https://jarvis-lauro-fiorenzani.vercel.app`; the app's Supabase Auth login
+remains the user-level access gate. The production origin serves the PWA
+manifest and service worker. The web/PWA route is the approved cross-device
+release fallback for desktop and both iPhones; native iOS remains a later
+enhancement.
+
+This does **not** yet prove that a real user can complete sign-up/sign-in, that
+a model provider is configured, or that a model response can be generated and
+persisted. Supabase Auth currently has zero users, and no model-provider
+secrets have been added. No personal conversations have been migrated or
+seeded. The free plan is suitable for a low-traffic prototype, subject to
+Supabase's quotas, inactivity/pause policy and regional availability.
 
 This does **not** yet prove that a user can sign in, that model-provider secrets
 are configured, or that a model response can be generated and persisted. Those
@@ -145,16 +152,38 @@ mid-answer after text has been delivered, because doing so could duplicate or
 contradict the response. Provider keys are resolved from Supabase secrets and
 never sent to the client.
 
-Set `JARVIS_MODEL_PROVIDERS` to a JSON array in preferred order. Example shape
-(use real endpoint/model names from each provider's current documentation):
+Set `JARVIS_MODEL_PROVIDERS` to a JSON array in preferred order. Every
+entry must explicitly declare `tier: "free"` and
+`billingMode: "free_quota_only"`; the router rejects entries that omit them.
+Example privacy-first OpenRouter configuration:
 
 ```json
 [
-  {"name":"FreeLLMAPI","baseUrl":"https://YOUR_ROUTER_HOST/v1","model":"YOUR_FREE_MODEL","apiKeyEnv":"FREELLMAPI_API_KEY"},
-  {"name":"Groq","baseUrl":"https://api.groq.com/openai/v1","model":"YOUR_AVAILABLE_FREE_MODEL","apiKeyEnv":"GROQ_API_KEY"},
-  {"name":"OpenRouter-Free","baseUrl":"https://openrouter.ai/api/v1","model":"YOUR_CURRENT_FREE_MODEL_ID","apiKeyEnv":"OPENROUTER_API_KEY"}
+  {
+    "name": "OpenRouter-Free-ZDR",
+    "baseUrl": "https://openrouter.ai/api/v1",
+    "model": "openrouter/free",
+    "tier": "free",
+    "billingMode": "free_quota_only",
+    "apiKeyEnv": "OPENROUTER_API_KEY",
+    "privacyMode": "zdr"
+  }
 ]
 ```
+
+When `privacyMode` is `"zdr"`, JARVIS sends OpenRouter's
+`provider: { "zdr": true }` request option. OpenRouter must route only to an
+endpoint classified as Zero Data Retention; if no eligible free endpoint is
+available, the request fails rather than falling back to a retaining endpoint.
+OpenRouter's Free plan currently offers free models with a 50-request/day cap
+(20/minute); model availability and quota can change. OpenRouter states that
+it does not train on customer data, and ZDR routing is available on every plan.
+This does not provide EU-only processing: the Free plan has no EU in-region
+routing guarantee. Do not use it for data that must remain in the EU.
+
+References: [OpenRouter free models](https://openrouter.ai/collections/free-models),
+[OpenRouter pricing and privacy](https://openrouter.ai/pricing),
+[OpenRouter ZDR routing](https://openrouter.ai/docs/guides/get-started/sovereign-ai).
 
 For each `apiKeyEnv`, create a Supabase Edge Function secret with that exact
 name. Entries without `apiKeyEnv` are allowed only for endpoints that genuinely
@@ -206,10 +235,15 @@ automatic paid fallback enabled.
 
 The existing Google AI Studio key in the Windows FreeLLMAPI installation is
 not available to Supabase automatically. Cloud activation requires the owner
-to add the key as the `GEMINI_API_KEY` Edge Function secret in the Supabase
-Dashboard; never copy it into GitHub, ChatGPT messages, or browser code. The
-Supabase connector available to this workflow cannot create or inspect Edge
-Function secrets, so that secret-entry step is an owner-only gate.
+to add a provider key as an Edge Function secret in the Supabase Dashboard;
+never copy it into GitHub, ChatGPT messages, or browser code. The Supabase
+connector available to this workflow cannot create or inspect Edge Function
+secrets, so secret entry is an owner-only gate. Do not use Google AI Studio's
+Free tier for private family conversations unless you accept its data-use
+terms; its free-tier prompts may be used to improve Google products. For the
+OpenRouter ZDR option above, create a free OpenRouter API key and add it as
+`OPENROUTER_API_KEY`; no paid credits are required for the `:free` model
+route. Do not add paid billing or a paid fallback.
 
 This deployment remains a free-tier prototype, not a guaranteed always-on
 service: Supabase Free projects may pause after inactivity and Edge Function
