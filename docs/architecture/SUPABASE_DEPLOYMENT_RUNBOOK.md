@@ -3,7 +3,7 @@
 This runbook describes the deployed cloud-first prototype and its remaining
 owner-only setup gates. As of 10 November 2026, the Supabase `Jarvis` project
 (`undmhmdwhxvjgvezvucy`, region `eu-west-3`) is ACTIVE_HEALTHY on the Free
-plan. The `jarvis-api` Edge Function is active (version 16), with application-
+plan. The `jarvis-api` Edge Function is active (version 17), with application-
 level Supabase Auth bearer validation, production-origin CORS and the required
 `apikey` CORS header. Its public health route and production CORS are covered
 by a passing deployed smoke test. The deployed function files match the
