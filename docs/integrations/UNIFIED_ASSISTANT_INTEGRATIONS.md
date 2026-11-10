@@ -78,7 +78,9 @@ Blink camera live view is a distinct capability from retrieving a thumbnail or r
 
 ### Dreame vacuum
 
-The Dreame integration was agreed as a later JARVIS capability, after the continuous voice conversation and first device integrations. Exact model/API route was not established in the recovered decision record. Do not invent the model or assume universal room/zone support. Add it to the same JARVIS capability registry once the device model and supported action route are known.
+JARVIS itself must issue robot-vacuum commands through a Dreame integration adapter, including room/zone cleaning where the exact model and map expose stable room identifiers. The user should be able to say "aspira a sala" or "limpa a cozinha" in the same JARVIS conversation; no separate assistant or manual app switching.
+
+Dreame has no confirmed public third-party API/SDK in the research available for this project. Evaluate a maintained local/cloud integration protocol (for example, a Home Assistant device integration or a vetted community client) only after identifying the exact robot model, firmware, region, and map/room support. Keep authentication and device tokens out of the browser and model context. Do not claim a room-clean action is available until the exact device reports its rooms and accepts the command.
 
 ### Home automation gateway (optional)
 
