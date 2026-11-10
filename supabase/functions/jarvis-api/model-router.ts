@@ -113,6 +113,8 @@ export async function startFreeModelStream(
   for (const provider of providers) {
     if (signal.aborted) throw new DOMException('The request was cancelled.', 'AbortError')
     let upstream: Response
+    const connectController = new AbortController()
+    const connectTimeout = setTimeout(() => connectController.abort(), 25_000)
     try {
       upstream = await fetch(toChatCompletionsUrl(provider.baseUrl), {
         method: 'POST',
@@ -127,12 +129,17 @@ export async function startFreeModelStream(
           stream: true,
           temperature: 0.4,
         }),
-        signal: AbortSignal.any([signal, AbortSignal.timeout(25_000)]),
+        // The 25-second deadline applies only to connection/response headers.
+        // Keep the caller's signal attached for the full stream lifetime, but
+        // disarm the connection timer as soon as headers arrive.
+        signal: AbortSignal.any([signal, connectController.signal]),
       })
     } catch (cause) {
       if (signal.aborted) throw new DOMException('The request was cancelled.', 'AbortError')
       lastFailure = cause
       continue
+    } finally {
+      clearTimeout(connectTimeout)
     }
 
     if (!upstream.ok || !upstream.body) {
