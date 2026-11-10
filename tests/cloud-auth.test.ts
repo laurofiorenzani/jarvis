@@ -281,3 +281,36 @@ test('overlapping sign-ins serialize token writes and keep the newest session', 
   assert.equal(values.get('jarvis.supabase.refresh-token'), 'refresh-second')
   assert.equal(await auth.getAccessToken(), 'access-second')
 })
+
+
+test('sign-in supersedes an in-flight session refresh before writing new credentials', async () => {
+  const values = new Map<string, string>([['jarvis.supabase.refresh-token', 'refresh-old']])
+  let refreshStarted!: () => void
+  const started = new Promise<void>((resolve) => { refreshStarted = resolve })
+  const auth = createSupabaseAuth({
+    url: 'https://example.supabase.co',
+    anonKey: 'sb_publishable_test',
+    storage: {
+      get: async (key) => values.get(key) ?? null,
+      set: async (key, value) => { values.set(key, value) },
+      remove: async (key) => { values.delete(key) },
+    },
+    fetchImpl: async (_input, init) => {
+      const body = JSON.parse(String(init?.body)) as { email?: string; refresh_token?: string }
+      if (body.refresh_token) {
+        refreshStarted()
+        return await new Promise<Response>((_resolve, reject) => {
+          init?.signal?.addEventListener('abort', () => reject(new DOMException('Refresh aborted', 'AbortError')), { once: true })
+        })
+      }
+      return response(session('access-new', 'refresh-new'))
+    },
+  })
+
+  const restoring = auth.restoreSession()
+  await started
+  await auth.signInWithPassword('user@example.test', 'password')
+  assert.equal(await restoring, null)
+  assert.equal(values.get('jarvis.supabase.refresh-token'), 'refresh-new')
+  assert.equal(await auth.getAccessToken(), 'access-new')
+})
