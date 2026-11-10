@@ -189,12 +189,27 @@ export async function startFreeModelStream(
     }
 
     if (!upstream.ok || !upstream.body) {
+      // Capture a small, bounded upstream error detail for operator diagnostics.
+      // Never log request headers, API keys, prompts, or response bodies wholesale.
+      let upstreamDetail = ''
+      try {
+        const rawDetail = await upstream.text()
+        upstreamDetail = rawDetail.slice(0, 1_200)
+          .replace(/AIza[0-9A-Za-z_-]{20,}/g, '[REDACTED_KEY]')
+          .replace(/sk-[0-9A-Za-z_-]{16,}/g, '[REDACTED_KEY]')
+          .replace(/Bearer\\s+[^\\s"']+/gi, 'Bearer [REDACTED]')
+      } catch { /* diagnostic body is optional */ }
       lastFailure = new Error('Provider returned HTTP ' + upstream.status)
       console.warn('[jarvis] model provider returned non-success status', {
         provider: provider.name,
+        model: provider.model,
         status: upstream.status,
+        detail: upstreamDetail,
+        classification: upstream.status === 404 ? 'model_or_endpoint_not_found'
+          : upstream.status === 401 || upstream.status === 403 ? 'authentication_or_access'
+          : upstream.status === 429 ? 'rate_limit_or_quota'
+          : upstream.status >= 500 ? 'provider_server_error' : 'provider_request_rejected',
       })
-      try { await upstream.body?.cancel() } catch { /* ignore */ }
       if (retryableStatus(upstream.status)) continue
       // Configuration/auth errors are isolated to this provider; try the next
       // configured free endpoint rather than exposing provider details.
