@@ -31,7 +31,7 @@ The Windows PC is a development, administration, and optional local-tools enviro
 
 ## 4. Migration from the current repository
 
-The current codebase is a React 19 + Vite + TypeScript client with a Node bridge that uses the Claude Agent SDK and local MCP configuration. The current default backend is `bridge`, and bridge URLs default to localhost. This is the current implementation, **not the approved final deployment architecture**.
+The current codebase is a React 19 + Vite + TypeScript client with a Node bridge that uses the Claude Agent SDK and local MCP configuration. The application now defaults to `cloud`; `bridge` is selected only explicitly for local development, and bridge URLs default to localhost. This keeps the implementation aligned with the approved deployment architecture.
 
 Migrate incrementally:
 
@@ -46,7 +46,7 @@ Migrate incrementally:
 
 ## 5. iOS product decision
 
-Use **Capacit​or 8 around the existing React/Vite application** for the first iPhone app. The deliverable is a signed, installable iOS app with its own icon and native lifecycle; the HUD is web-rendered inside WKWebView. It is not a Safari bookmark, PWA, or a claim that the UI is fully SwiftUI-native. Capacitor 8 requires Node 22+ and Xcode 26+ for iOS builds; the iOS project must be generated and built on macOS/Xcode.
+Use **Capacitor 8 around the existing React/Vite application** for the first iPhone app. The deliverable is a signed, installable iOS app with its own icon and native lifecycle; the HUD is web-rendered inside WKWebView. It is not a Safari bookmark, PWA, or a claim that the UI is fully SwiftUI-native. Capacitor 8 requires Node 22+ and Xcode 26+ for iOS builds; the iOS project must be generated and built on macOS/Xcode.
 
 Add iOS-specific adapters for microphone/audio, speech recognition, text-to-speech, interruptions, permissions, app lifecycle, Keychain-backed device credentials, and reconnect handling. Push-to-talk is the initial supported interaction. Do not promise an always-listening wake word while the app is backgrounded or locked. CarPlay is a separate native companion interface using Apple's approved templates and requires the appropriate Apple entitlement; it will not simply mirror the full iPhone HUD.
 
