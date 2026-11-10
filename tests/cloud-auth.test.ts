@@ -177,3 +177,64 @@ test('sign-out invalidates a refresh already in flight and prevents session resu
   assert.equal(values.has('jarvis.supabase.refresh-token'), false)
   assert.equal(await auth.getAccessToken(), null)
 })
+
+
+test('sign-out waits for an in-flight sign-in token write before removing credentials', async () => {
+  const values = new Map<string, string>()
+  let storageWriteStarted!: () => void
+  const writeStarted = new Promise<void>((resolve) => { storageWriteStarted = resolve })
+  let releaseStorageWrite!: () => void
+  const writeGate = new Promise<void>((resolve) => { releaseStorageWrite = resolve })
+  const auth = createSupabaseAuth({
+    url: 'https://example.supabase.co',
+    anonKey: 'sb_publishable_test',
+    storage: {
+      get: async (key) => values.get(key) ?? null,
+      set: async (key, value) => {
+        storageWriteStarted()
+        await writeGate
+        values.set(key, value)
+      },
+      remove: async (key) => { values.delete(key) },
+    },
+    fetchImpl: async () => response(session('access-signin', 'refresh-signin')),
+  })
+
+  const pendingSignIn = auth.signInWithPassword('user@example.test', 'password')
+  await writeStarted
+  const pendingSignOut = auth.signOut()
+  releaseStorageWrite()
+  await pendingSignOut
+  await assert.rejects(pendingSignIn, (error: unknown) =>
+    error instanceof CloudAuthError && error.status === 409)
+  assert.equal(values.has('jarvis.supabase.refresh-token'), false)
+  assert.equal(await auth.getAccessToken(), null)
+})
+
+test('sign-out aborts a password sign-in request that has not returned', async () => {
+  const values = new Map<string, string>()
+  let requestStarted!: () => void
+  const started = new Promise<void>((resolve) => { requestStarted = resolve })
+  const auth = createSupabaseAuth({
+    url: 'https://example.supabase.co',
+    anonKey: 'sb_publishable_test',
+    storage: {
+      get: async (key) => values.get(key) ?? null,
+      set: async (key, value) => { values.set(key, value) },
+      remove: async (key) => { values.delete(key) },
+    },
+    fetchImpl: async (_input, init) => {
+      requestStarted()
+      return await new Promise<Response>((_resolve, reject) => {
+        init?.signal?.addEventListener('abort', () => reject(new DOMException('Sign-in aborted', 'AbortError')), { once: true })
+      })
+    },
+  })
+
+  const pendingSignIn = auth.signInWithPassword('user@example.test', 'password')
+  await started
+  await auth.signOut()
+  await assert.rejects(pendingSignIn)
+  assert.equal(values.has('jarvis.supabase.refresh-token'), false)
+  assert.equal(await auth.getAccessToken(), null)
+})
