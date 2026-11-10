@@ -8,8 +8,9 @@ The cloud memory store is deployed to the configured Supabase project. It is sep
 
 - `public.jarvis_memories` stores user-approved records in the categories `preference`, `project`, `workflow`, and `fact`.
 - Each record is scoped to an authenticated Supabase user.
-- Row Level Security policies restrict select, insert, update and delete to `auth.uid() = user_id`.
-- The Edge Function additionally filters every service-role query by the authenticated user ID.
+- Row Level Security is enabled; authenticated clients have read-only table grants and can select only rows where `user_id = (select auth.uid())`.
+- Direct client writes are revoked. Create, preference changes, and deletion go through the authenticated Edge Function, which validates the bearer session and scopes every service-role query by the authenticated user ID.
+- The internal rate-limit table is accessible only to `service_role`; it has no client grants or client-facing RLS policy.
 - Expired records are excluded from list and model context. Users can delete individual records.
 - This is authenticated cloud storage with Supabase-managed protections. It is **not end-to-end encrypted**: the cloud function can read the records, and selected records are sent to the configured model provider only when the user enables memory context.
 
