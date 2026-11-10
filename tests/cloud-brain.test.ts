@@ -172,3 +172,21 @@ test('cloud brain does not switch conversation when history retrieval fails', as
   await assert.rejects(brain.resumeConversation('missing'), /Not found/)
   assert.equal(brain.getConversationId(), null)
 })
+
+
+test('cloud brain blocks new turns while a conversation is being restored', async () => {
+  let release!: (value: { conversation: { id: string }; messages: [] }) => void
+  const pending = new Promise<{ conversation: { id: string }; messages: [] }>((resolve) => { release = resolve })
+  const brain = createCloudBrain({
+    health: async () => ({ status: 'ok' }),
+    createConversation: async () => ({ conversation: { id: 'new-conversation' } }),
+    getConversation: async () => pending,
+    streamTurn: async () => streamOf([]),
+    cancelTurn: async () => ({ cancelled: false }),
+  })
+  const restoring = brain.resumeConversation('existing')
+  await assert.rejects(brain.ask('Do not race', [], handlers()), /already running/)
+  release({ conversation: { id: 'existing' }, messages: [] })
+  await restoring
+  assert.equal(brain.getConversationId(), 'existing')
+})
