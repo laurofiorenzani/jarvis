@@ -37,7 +37,19 @@ iPhone JARVIS app / desktop JARVIS client
 
 ## Integration strategy
 
-### BMW / My BMW — previously agreed first route
+### BMW / My BMW — direct JARVIS integration
+
+**Current requirement (user clarification, 10 November 2026):** JARVIS itself must invoke BMW functionality through an integration. Apple Shortcuts are not the intended architecture and must not be presented as the implementation. Do not make the user operate Shortcuts or manually switch to My BMW for ordinary commands.
+
+Preferred implementation order:
+1. Use a BMW-supported, customer-authorised API if it exposes the required remote climate operation for this vehicle/account.
+2. If the official public API does not expose remote climate, assess a narrowly scoped ConnectedDrive adapter only after documenting that it is unofficial/reverse-engineered, its credential and MFA risks, regional compatibility, and breakage risk. Do not store the BMW password in the client or model context.
+3. Keep the adapter server-side with per-user encrypted credentials/tokens, explicit connect/disconnect/revoke flows, strict allowlisted actions, audit records, rate limits, and honest result states.
+4. JARVIS maps "prepara o carro" to `bmw.start_climate`, calls the adapter, and reports accepted/completed/confirmed separately. Never claim cabin climate is active without a reliable vehicle-side status.
+
+BMW CarData's public data-sharing APIs must not be assumed to include remote vehicle commands; verify the exact product scopes and endpoints. A private ConnectedDrive remote-service API is a separate, less stable route and requires an explicit risk assessment before credentials are connected.
+
+### Blink cameras — direct JARVIS integration
 
 The first implementation route already agreed with the user is **Apple Shortcuts actions exposed by the My BMW app**, orchestrated by JARVIS on the iPhone. Do not restart the investigation as if no decision existed.
 
