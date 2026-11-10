@@ -1902,6 +1902,7 @@ kbd {
 
 /* Mobile-safe text composer: speech remains available, but is never required. */
 .text-composer {
+  pointer-events: auto;
   position: fixed;
   left: 50%;
   bottom: max(4.8rem, calc(env(safe-area-inset-bottom) + 3.8rem));
