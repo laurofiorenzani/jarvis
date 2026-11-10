@@ -34,6 +34,7 @@ export type { ConnectionState } from './bridge'
  */
 
 export const usingBridge = BACKEND === 'bridge'
+export const usingDirect = BACKEND === 'direct'
 
 /** Conversation state lives in the bridge session, so history is only threaded
  *  through on the direct path. */
@@ -43,6 +44,9 @@ export async function ask(
   handlers: AskHandlers,
 ): Promise<{ text: string; tools: string[] }> {
   if (activeCloudBrain) return activeCloudBrain.ask(prompt, history, handlers)
+  if (BACKEND === 'cloud') {
+    throw new Error('Cloud sign-in required. Open CLOUD BRAIN and authenticate before speaking to JARVIS.')
+  }
   return usingBridge
     ? bridge.ask(prompt, handlers)
     : direct.ask([...history, { role: 'user', content: prompt }], handlers)
@@ -108,7 +112,7 @@ export function watchCapture(
 export function cancel(): void {
   if (activeCloudBrain) activeCloudBrain.cancel()
   else if (usingBridge) bridge.cancel()
-  else direct.cancel()
+  else if (usingDirect) direct.cancel()
 }
 
 /** The older name for `cancel()`. */
@@ -124,7 +128,7 @@ export function interrupt(): void {
  * so there is nothing that can be down until you try it.
  */
 export function isConnected(): boolean {
-  return activeCloudBrain ? true : usingBridge ? bridge.isConnected() : true
+  return activeCloudBrain ? true : usingBridge ? bridge.isConnected() : usingDirect
 }
 
 /**
@@ -162,5 +166,6 @@ export function decideMemoryConfirmation(
 /** Labels for the HUD's SYSTEMS rail. */
 export function connectedLabels(): string[] {
   if (activeCloudBrain) return ['SUPABASE CLOUD']
+  if (BACKEND === 'cloud') return ['CLOUD SIGN-IN REQUIRED']
   return usingBridge ? bridge.bridgeServers() : direct.connectedLabels()
 }
