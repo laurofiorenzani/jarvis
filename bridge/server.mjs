@@ -843,10 +843,17 @@ const handleRequest = async (req, res) => {
     }
     const dot = real ? real.lastIndexOf('.') : -1
     const ext = dot === -1 ? '' : real.slice(dot).toLowerCase()
+    const rootAllowed = real ? withinRoots(real) : false
+    if (process.env.JARVIS_DEBUG_MEDIA_PATHS === '1') {
+      console.log('[jarvis] media request diagnostic', JSON.stringify({
+        asked, absolute: isAbsolute(asked), real, ext, platform: process.platform,
+        roots: FILE_ROOTS, rootAllowed,
+      }))
+    }
     // Images only, absolute paths only, and only under roots we expect things
     // to be written to. This endpoint exists to show pictures, not to be a
     // general file read for whatever the model — or another page — asks for.
-    if (!real || !Object.hasOwn(IMAGE_TYPES, ext) || !withinRoots(real)) {
+    if (!real || !Object.hasOwn(IMAGE_TYPES, ext) || !rootAllowed) {
       res.writeHead(400, cors)
       return res.end('images only')
     }
