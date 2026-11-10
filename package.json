@@ -13,7 +13,7 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "oxlint",
-    "test": "node --import tsx --test tests/cloud-api.test.ts tests/cloud-auth.test.ts tests/cloud-brain.test.ts tests/cloud-runtime.test.ts tests/native-secure-token-store.test.ts tests/brain-cloud-selection.test.ts tests/bridge-provider-config.test.ts",
+    "test": "node --import tsx --test tests/*.test.ts test/*.test.mjs",
     "preview": "vite preview",
     "bridge": "node bridge/server.mjs",
     "bridge:writes": "node bridge/server.mjs --writes",
