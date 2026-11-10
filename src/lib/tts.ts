@@ -488,7 +488,7 @@ export function createSpeaker(): Speaker {
       const u = new SpeechSynthesisUtterance(text)
       const voice = pickVoiceForText(text)
       if (voice) u.voice = voice
-      u.lang = voice?.lang ?? (/\b(?:não|você|está|para|com|uma|que|olá|obrigado)\b/i.test(text) ? 'pt-BR' : 'en-GB')
+      u.lang = voice?.lang ?? (/[ãõáàâéêíóôúç]|\b(?:não|você|está|estou|para|com|uma|que|olá|obrigado|obrigada|também)\b/i.test(text) ? 'pt-BR' : 'en-GB')
       // Deliberate, and deliberately invariant — the character's pace does not
       // change with stakes, and that steadiness is most of the effect. This
       // lands around 130 wpm, below the median for film dialogue.
