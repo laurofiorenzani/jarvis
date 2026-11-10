@@ -44,7 +44,7 @@ function hasRestorableTabSession() {
   }
 }
 
-export function CloudAccess({ onConnected, onDisconnected, onResumeConversation, onSpeechApiReady }: { onConnected?: () => void; onDisconnected?: () => void; onResumeConversation?: (messages: ConversationMessage[]) => void; onSpeechApiReady?: (transcribe: ((audio: Blob) => Promise<string>) | null) => void }) {
+export function CloudAccess({ onConnected, onDisconnected, onResumeConversation }: { onConnected?: () => void; onDisconnected?: () => void; onResumeConversation?: (messages: ConversationMessage[]) => void }) {
   const [expanded, setExpanded] = useState(() => !hasRestorableTabSession())
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -90,7 +90,6 @@ export function CloudAccess({ onConnected, onDisconnected, onResumeConversation,
       setProviderStatus('MODEL PROVIDER CONFIGURATION INVALID OR UNAVAILABLE')
     }
     selectCloudBrain(runtime.brain)
-    onSpeechApiReady?.(runtime.api.transcribeAudio)
     setConnected(true)
     onConnected?.()
   }
@@ -114,7 +113,6 @@ export function CloudAccess({ onConnected, onDisconnected, onResumeConversation,
       selectConfiguredBrain()
       await runtime.auth.signOut().catch(() => {})
       runtimeRef.current = null
-      onSpeechApiReady?.(null)
       setConnected(false)
       setCanRestoreTabSession(false)
       setMessage(error instanceof Error ? error.message : 'Cloud session could not be restored.')
@@ -364,7 +362,6 @@ export function CloudAccess({ onConnected, onDisconnected, onResumeConversation,
       setMessage('CLOUD SIGNED OUT · LOCAL TOKENS CLEARED')
     } finally {
       runtimeRef.current = null
-      onSpeechApiReady?.(null)
       setConnected(false)
       setCanRestoreTabSession(false)
       try { window.sessionStorage.removeItem(TAB_SESSION_CHOICE) } catch { /* Sign-out remains complete if storage is unavailable. */ }
