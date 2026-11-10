@@ -38,6 +38,16 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
 
+/** Prevent failover from silently downgrading a request's privacy tier. */
+export function assertConsistentProviderPrivacy(
+  providers: Array<{ privacyMode?: 'zdr' }>,
+): void {
+  const tiers = new Set(providers.map((provider) => provider.privacyMode === 'zdr' ? 'zdr' : 'standard'))
+  if (tiers.size > 1) {
+    throw new ProviderUnavailableError('Provider failover cannot mix ZDR and standard privacy modes.')
+  }
+}
+
 function configuredProviders(): Provider[] {
   const raw = Deno.env.get('JARVIS_MODEL_PROVIDERS')?.trim()
   if (!raw) return []
