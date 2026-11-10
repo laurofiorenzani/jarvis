@@ -36,8 +36,8 @@ export type { ConnectionState } from './bridge'
 export const usingBridge = BACKEND === 'bridge'
 export const usingDirect = BACKEND === 'direct'
 
-/** Conversation state lives in the bridge session, so history is only threaded
- *  through on the direct path. */
+/** Bridge and cloud keep conversation state server-side; only direct demo mode
+ *  needs the browser to thread the transcript history through each request. */
 export async function ask(
   prompt: string,
   history: Msg[],
