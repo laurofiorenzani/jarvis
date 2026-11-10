@@ -11,7 +11,7 @@
 - The holographic HUD belongs to the iPhone JARVIS app. Any optional CarPlay surface is restricted and secondary; it is not the way JARVIS controls My BMW.
 - Build the continuous JARVIS conversation first, then progressively enable device integrations through the same assistant.
 
-## Recovered decisions from 3 November 2026
+## Historical decisions from 3 November 2026 (superseded where noted)
 
 ### Conversation first
 - The first priority was a functional, continuous voice conversation, comparable to ChatGPT Voice. The earlier Dictate Text -> Ask ChatGPT -> Speak Text Shortcut was considered too slow and ended after each request.
@@ -27,10 +27,10 @@
 - Every integration must distinguish requested, accepted, completed, and device-confirmed states. Never report a successful action without a verifiable vendor/device result.
 - The previous Shortcut proposal is superseded by this explicit clarification; preserve it as historical context only, not as the implementation plan.
 
-### Blink
-- The user identified Blink Shortcuts/actions for device switch/lights, system arm/disarm, motion detection, notification rules, and `Open Quick View for your Blink`.
-- The camera selection was unavailable in the Quick View flow at the time.
-- Delivery of the resulting image into JARVIS for analysis was not yet tested. Do not claim a camera image or live video was received merely because Quick View launched.
+### Blink — historical discovery only
+- Earlier exploration identified Blink app actions and `Open Quick View for your Blink`.
+- This was not a validated integration and is superseded by the 10 November direct-integration requirement above. Do not implement a Shortcut/Quick View hand-off as the product solution.
+- Delivery of camera images/live video into JARVIS was not validated during that earlier exploration.
 
 ### Dreame and future services
 - Dreame robot vacuum control was planned as a later capability inside JARVIS.
@@ -52,11 +52,11 @@ Do not automatically store every conversation or sensitive credential as memory.
 
 - Cloud auth, conversation storage, streamed text turns, cancellation, and opt-in personal memories exist in the repository/cloud prototype.
 - Cloud model routing currently streams text only; it does not yet expose a server-side tool-call/integration execution loop.
-- The repository does not yet contain a native Capacitor iOS project, a native Shortcut invocation adapter, an authenticated phone action-dispatch channel, or an integration credential manager.
+- The repository does not yet contain a native Capacitor iOS project, a native authenticated phone action-dispatch channel, or an integration credential manager.
 - No direct BMW, Blink, or Dreame adapter is implemented or end-to-end tested yet. The previous Shortcut/Quick View proposal is superseded by the user's 10 November clarification and is not the target implementation.
 - The Edge Function already retrieves up to 20 non-expired, user-approved memory records and injects them into the model system context when that user's `context_enabled` preference is true. This is implemented in `supabase/functions/jarvis-api/index.ts` and is not a new task to rebuild.
 - The memory preference is deliberately false by default. The current production tables contain zero rows, so no project-decision records are yet available to retrieve; a signed-in user's explicit project-memory seed and opt-in are still required.
-- The GitHub Actions CI workflow exists at `.github/workflows/ci.yml` and runs build, tests, lint, and Deno type-check on pushes/PRs. The current branch head has no workflow run associated with it yet.
+- The GitHub Actions CI workflow exists at `.github/workflows/ci.yml` and runs build, tests, lint, and Deno type-check on pushes/PRs. The latest known successful CI run is from an earlier commit; current branch HEAD must be validated before it is considered green.
 - Do not claim JARVIS currently remembers this ledger at runtime until the user-owned project records have been seeded and a fresh conversation has verified retrieval.
 
 ## Change control
@@ -67,4 +67,5 @@ Do not automatically store every conversation or sensitive credential as memory.
 
 ## Update history
 
-- 2026-11-10: Recovered and consolidated the previously agreed BMW Shortcuts, Blink Quick View, continuous voice-first, single-assistant, and future Dreame decisions into this durable ledger.
+- 2026-11-10: Recorded the user's explicit correction that vendor services must be controlled directly by JARVIS; earlier Shortcut/Quick View ideas are historical and superseded.
+- 2026-11-10: Reprioritised work to stabilise the cloud conversation, voice, auth, and history before any vendor integrations.
