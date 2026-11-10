@@ -28,7 +28,8 @@ These are repository CI results for an earlier commit only. The latest commits h
 1. Validate the new cloud-default routing and session auto-restore with the full CI suite; latest commit checks are currently absent.
 2. Confirm a live authenticated model inference with a controlled low-token turn, only after confirming server-side provider secrets and free-quota policy. The provider-status endpoint only reports declared configuration, not successful inference.
 3. Validate cloud voice input/output, reconnects, conversation history, and error states in a real browser session.
-4. Add Capacitor and native Keychain/audio adapters, then test on a physical iPhone. Do not claim iOS readiness before this.
+4. Build the standalone iPhone app: add Capacitor 8 dependencies/configuration, generate the native iOS project on macOS/Xcode, add Keychain and native push-to-talk/audio adapters, create the app icon/splash, and test on a physical iPhone. A Safari/PWA shortcut is not an acceptable final deliverable.
+5. Implement the separate minimal CarPlay companion UI with Apple's supported templates and apply for the required CarPlay entitlement; approval is a release dependency, not guaranteed.
 5. Configure an authorised Supabase Auth account and the production web origin allowlist before hosting the frontend. The UI currently has no account-creation or password-reset flow.
 6. Keep production secrets, paid resources, network exposure, and personal-data migration behind separate explicit approval.
 
