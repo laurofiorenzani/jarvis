@@ -177,6 +177,10 @@ export async function startFreeModelStream(
     } catch (cause) {
       if (signal.aborted) throw new DOMException('The request was cancelled.', 'AbortError')
       lastFailure = cause
+      console.warn('[jarvis] model provider connection failed', {
+        provider: provider.name,
+        error: cause instanceof Error ? cause.name : 'unknown',
+      })
       continue
     } finally {
       clearTimeout(connectTimeout)
@@ -184,6 +188,10 @@ export async function startFreeModelStream(
 
     if (!upstream.ok || !upstream.body) {
       lastFailure = new Error('Provider returned HTTP ' + upstream.status)
+      console.warn('[jarvis] model provider returned non-success status', {
+        provider: provider.name,
+        status: upstream.status,
+      })
       try { await upstream.body?.cancel() } catch { /* ignore */ }
       if (retryableStatus(upstream.status)) continue
       // Configuration/auth errors are isolated to this provider; try the next
