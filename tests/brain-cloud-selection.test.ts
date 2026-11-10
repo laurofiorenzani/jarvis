@@ -5,7 +5,7 @@ import {
   cancel,
   connectedLabels,
   selectCloudBrain,
-  selectLocalBrain,
+  selectConfiguredBrain,
   warm,
 } from '../src/lib/brain'
 import type { CloudBrain } from '../src/lib/cloud-brain'
@@ -33,6 +33,6 @@ test('HUD routes turns and lifecycle to the selected cloud brain', async () => {
     assert.deepEqual(events, ['warm', 'ask:hello cloud', 'cancel'])
     assert.deepEqual(connectedLabels(), ['SUPABASE CLOUD'])
   } finally {
-    selectLocalBrain()
+    selectConfiguredBrain()
   }
 })
