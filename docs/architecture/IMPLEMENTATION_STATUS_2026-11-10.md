@@ -57,3 +57,21 @@ These are repository CI results for an earlier commit only. After the documentat
 - The default browser token store remains volatile. A user may explicitly opt into tab-scoped `sessionStorage`; that session is now automatically restored after a page reload in the same tab. It is not persistent across browser restarts or devices.
 
 The conversation-history and resume implementation is present on `work/memory-integration-ready`. Treat the earlier successful CI runs above as historical evidence only; they predate this implementation. The CI workflow is configured for pushes to `work/**` and pull requests. The available commit-run lookup only returns pull-request-triggered runs, so an empty result from that lookup does not prove that no push-triggered run exists. The latest branch head must be checked directly in GitHub Actions before it can be marked validated. The GitHub connector could read workflow runs and commit checks but did not expose a workflow-dispatch action in this session.
+
+
+## 10 November 2026 — Cloud-build credential isolation
+
+A review of `src/config.ts` found that optional remote MCP URLs and bearer tokens
+were read from `VITE_*` variables regardless of the selected backend. Although
+the cloud brain did not use these values, a cloud build could still have carried
+demo-only integration configuration into its client bundle.
+
+The configuration now reads Zapier, Pipedream, Notion, Linear, GitHub, Stripe,
+Sentry, and Home Assistant MCP settings only when `VITE_BACKEND=direct`.
+The default cloud-mode test also asserts that `activeServers()` is empty.
+
+This is a source-level guard and regression test, not a completed production
+bundle audit. Current-head CI still needs to run; no claim is made that a
+production artifact has been inspected or that any previously deployed bundle
+has been purged. Rotate any credential that may already have been exposed in a
+public client bundle.
