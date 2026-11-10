@@ -14,10 +14,32 @@ function createVolatileTokenStore() {
   }
 }
 
+function createTabTokenStore() {
+  return {
+    async get(key: string) { return window.sessionStorage.getItem(key) },
+    async set(key: string, value: string) { window.sessionStorage.setItem(key, value) },
+    async remove(key: string) { window.sessionStorage.removeItem(key) },
+  }
+}
+
+const TAB_SESSION_CHOICE = 'jarvis.cloud.keep-session-in-tab'
+const REFRESH_TOKEN_KEY = 'jarvis.supabase.refresh-token'
+
+function hasRestorableTabSession() {
+  try {
+    return window.sessionStorage.getItem(TAB_SESSION_CHOICE) === '1' &&
+      Boolean(window.sessionStorage.getItem(REFRESH_TOKEN_KEY))
+  } catch {
+    return false
+  }
+}
+
 export function CloudAccess({ onConnected, onDisconnected, onResumeConversation }: { onConnected?: () => void; onDisconnected?: () => void; onResumeConversation?: (messages: ConversationMessage[]) => void }) {
   const [expanded, setExpanded] = useState(false)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [keepSessionInTab, setKeepSessionInTab] = useState(false)
+  const [canRestoreTabSession, setCanRestoreTabSession] = useState(() => hasRestorableTabSession())
   const [busy, setBusy] = useState(false)
   const [connected, setConnected] = useState(false)
   const [message, setMessage] = useState('')
@@ -33,6 +55,56 @@ export function CloudAccess({ onConnected, onDisconnected, onResumeConversation 
 
   if (!env.supabaseUrl || !env.supabasePublishableKey) return null
 
+  const activateRuntime = async (runtime: ReturnType<typeof createCloudRuntime>) => {
+    await runtime.brain.warm()
+    const [saved, preference, recentConversations] = await Promise.all([
+      runtime.api.listMemories(),
+      runtime.api.getMemoryPreference(),
+      runtime.api.listConversations(),
+    ])
+    setMemories(saved.memories)
+    setMemoryContextEnabled(preference.contextEnabled)
+    setConversations(recentConversations.conversations)
+    try {
+      const providers = await runtime.api.getProviderStatus()
+      setProviderStatus(providers.configured
+        ? 'FREE-QUOTA CONFIG DECLARED · ' + providers.providers.map((item) => item.model).join(', ')
+        : 'NO FREE-ONLY MODEL PROVIDER CONFIGURED')
+    } catch {
+      setProviderStatus('MODEL PROVIDER CONFIGURATION INVALID OR UNAVAILABLE')
+    }
+    selectCloudBrain(runtime.brain)
+    setConnected(true)
+    onConnected?.()
+  }
+
+  const restoreTabSession = async () => {
+    if (busy || !canRestoreTabSession) return
+    setBusy(true)
+    setMessage('')
+    const runtime = createCloudRuntime({
+      supabaseUrl: env.supabaseUrl,
+      supabasePublishableKey: env.supabasePublishableKey,
+      tokenStore: createTabTokenStore(),
+    })
+    runtimeRef.current = runtime
+    try {
+      const restored = await runtime.auth.restoreSession()
+      if (!restored) throw new Error('The saved tab session has expired. Sign in again.')
+      await activateRuntime(runtime)
+      setMessage('TAB SESSION RESTORED · CLOUD API HEALTHY')
+    } catch (error) {
+      selectLocalBrain()
+      await runtime.auth.signOut().catch(() => {})
+      runtimeRef.current = null
+      setConnected(false)
+      setCanRestoreTabSession(false)
+      setMessage(error instanceof Error ? error.message : 'Cloud session could not be restored.')
+    } finally {
+      setBusy(false)
+    }
+  }
+
   const signIn = async (event: FormEvent) => {
     event.preventDefault()
     if (busy) return
@@ -41,30 +113,31 @@ export function CloudAccess({ onConnected, onDisconnected, onResumeConversation 
     const options: CloudRuntimeOptions = {
       supabaseUrl: env.supabaseUrl,
       supabasePublishableKey: env.supabasePublishableKey,
-      tokenStore: createVolatileTokenStore(),
+      tokenStore: keepSessionInTab ? createTabTokenStore() : createVolatileTokenStore(),
+    }
+    if (keepSessionInTab) {
+      try { window.sessionStorage.setItem(TAB_SESSION_CHOICE, '1') } catch {
+        setMessage('TAB STORAGE IS UNAVAILABLE · SIGN IN WITHOUT SESSION RESTORE')
+        setKeepSessionInTab(false)
+        setBusy(false)
+        return
+      }
+    } else {
+      try {
+        window.sessionStorage.removeItem(TAB_SESSION_CHOICE)
+        window.sessionStorage.removeItem(REFRESH_TOKEN_KEY)
+      } catch { /* Volatile sign-in remains available when storage is blocked. */ }
     }
     const runtime = createCloudRuntime(options)
     runtimeRef.current = runtime
     try {
       await runtime.auth.signInWithPassword(email, password)
-      await runtime.brain.warm()
-      const [saved, preference, recentConversations] = await Promise.all([runtime.api.listMemories(), runtime.api.getMemoryPreference(), runtime.api.listConversations()])
-      setMemories(saved.memories)
-      setMemoryContextEnabled(preference.contextEnabled)
-      setConversations(recentConversations.conversations)
-      try {
-        const providers = await runtime.api.getProviderStatus()
-        setProviderStatus(providers.configured
-          ? 'FREE-QUOTA CONFIG DECLARED · ' + providers.providers.map((item) => item.model).join(', ')
-          : 'NO FREE-ONLY MODEL PROVIDER CONFIGURED')
-      } catch {
-        setProviderStatus('MODEL PROVIDER CONFIGURATION INVALID OR UNAVAILABLE')
-      }
-      selectCloudBrain(runtime.brain)
-      setConnected(true)
+      await activateRuntime(runtime)
       setPassword('')
-      setMessage('AUTHENTICATED · CLOUD API HEALTHY · MODEL NOT YET VERIFIED · MEMORY-ONLY TOKENS')
-      onConnected?.()
+      setCanRestoreTabSession(hasRestorableTabSession())
+      setMessage(keepSessionInTab
+        ? 'AUTHENTICATED · TAB SESSION RESTORE ENABLED · CLEARED WHEN TAB CLOSES'
+        : 'AUTHENTICATED · VOLATILE TOKENS · SIGN IN AGAIN AFTER PAGE RELOAD')
     } catch (error) {
       selectLocalBrain()
       await runtime.auth.signOut().catch(() => {})
@@ -279,12 +352,21 @@ export function CloudAccess({ onConnected, onDisconnected, onResumeConversation 
               <input required type="password" autoComplete="current-password" value={password}
                 onChange={(event) => setPassword(event.target.value)} style={inputStyle} />
             </label>
+            <label style={{ display: 'flex', alignItems: 'flex-start', gap: 8, color: '#83d9e8', letterSpacing: 0, lineHeight: 1.5 }}>
+              <input type="checkbox" checked={keepSessionInTab} onChange={(event) => setKeepSessionInTab(event.target.checked)} />
+              Keep me signed in across page reloads in this tab only
+            </label>
             <button disabled={busy} type="submit" style={{ ...buttonStyle, opacity: busy ? .55 : 1 }}>
               {busy ? 'CONNECTING…' : 'AUTHENTICATE & ACTIVATE CLOUD'}
             </button>
+            {canRestoreTabSession && (
+              <button type="button" disabled={busy} onClick={() => void restoreTabSession()} style={buttonStyle}>
+                {busy ? 'RESTORING…' : 'RESTORE CLOUD SESSION'}
+              </button>
+            )}
             {message && <div role="status" style={{ color: '#ffbd91', lineHeight: 1.5 }}>{message}</div>}
             <div style={{ color: '#7797a2', lineHeight: 1.5, letterSpacing: 0 }}>
-              Temporary web session only: refresh tokens stay in memory and are cleared when this page closes. Provider free-tier settings must also be checked in the provider account.
+              Optional tab-scoped restore. The refresh token stays in this tab's session storage, cleared when the tab closes; page scripts can access it. Leave unchecked for memory-only tokens.
             </div>
           </form>
         )
