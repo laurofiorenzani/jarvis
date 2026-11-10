@@ -26,20 +26,19 @@ These are repository CI results for an earlier commit only. The latest commits h
 ## Recovered product decisions and continuity
 
 - The canonical decision ledger is `docs/PROJECT_DECISIONS.md`; read it before changing project scope or repeating discovery work.
-- The previously agreed BMW route is to have JARVIS invoke the My BMW `Start Climate Control` Shortcut on the iPhone for the first "prepara o carro" test. The user's My BMW Shortcuts gallery also showed `Climatize Vehicle Interior`, `Open Doors`, and `Open Trunk`.
-- Blink Quick View was previously identified, but camera selection and image return to JARVIS were not validated. Dreame remains a planned later capability; exact model/API is not established in the recovered record.
+- Product priority confirmed by the user on 2026-11-10: finish and stabilise the JARVIS core before starting BMW, Blink, Dreame, or other vendor integrations.
+- The later integration target is direct JARVIS-to-service communication through internal adapters and authorised APIs/protocols. Apple Shortcuts, Quick View hand-offs, and workflows that require the user to operate vendor apps are not the target architecture; vendor apps may be needed only for initial authorisation/MFA or fallback.
+- The current cloud model router streams text only. A tool-call loop, generic cloud tool registry, and native iPhone action channel are not implemented.
 - These decisions are recorded in source control only. They have not yet been seeded/retrieved as project memory by the running cloud assistant; do not claim runtime recall is fixed until that is implemented and tested.
-- The cloud model router currently streams text only; a tool-call loop, integration registry, authenticated iPhone action channel, native Shortcuts invocation, and vendor result verification are not implemented.
 
 ## Next safe engineering steps
 
-1. Validate the new cloud-default routing and session auto-restore with the full CI suite; latest commit checks are currently absent.
+1. Run the current branch CI against the latest commit; historical green runs do not validate the current HEAD.
 2. Confirm a live authenticated model inference with a controlled low-token turn, only after confirming server-side provider secrets and free-quota policy. The provider-status endpoint only reports declared configuration, not successful inference.
-3. Validate cloud voice input/output, reconnects, conversation history, and error states in a real browser session.
-4. Build the standalone iPhone app: add Capacitor 8 dependencies/configuration, generate the native iOS project on macOS/Xcode, add Keychain and native push-to-talk/audio adapters, create the app icon/splash, and test on a physical iPhone. A Safari/PWA shortcut is not an acceptable final deliverable.
-5. Implement the separate minimal CarPlay companion UI with Apple's supported templates and apply for the required CarPlay entitlement; approval is a release dependency, not guaranteed.
-5. Configure an authorised Supabase Auth account and the production web origin allowlist before hosting the frontend. The UI currently has no account-creation or password-reset flow.
-6. Keep production secrets, paid resources, network exposure, and personal-data migration behind separate explicit approval.
+3. Validate cloud voice input/output, reconnects, conversation history, cancellation, and error states in a real browser session.
+4. Close the account-access gap: configure an authorised Supabase Auth account and production origin allowlist; the UI currently has no account-creation or password-reset flow.
+5. Build the standalone iPhone app only after the cloud core passes its release checks: add Capacitor/native iOS project on macOS/Xcode, Keychain and native audio adapters, app icon/splash, and physical-device testing. A Safari/PWA shortcut is not the final deliverable.
+6. Keep production secrets, paid resources, network exposure, and personal-data migration behind separate explicit approval. Vendor integrations remain out of scope until the core is stable.
 
 ## Safety boundaries
 
