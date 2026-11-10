@@ -75,26 +75,33 @@ export function createCloudBrain(api: CloudApi) {
         if (controller.signal.aborted) return { text: '', tools: [] }
         active = { conversationId: id, turnId, controller, started: true }
         const body = await api.streamTurn({ conversationId: id, turnId, text: prompt.trim() }, controller.signal)
-        for await (const event of readCloudAssistantEvents(body)) {
-          if (event.conversationId !== id || event.turnId !== turnId) continue
-          if (event.type === 'text.delta') {
-            text += event.delta
-            handlers.onText(event.delta)
-          } else if (event.type === 'tool.started') {
-            handlers.onTool(event.tool)
-          } else if (event.type === 'turn.completed') {
-            completed = true
-            // The streamed deltas are authoritative for live speech. The
-            // persisted final message is only used to detect truncation.
-            if (event.assistantMessage.content !== text) {
-              throw new CloudApiError('Cloud response did not match its streamed text.', 502, 'invalid_response')
+        try {
+          for await (const event of readCloudAssistantEvents(body)) {
+            if (event.conversationId !== id || event.turnId !== turnId) continue
+            if (event.type === 'text.delta') {
+              text += event.delta
+              handlers.onText(event.delta)
+            } else if (event.type === 'tool.started') {
+              handlers.onTool(event.tool)
+            } else if (event.type === 'turn.completed') {
+              completed = true
+              // The streamed deltas are authoritative for live speech. The
+              // persisted final message is only used to detect truncation.
+              if (event.assistantMessage.content !== text) {
+                throw new CloudApiError('Cloud response did not match its streamed text.', 502, 'invalid_response')
+              }
+            } else if (event.type === 'turn.failed') {
+              throw new CloudApiError(event.message, 503, event.code, undefined, event.retryable)
+            } else if (event.type === 'turn.cancelled') {
+              completed = true
+              break
             }
-          } else if (event.type === 'turn.failed') {
-            throw new CloudApiError(event.message, 503, event.code, undefined, event.retryable)
-          } else if (event.type === 'turn.cancelled') {
-            completed = true
-            break
           }
+        } catch (cause) {
+          // Aborting the browser fetch can reject the SSE reader before the
+          // server's durable cancellation event reaches this client. Treat
+          // that rejection as a normal user cancellation, not a failed turn.
+          if (!controller.signal.aborted) throw cause
         }
         if (controller.signal.aborted) return { text: text.trim(), tools: [] }
         if (!completed) throw new CloudApiError('Cloud stream ended before the turn completed.', 502, 'invalid_response', undefined, true)
