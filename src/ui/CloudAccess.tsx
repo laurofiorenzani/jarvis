@@ -211,6 +211,27 @@ export function CloudAccess({ onConnected, onDisconnected, onResumeConversation,
     }
   }
 
+  const resendConfirmation = async () => {
+    if (busy || !email.trim()) {
+      setMessage('ENTER THE ACCOUNT EMAIL FIRST')
+      return
+    }
+    setBusy(true)
+    setMessage('')
+    const runtime = createCloudRuntime({
+      supabaseUrl: env.supabaseUrl,
+      supabasePublishableKey: env.supabasePublishableKey,
+      tokenStore: createVolatileTokenStore(),
+    })
+    try {
+      await runtime.auth.resendSignupConfirmation(email, window.location.origin)
+      setMessage('IF THIS ACCOUNT NEEDS CONFIRMATION, A NEW EMAIL HAS BEEN SENT. CHECK INBOX AND SPAM.')
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : 'Confirmation email could not be requested.')
+    } finally {
+      setBusy(false)
+    }
+  }
   const requestPasswordReset = async (event: FormEvent) => {
     event.preventDefault()
     if (busy) return
@@ -482,6 +503,7 @@ export function CloudAccess({ onConnected, onDisconnected, onResumeConversation,
               <button disabled={busy} type="submit" style={{ ...buttonStyle, opacity: busy ? .55 : 1 }}>
                 {busy ? 'CONNECTING…' : 'AUTHENTICATE & ACTIVATE CLOUD'}
               </button>
+              <button type="button" disabled={busy || !email.trim()} onClick={() => void resendConfirmation()} style={buttonStyle}>RESEND CONFIRMATION EMAIL</button>
               {canRestoreTabSession && <button type="button" disabled={busy} onClick={() => void restoreTabSession()} style={buttonStyle}>RESTORE CLOUD SESSION</button>}
             </>}
             {authMode === 'signup' && <button disabled={busy || password.length < 10} type="submit" style={buttonStyle}>
