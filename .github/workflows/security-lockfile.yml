@@ -40,6 +40,9 @@ jobs:
       - name: Apply compatible npm security updates without lifecycle scripts
         run: npm audit fix --ignore-scripts || true
 
+      - name: Require a clean dependency audit
+        run: npm audit --audit-level=low
+
       - name: Validate updated dependency tree
         run: |
           npm run build
