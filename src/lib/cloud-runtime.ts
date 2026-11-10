@@ -34,6 +34,7 @@ export function createCloudRuntime(options: CloudRuntimeOptions) {
   const functionUrl = new URL('/functions/v1/jarvis-api', options.supabaseUrl).toString().replace(/\/$/, '')
   const api = createCloudApiClient({
     baseUrl: functionUrl,
+    publishableKey: options.supabasePublishableKey,
     getAccessToken: auth.getAccessToken,
     fetchImpl: options.fetchImpl,
   })
