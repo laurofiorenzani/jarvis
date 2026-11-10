@@ -75,9 +75,10 @@ function configuredProviders(): Provider[] {
       billingMode: 'free_quota_only',
       ...(apiKeyEnv ? { apiKeyEnv } : {}),
       ...(apiKey ? { apiKey } : {}),
-      ...(item.privacyMode === 'zdr' ? { privacyMode: 'zdr' as const } : {}),
+      ...(privacyMode ? { privacyMode } : {}),
     })
   }
+  assertConsistentProviderPrivacy(providers)
   return providers
 }
 
