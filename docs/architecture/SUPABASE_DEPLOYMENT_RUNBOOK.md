@@ -1,12 +1,21 @@
 # Supabase deployment runbook (free-tier capable)
 
 This runbook describes the deployed private prototype and the remaining
-operator checks. As of 9 November 2026, the Supabase project `Jarvis`
-(`undmhmdwhxvjgvezvucy`, region `eu-west-3`) is active and healthy. The
-`jarvis-api` Edge Function is active (version 4), both cloud migrations are
-applied, and the four application tables have RLS enabled. The deployed
-`index.ts`, `model-router.ts`, and `deno.json` were compared with this
+operator checks. As of 10 November 2026, the Supabase organization is on the
+Free plan and the `Jarvis` project (`undmhmdwhxvjgvezvucy`, region
+`eu-west-3`) is active and healthy. The `jarvis-api` Edge Function is active
+(version 9), and all six application tables have RLS enabled. The deployed
+`index.ts`, `model-router.ts`, and `deno.json` were compared with the
 working branch and matched byte-for-byte.
+
+The Vercel `jarvis` project is linked to this GitHub repository on the Hobby
+plan, and the current branch has a READY production-target deployment. However,
+Vercel SSO deployment protection is enabled for all non-custom domains, and no
+Vercel project environment variables are configured. The default
+`vercel.app` aliases therefore must not be treated as the spouse-accessible
+public release until access protection and the app's public authentication
+boundary are deliberately reviewed. No Vercel access-protection setting was
+changed as part of this work.
 
 This does **not** yet prove that a user can sign in, that model-provider secrets
 are configured, or that a model response can be generated and persisted. Those
