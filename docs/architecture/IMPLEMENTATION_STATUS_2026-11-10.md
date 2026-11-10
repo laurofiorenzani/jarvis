@@ -84,3 +84,27 @@ The cloud-first application implementation remains on `laurofiorenzani/jarvis`, 
 Do not merge the Cloudflare prototype into this Supabase application without an explicit architecture decision. The current application branch uses Supabase for cloud auth, conversations and memory. The isolated private prototype uses a different Cloudflare Worker/D1 design and has a different key/identity boundary.
 
 This checkpoint does not change the release gates above: current-head CI, authenticated live inference, account recovery/access, native iOS implementation/device validation, cloud voice proxy, and direct vendor adapters remain unverified or incomplete. No vendor integration should be described as implemented until JARVIS can invoke it directly and a device-confirmed result is observed.
+
+
+## 10 November 2026 — resumed FreeLLMAPI / cloud-core checkpoint
+
+### Live repository and Supabase state rechecked
+
+- Re-read the canonical decision ledger before further work. It explicitly selects the Supabase Edge Function router with direct HTTPS free-tier providers for the zero-cost two-user cloud prototype. FreeLLMAPI remains local-only unless a persistent, free, private host and proper multi-user isolation are proven. The single-user FreeLLMAPI dashboard/API must not be exposed as a public multi-user service.
+- The active Supabase `jarvis-api` function is currently version 29 (ACTIVE, `verify_jwt=false`; the handler performs its own Supabase user-token validation). This supersedes the stale version-9 statement earlier in this file. Do not deploy over it without an actual code change and review.
+- The checked-in cloud model router is still text-only and accepts OpenAI-compatible Chat Completions. It does not call the user's local FreeLLMAPI process. The local smoke script targets loopback `http://127.0.0.1:3001` using an Anthropic Messages-compatible `/v1/messages` API. A cloud Supabase Edge Function cannot reach that loopback endpoint on the user's PC.
+- The Google AI Studio provider guide documents the supported cloud path: direct HTTPS to Google's OpenAI-compatible endpoint, using a server-side `GEMINI_API_KEY` and `JARVIS_MODEL_PROVIDERS` Supabase Edge Function secrets. The existing local FreeLLMAPI key/configuration is not automatically available to Supabase.
+- The configured provider-status route only reports declared configuration; no live authenticated inference was verified during this checkpoint. The previous HTTP 503 therefore remains unresolved, not fixed.
+- Current CI evidence remains historical; do not describe the current branch as validated. Supabase log retrieval was unavailable in this checkpoint, so no log-based diagnosis is claimed.
+
+### Next engineering sequence
+
+1. Preserve the zero-cost and two-user privacy boundary. Do not publish or tunnel the local FreeLLMAPI server to the internet.
+2. Continue source-level hardening and automated tests for the cloud router and its provider response/SSE parsing without touching production secrets.
+3. To activate cloud inference, the account owner must add the Google AI Studio API key as the Supabase Edge Function secret `GEMINI_API_KEY` and the documented `JARVIS_MODEL_PROVIDERS` JSON. This is a credential/billing/privacy boundary and cannot be completed by repository code alone. Before doing so, the owner must confirm the Google project is on the intended free tier and accept the documented Free-tier data-use terms; no paid billing path is authorised.
+4. After secret configuration, perform one synthetic low-token authenticated inference and inspect the response. Do not use personal or financial data for the smoke test.
+5. Only after successful inference should voice, memory, and then vision work be considered release-ready.
+
+### Critical user-owned dependency
+
+Cloud inference is blocked until the owner configures the two Supabase Edge Function secrets above and confirms the Google AI Studio project's free-tier/data-use settings. No secrets were read, changed, or exposed by this checkpoint.
