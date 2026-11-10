@@ -22,9 +22,12 @@ function error(code: string, message: string, status: number, retryable = false,
 }
 
 function corsHeaders(origin: string | null): HeadersInit {
-  const allowedOrigins = new Set(
-    (Deno.env.get('JARVIS_ALLOWED_ORIGIN') || '').split(',').map((value) => value.trim()).filter(Boolean),
-  )
+  // The stable production PWA origin is safe to allow explicitly. Additional
+  // preview/custom origins remain operator-configurable through the secret.
+  const allowedOrigins = new Set([
+    'https://jarvis-lauro-fiorenzani.vercel.app',
+    ...(Deno.env.get('JARVIS_ALLOWED_ORIGIN') || '').split(',').map((value) => value.trim()).filter(Boolean),
+  ])
   const isLocalDevelopmentOrigin = (() => {
     if (!origin) return false
     try {
