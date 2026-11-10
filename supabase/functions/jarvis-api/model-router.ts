@@ -329,7 +329,7 @@ export async function startFreeModelStream(
     }
   }
   throw new ProviderUnavailableError(
-    lastFailure ? 'All configured free model providers failed or exhausted their quota.' :
+    lastFailure ? 'All configured free model providers are unavailable. Check provider diagnostics for model, endpoint, access, or quota errors.' :
       'No configured free model provider is available.',
   )
 }
