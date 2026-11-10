@@ -126,3 +126,49 @@ test('cloud brain cancellation during conversation creation prevents model invoc
   assert.equal(result.text, '')
   assert.equal(modelCalled, false)
 })
+
+
+test('cloud brain restores a selected conversation only after fetching its authenticated history', async () => {
+  const requested: string[] = []
+  const api = {
+    health: async () => ({ status: 'ok' as const }),
+    createConversation: async () => ({ conversation: { id: 'new-conversation' } }),
+    getConversation: async (id: string) => {
+      requested.push(id)
+      return {
+        conversation: { id },
+        messages: [
+          { id: 'u-1', role: 'user' as const, content: 'Earlier question', createdAt: '2026-11-10T07:00:00Z' },
+          { id: 'a-1', role: 'assistant' as const, content: 'Earlier answer', createdAt: '2026-11-10T07:00:01Z' },
+        ],
+      }
+    },
+    streamTurn: async ({ conversationId, turnId }: { conversationId: string; turnId: string; text: string }) =>
+      streamOf([
+        { version: 1, type: 'text.delta', conversationId, turnId, delta: 'Continued.' },
+        { version: 1, type: 'turn.completed', conversationId, turnId,
+          assistantMessage: { id: 'a-2', role: 'assistant', content: 'Continued.', createdAt: '2026-11-10T07:01:00Z' } },
+      ]),
+    cancelTurn: async () => ({ cancelled: true }),
+  }
+  const brain = createCloudBrain(api)
+  const restored = await brain.resumeConversation('conversation-existing')
+  assert.equal(brain.getConversationId(), 'conversation-existing')
+  assert.deepEqual(requested, ['conversation-existing'])
+  assert.equal(restored.messages.length, 2)
+  const next = await brain.ask('Continue from there', [], handlers())
+  assert.equal(next.text, 'Continued.')
+  assert.equal(brain.getConversationId(), 'conversation-existing')
+})
+
+test('cloud brain does not switch conversation when history retrieval fails', async () => {
+  const brain = createCloudBrain({
+    health: async () => ({ status: 'ok' }),
+    createConversation: async () => ({ conversation: { id: 'new-conversation' } }),
+    getConversation: async () => { throw new CloudApiError('Not found', 404, 'invalid_request') },
+    streamTurn: async () => streamOf([]),
+    cancelTurn: async () => ({ cancelled: false }),
+  })
+  await assert.rejects(brain.resumeConversation('missing'), /Not found/)
+  assert.equal(brain.getConversationId(), null)
+})
