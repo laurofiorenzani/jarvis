@@ -74,7 +74,15 @@ export function createCloudBrain(api: CloudApi) {
         const id = await ensureConversation()
         if (controller.signal.aborted) return { text: '', tools: [] }
         active = { conversationId: id, turnId, controller, started: true }
-        const body = await api.streamTurn({ conversationId: id, turnId, text: prompt.trim() }, controller.signal)
+        let body: ReadableStream<Uint8Array>
+        try {
+          body = await api.streamTurn({ conversationId: id, turnId, text: prompt.trim() }, controller.signal)
+        } catch (cause) {
+          // Cancellation may happen while fetch is still waiting for response
+          // headers, before an SSE reader exists to observe the abort.
+          if (controller.signal.aborted) return { text: text.trim(), tools: [] }
+          throw cause
+        }
         try {
           for await (const event of readCloudAssistantEvents(body)) {
             if (event.conversationId !== id || event.turnId !== turnId) continue
