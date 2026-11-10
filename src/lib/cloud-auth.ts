@@ -67,10 +67,11 @@ export function createSupabaseAuth(options: SupabaseAuthOptions) {
   const now = options.now ?? Date.now
   let session: AuthSession | null = null
   let refreshInFlight: Promise<AuthSession | null> | null = null
+  let refreshAbortController: AbortController | null = null
   // Invalidates refresh work that was started before an explicit sign-out.
   let authEpoch = 0
 
-  async function authRequest(path: string, body?: Record<string, unknown>, accessToken?: string) {
+  async function authRequest(path: string, body?: Record<string, unknown>, accessToken?: string, signal?: AbortSignal) {
     let response: Response
     try {
       response = await fetcher(`${baseUrl}/auth/v1/${path}`, {
@@ -84,6 +85,7 @@ export function createSupabaseAuth(options: SupabaseAuthOptions) {
         ...(body ? { body: JSON.stringify(body) } : {}),
         credentials: 'omit',
         redirect: 'error',
+        ...(signal ? { signal } : {}),
       })
     } catch {
       throw new CloudAuthError('Authentication service could not be reached.', 0)
@@ -131,12 +133,14 @@ export function createSupabaseAuth(options: SupabaseAuthOptions) {
   async function refresh(): Promise<AuthSession | null> {
     if (refreshInFlight) return refreshInFlight
     const startedAtEpoch = authEpoch
+    const abortController = new AbortController()
+    refreshAbortController = abortController
     refreshInFlight = (async () => {
       const refreshToken = await options.storage.get(REFRESH_TOKEN_KEY)
       if (startedAtEpoch !== authEpoch) return null
       if (!refreshToken) { session = null; return null }
       try {
-        const payload = await authRequest('token?grant_type=refresh_token', { refresh_token: refreshToken })
+        const payload = await authRequest('token?grant_type=refresh_token', { refresh_token: refreshToken }, undefined, abortController.signal)
         if (startedAtEpoch !== authEpoch) return null
         const next = parseSession(payload)
         if (!await saveSession(next, startedAtEpoch)) return null
@@ -151,7 +155,10 @@ export function createSupabaseAuth(options: SupabaseAuthOptions) {
         }
         throw error
       }
-    })().finally(() => { refreshInFlight = null })
+    })().finally(() => {
+      if (refreshAbortController === abortController) refreshAbortController = null
+      refreshInFlight = null
+    })
     return refreshInFlight
   }
 
@@ -185,6 +192,7 @@ export function createSupabaseAuth(options: SupabaseAuthOptions) {
       const signOutEpoch = ++authEpoch
       const accessToken = session?.access_token
       const pendingRefresh = refreshInFlight
+      refreshAbortController?.abort()
       session = null
       // Let an already-started storage write settle before the final removal.
       // Its epoch check prevents it from installing an in-memory session.
