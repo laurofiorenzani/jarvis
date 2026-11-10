@@ -426,15 +426,32 @@ Deno.serve(async (request) => {
         const reader = upstream.body!.getReader()
         try {
           while (true) {
-            const { data: currentTurn } = await db.from('jarvis_turns')
-              .select('cancel_requested_at')
-              .eq('id', turnId).eq('user_id', userId).maybeSingle()
-            if (currentTurn?.cancel_requested_at) {
-              cancelled = true
-              await reader.cancel()
-              break
+            // Keep checking the durable cancellation flag while the provider is
+            // quiet. A single check before reader.read() can otherwise block
+            // cancellation indefinitely when the model stops emitting chunks.
+            const pendingRead = reader.read().then((value) => ({ kind: 'read' as const, value }))
+            let readResult: ReadableStreamReadResult<Uint8Array> | null = null
+            while (!readResult && !cancelled) {
+              const outcome = await Promise.race([
+                pendingRead,
+                new Promise<{ kind: 'poll' }>((resolve) => setTimeout(() => resolve({ kind: 'poll' }), 500)),
+              ])
+              if (outcome.kind === 'poll') {
+                const { data: currentTurn } = await db.from('jarvis_turns')
+                  .select('cancel_requested_at')
+                  .eq('id', turnId).eq('user_id', userId).maybeSingle()
+                if (currentTurn?.cancel_requested_at) {
+                  cancelled = true
+                  upstreamAbort.abort()
+                  await reader.cancel()
+                  break
+                }
+              } else {
+                readResult = outcome.value
+              }
             }
-            const { value, done } = await reader.read()
+            if (cancelled) break
+            const { value, done } = readResult!
             if (done) break
             buffer += decoder.decode(value, { stream: true })
             if (buffer.length > 1_000_000 && !/\r?\n\r?\n/.test(buffer)) {
