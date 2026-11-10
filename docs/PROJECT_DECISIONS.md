@@ -53,8 +53,7 @@ Do not automatically store every conversation or sensitive credential as memory.
 - Cloud auth, conversation storage, streamed text turns, cancellation, and opt-in personal memories exist in the repository/cloud prototype.
 - Cloud model routing currently streams text only; it does not yet expose a server-side tool-call/integration execution loop.
 - The repository does not yet contain a native Capacitor iOS project, a native Shortcut invocation adapter, an authenticated phone action-dispatch channel, or an integration credential manager.
-- The BMW Shortcut and Blink Quick View flows have not been end-to-end tested from the JARVIS app in the vehicle/home.
-- No Dreame control adapter is implemented.
+- No direct BMW, Blink, or Dreame adapter is implemented or end-to-end tested yet. The previous Shortcut/Quick View proposal is superseded by the user's 10 November clarification and is not the target implementation.
 - The Edge Function already retrieves up to 20 non-expired, user-approved memory records and injects them into the model system context when that user's `context_enabled` preference is true. This is implemented in `supabase/functions/jarvis-api/index.ts` and is not a new task to rebuild.
 - The memory preference is deliberately false by default. The current production tables contain zero rows, so no project-decision records are yet available to retrieve; a signed-in user's explicit project-memory seed and opt-in are still required.
 - The GitHub Actions CI workflow exists at `.github/workflows/ci.yml` and runs build, tests, lint, and Deno type-check on pushes/PRs. The current branch head has no workflow run associated with it yet.
