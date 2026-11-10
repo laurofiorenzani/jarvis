@@ -36,3 +36,20 @@ test('HUD routes turns and lifecycle to the selected cloud brain', async () => {
     selectConfiguredBrain()
   }
 })
+
+
+test('signing out cancels an active cloud turn before restoring the configured backend', () => {
+  const events: string[] = []
+  const cloud = {
+    async warm() {},
+    async ask() { return { text: '', tools: [] } },
+    cancel() { events.push('cancel') },
+    getConversationId() { return null },
+    resetConversation() {},
+  } as unknown as CloudBrain
+
+  selectCloudBrain(cloud)
+  selectConfiguredBrain()
+  assert.deepEqual(events, ['cancel'])
+  assert.deepEqual(connectedLabels(), ['CLOUD SIGN-IN REQUIRED'])
+})
