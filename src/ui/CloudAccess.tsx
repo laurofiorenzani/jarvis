@@ -1,4 +1,4 @@
-import { useRef, useState, type FormEvent } from 'react'
+import { useEffect, useRef, useState, type FormEvent } from 'react'
 import type { CloudMemory, MemoryCategory, ConversationSummary, ConversationMessage } from '../lib/backend-contract'
 import { env } from '../config'
 import { createCloudRuntime } from '../lib/cloud-runtime'
@@ -35,7 +35,7 @@ function hasRestorableTabSession() {
 }
 
 export function CloudAccess({ onConnected, onDisconnected, onResumeConversation }: { onConnected?: () => void; onDisconnected?: () => void; onResumeConversation?: (messages: ConversationMessage[]) => void }) {
-  const [expanded, setExpanded] = useState(false)
+  const [expanded, setExpanded] = useState(() => !hasRestorableTabSession())
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [keepSessionInTab, setKeepSessionInTab] = useState(false)
@@ -52,8 +52,8 @@ export function CloudAccess({ onConnected, onDisconnected, onResumeConversation 
   const [memoryCategory, setMemoryCategory] = useState<MemoryCategory>('preference')
   const [memoryBusy, setMemoryBusy] = useState(false)
   const runtimeRef = useRef<ReturnType<typeof createCloudRuntime> | null>(null)
-
-  if (!env.supabaseUrl || !env.supabasePublishableKey) return null
+  const autoRestoreStarted = useRef(false)
+  const restoreSessionRef = useRef<(() => Promise<void>) | null>(null)
 
   const activateRuntime = async (runtime: ReturnType<typeof createCloudRuntime>) => {
     await runtime.brain.warm()
@@ -104,6 +104,14 @@ export function CloudAccess({ onConnected, onDisconnected, onResumeConversation 
       setBusy(false)
     }
   }
+
+  restoreSessionRef.current = restoreTabSession
+
+  useEffect(() => {
+    if (!env.supabaseUrl || !env.supabasePublishableKey || !canRestoreTabSession || autoRestoreStarted.current) return
+    autoRestoreStarted.current = true
+    void restoreSessionRef.current?.()
+  }, [canRestoreTabSession])
 
   const signIn = async (event: FormEvent) => {
     event.preventDefault()
@@ -249,10 +257,14 @@ export function CloudAccess({ onConnected, onDisconnected, onResumeConversation 
     } finally {
       runtimeRef.current = null
       setConnected(false)
+      setCanRestoreTabSession(false)
+      try { window.sessionStorage.removeItem(TAB_SESSION_CHOICE) } catch { /* Sign-out remains complete if storage is unavailable. */ }
       setBusy(false)
       onDisconnected?.()
     }
   }
+
+  if (!env.supabaseUrl || !env.supabasePublishableKey) return null
 
   return (
     <aside style={{
