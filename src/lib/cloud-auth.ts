@@ -174,8 +174,14 @@ export function createSupabaseAuth(options: SupabaseAuthOptions) {
     async signInWithPassword(email: string, password: string) {
       if (!email.trim() || !password) throw new CloudAuthError('Email and password are required.', 400)
       const signInEpoch = ++authEpoch
-      // A newer sign-in supersedes any older password request.
+      // A newer sign-in supersedes the previous request and waits for any
+      // in-progress token-store write before starting its own write.
+      const previousSignIn = signInInFlight
       signInAbortController?.abort()
+      if (previousSignIn) await previousSignIn.catch(() => null)
+      if (signInEpoch !== authEpoch) {
+        throw new CloudAuthError('Sign-in was superseded by another authentication action.', 409)
+      }
       const abortController = new AbortController()
       signInAbortController = abortController
       const operation = (async () => {
