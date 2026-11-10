@@ -198,24 +198,31 @@ test('paid speech proxy enforces per-minute request quotas', async () => {
   assert.equal(await post('/stt'), 429, '13th STT request in a minute is limited')
 })
 
-test('local media endpoint does not expose arbitrary images from the home directory', async () => {
+test('local media endpoint only serves images from configured roots', async () => {
   const outside = mkdtempSync(join(homedir(), '.jarvis-media-test-'))
+  const allowed = mkdtempSync(join(tmpdir(), 'jarvis-media-allowed-'))
   const privateImage = join(outside, 'private.png')
-  const tempImage = join(tmpdir(), `jarvis-media-test-${process.pid}.png`)
+  const allowedImage = join(allowed, 'allowed.png')
+  let scopedBridge
   try {
     writeFileSync(privateImage, 'private')
-    writeFileSync(tempImage, 'temporary')
+    writeFileSync(allowedImage, 'temporary')
+    // A temp directory is allowed only because this test explicitly configures
+    // it as a media root. The endpoint must not grant blanket tmp/home access.
+    scopedBridge = await startBridge({ JARVIS_FILE_ROOTS: allowed })
+    const host = { host: `127.0.0.1:${scopedBridge.port}` }
     assert.equal(
-      await get(bridge.port, `/file?path=${encodeURIComponent(privateImage)}`, { host: `127.0.0.1:${bridge.port}` }),
+      await get(scopedBridge.port, `/file?path=${encodeURIComponent(privateImage)}`, host),
       400,
     )
     assert.equal(
-      await get(bridge.port, `/file?path=${encodeURIComponent(tempImage)}`, { host: `127.0.0.1:${bridge.port}` }),
+      await get(scopedBridge.port, `/file?path=${encodeURIComponent(allowedImage)}`, host),
       200,
     )
   } finally {
+    scopedBridge?.child.kill()
     rmSync(outside, { recursive: true, force: true })
-    rmSync(tempImage, { force: true })
+    rmSync(allowed, { recursive: true, force: true })
   }
 })
 
