@@ -51,22 +51,20 @@ function flag(name: string, raw: unknown, fallback: boolean): boolean {
 }
 
 /**
- * Which brain to use.
+ * Which brain to use. Cloud is the production default; the local bridge is an
+ * explicit developer/local-tools option. Direct browser-to-provider mode is
+ * retained only for isolated local demos and must never be used in production.
  *
- *   'bridge' — run `npm run bridge` alongside the app. Authenticates off your
- *              existing Claude Code login (no API key), and every MCP server in
- *              your Claude Code config is available to JARVIS, including local
- *              ones like higgsfield, elevenlabs, android and playwright.
- *
- *   'direct' — the browser calls the Claude API itself. Nothing to run and it
- *              deploys as a static site, but it needs VITE_ANTHROPIC_API_KEY in
- *              the bundle and only reaches remote HTTP MCP servers.
+ *   'cloud'  — require an authenticated Supabase CloudBrain. No local server or
+ *              provider secret is needed in the browser bundle.
+ *   'bridge' — explicit local development mode using the Node bridge.
+ *   'direct' — explicit local demo mode; requires a browser-exposed API key.
  */
-export const BACKEND: 'bridge' | 'direct' = choice(
+export const BACKEND: 'cloud' | 'bridge' | 'direct' = choice(
   'VITE_BACKEND',
   viteEnv.VITE_BACKEND,
-  ['bridge', 'direct'] as const,
-  'bridge',
+  ['cloud', 'bridge', 'direct'] as const,
+  'cloud',
 )
 
 /**
