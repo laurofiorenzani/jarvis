@@ -171,6 +171,37 @@ export function createSupabaseAuth(options: SupabaseAuthOptions) {
   }
 
   return {
+    async signUpWithPassword(email: string, password: string, redirectTo?: string) {
+      if (!email.trim() || password.length < 10) {
+        throw new CloudAuthError('Use a valid email and a password with at least 10 characters.', 400)
+      }
+      const redirect = redirectTo ? new URL(redirectTo) : undefined
+      if (redirect && (redirect.protocol !== 'https:' && redirect.hostname !== 'localhost' && redirect.hostname !== '127.0.0.1')) {
+        throw new CloudAuthError('Account confirmation redirect must use HTTPS.', 400)
+      }
+      const payload = await authRequest('signup', {
+        email: email.trim(),
+        password,
+        ...(redirect ? { options: { emailRedirectTo: redirect.toString() } } : {}),
+      })
+      // Supabase may require email confirmation. In that case no session is returned.
+      if (!payload.access_token) return { user: payload.user ? { id: payload.user.id ?? '', email: payload.user.email } : null, needsEmailConfirmation: true }
+      const next = parseSession(payload)
+      const epoch = ++authEpoch
+      if (!await saveSession(next, epoch)) throw new CloudAuthError('Sign-up was superseded.', 409)
+      return { user: next.user, needsEmailConfirmation: false }
+    },
+    async sendPasswordReset(email: string, redirectTo?: string) {
+      if (!email.trim()) throw new CloudAuthError('Email is required.', 400)
+      const redirect = redirectTo ? new URL(redirectTo) : undefined
+      if (redirect && (redirect.protocol !== 'https:' && redirect.hostname !== 'localhost' && redirect.hostname !== '127.0.0.1')) {
+        throw new CloudAuthError('Password reset redirect must use HTTPS.', 400)
+      }
+      await authRequest('recover', {
+        email: email.trim(),
+        ...(redirect ? { redirect_to: redirect.toString() } : {}),
+      })
+    },
     async signInWithPassword(email: string, password: string) {
       if (!email.trim() || !password) throw new CloudAuthError('Email and password are required.', 400)
       const signInEpoch = ++authEpoch
