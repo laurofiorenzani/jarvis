@@ -46,3 +46,12 @@ grant select on table public.jarvis_memory_preferences to authenticated;
 
 -- Rate-limit buckets are internal API state, never directly exposed to clients.
 revoke all privileges on table public.jarvis_rate_limits from public, anon, authenticated;
+
+-- Only SELECT is available to authenticated clients. Memory writes and
+-- preference changes are performed by the authenticated Edge API after
+-- application-level validation and approval; service_role bypasses RLS.
+drop policy if exists "Users can insert their own Jarvis memories" on public.jarvis_memories;
+drop policy if exists "Users can update their own Jarvis memories" on public.jarvis_memories;
+drop policy if exists "Users can delete their own Jarvis memories" on public.jarvis_memories;
+drop policy if exists "Users can insert their own Jarvis memory preferences" on public.jarvis_memory_preferences;
+drop policy if exists "Users can update their own Jarvis memory preferences" on public.jarvis_memory_preferences;
