@@ -36,3 +36,13 @@ create policy "Users can update their own Jarvis memory preferences"
   on public.jarvis_memory_preferences for update to authenticated
   using (user_id = (select auth.uid()))
   with check (user_id = (select auth.uid()));
+
+-- Direct clients may read their own memory rows, but all writes must pass
+-- through the authenticated Cloud API approval flow (service_role only).
+revoke all privileges on table public.jarvis_memories from anon, authenticated;
+revoke all privileges on table public.jarvis_memory_preferences from anon, authenticated;
+grant select on table public.jarvis_memories to authenticated;
+grant select on table public.jarvis_memory_preferences to authenticated;
+
+-- Rate-limit buckets are internal API state, never directly exposed to clients.
+revoke all privileges on table public.jarvis_rate_limits from public, anon, authenticated;
