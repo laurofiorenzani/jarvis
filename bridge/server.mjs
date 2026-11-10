@@ -738,6 +738,14 @@ const handleRequest = async (req, res) => {
     return res.end('forbidden')
   }
   const origin = req.headers.origin
+  // These routes spend the user's paid ElevenLabs quota. Unlike image/media
+  // GETs (which browsers load without Origin), speech POSTs must originate from
+  // an explicitly allowed browser origin; otherwise a local page or process
+  // could use the bridge as an unauthenticated billing proxy.
+  if (req.method === 'POST' && (req.url === '/tts' || req.url === '/stt') && !origin) {
+    res.writeHead(403, { vary: 'origin' })
+    return res.end('origin required')
+  }
   if (origin && !originAllowed(origin)) {
     console.warn(`[jarvis] refused http request from origin ${origin}`)
     res.writeHead(403, { vary: 'origin' })
