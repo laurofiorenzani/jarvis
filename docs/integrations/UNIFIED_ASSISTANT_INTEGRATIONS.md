@@ -72,9 +72,9 @@ The previous conversation explicitly noted the My BMW Shortcuts actions and agre
 
 ### Blink cameras — previously agreed first route
 
-The user previously identified Blink Shortcuts including `Open Quick View for your Blink`, device switch/lights, system arm/disarm, motion detection, and notification rules. The first goal is for a request such as "JARVIS, mostra a câmara da entrada" to invoke the relevant Blink action from within JARVIS.
+JARVIS itself must connect to the user's Blink account through a dedicated integration adapter and retrieve camera/device state and available media for display in the JARVIS interface. Do not make a Shortcut launch or merely opening the Blink app count as integration.
 
-Known limitation from the prior work: the camera selection was not available in the Quick View flow, and it was not yet proven that the resulting image could be delivered back into JARVIS for visual analysis. Keep those as explicit validation tasks. A launched Quick View is not proof that JARVIS received a frame; distinguish app hand-off, image acquired, and live video.
+Blink camera live view is a distinct capability from retrieving a thumbnail or recorded clip. The adapter must expose explicit states such as `snapshot_available`, `clip_available`, `live_view_supported`, `needs_auth`, and `unsupported`; never label a still image as live video. Blink's consumer-camera APIs are not a clearly documented public third-party control API, so assess the private cloud protocol or a supported gateway carefully, including MFA, account lockout, rate limits, media-session handling, and ongoing maintenance. Any unofficial protocol must be isolated behind the adapter and opt-in connection flow.
 
 ### Dreame vacuum
 
