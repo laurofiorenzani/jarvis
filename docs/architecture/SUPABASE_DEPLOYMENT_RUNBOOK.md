@@ -108,6 +108,43 @@ storage. The refresh token is the only credential persisted by the adapter;
 the access token remains in memory. The iOS integration must provide a
 Keychain-backed store before sign-in is enabled in the mobile UI.
 
+## Email verification link protection
+
+The Supabase Auth logs on 10 November 2026 showed successful invite-email
+sends followed by repeated `/auth/v1/verify` requests returning
+`One-time token not found`. Supabase documents that corporate email security
+scanners can prefetch single-use confirmation and recovery links, consuming
+the token before the person opens the message. JARVIS now includes a
+human-click interstitial at `/auth/email-link`; it validates that the embedded
+URL belongs to this Supabase project and redirects only after an explicit
+button click. It does not consume or auto-open the token during page load.
+
+**Owner action still required in Supabase Dashboard:** in
+**Authentication → Email Templates**, update the link in each relevant
+template (Confirm signup, Invite user, and Reset password) to point to the
+interstitial while retaining Supabase's generated confirmation URL:
+
+```html
+<a href="{{ .SiteURL }}/auth/email-link?confirmation={{ .ConfirmationURL | urlquery }}">
+  Continue to JARVIS
+</a>
+```
+
+Keep `{{ .ConfirmationURL }}` as the source of the one-time URL. Do not
+manually construct the `/auth/v1/verify` URL or expose a token in any other
+place. Set the Auth Site URL to
+`https://jarvis-lauro-fiorenzani.vercel.app` and ensure that exact origin is
+in the allowed redirect URL list. The interstitial currently accepts only
+this production origin and this project's Supabase Auth host.
+
+The same logs also recorded `429 over_email_send_rate_limit` responses from
+`/auth/v1/recover`. Do not repeatedly request reset emails while this limit
+is active. Wait for the built-in email quota window to reset, or configure
+custom SMTP in **Authentication → SMTP Settings** to control delivery and
+raise the limit. If custom SMTP has click tracking, disable it for Auth emails
+because link rewriting can break one-time tokens. No SMTP credentials or Auth
+settings have been changed by this work.
+
 ## Free-plan operating constraints (checked 9 Nov 2026)
 
 Supabase currently lists two active free projects, 500 MB database per project,
