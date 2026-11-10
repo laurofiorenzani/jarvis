@@ -1,5 +1,6 @@
 import {
   assertConsistentProviderPrivacy,
+  assertZdrProviderConfig,
   ProviderUnavailableError,
   providerRoutingOptions,
 } from './model-router.ts'
@@ -14,6 +15,25 @@ Deno.test('ZDR mode requires zero-retention and no-data-collection endpoints', (
   const provider = options.provider as { zdr?: boolean; data_collection?: string } | undefined
   if (provider?.zdr !== true || provider.data_collection !== 'deny') {
     throw new Error('strict ZDR routing was not enforced')
+  }
+})
+
+Deno.test('ZDR provider requires official OpenRouter host and server-side key', () => {
+  assertZdrProviderConfig('openrouter.ai', 'OPENROUTER_API_KEY', 'test-key')
+  for (const invalid of [
+    ['api.groq.com', 'OPENROUTER_API_KEY', 'test-key'],
+    ['openrouter.ai', undefined, 'test-key'],
+    ['openrouter.ai', 'OPENROUTER_API_KEY', undefined],
+  ] as const) {
+    let caught: unknown
+    try {
+      assertZdrProviderConfig(invalid[0], invalid[1], invalid[2])
+    } catch (error) {
+      caught = error
+    }
+    if (!(caught instanceof ProviderUnavailableError)) {
+      throw new Error('invalid ZDR provider configuration was not rejected')
+    }
   }
 })
 
