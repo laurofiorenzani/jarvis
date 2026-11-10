@@ -8,10 +8,12 @@
 import { test, before, after } from 'node:test'
 import assert from 'node:assert/strict'
 import { spawn } from 'node:child_process'
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { request } from 'node:http'
 import { connect } from 'node:net'
-import { networkInterfaces } from 'node:os'
+import { homedir, networkInterfaces, tmpdir } from 'node:os'
 import { fileURLToPath } from 'node:url'
+import { join } from 'node:path'
 
 const SERVER = fileURLToPath(new URL('../bridge/server.mjs', import.meta.url))
 
@@ -143,6 +145,27 @@ test('refuses HTTP requests addressed to a foreign Host (DNS rebinding)', async 
   assert.equal(await get(bridge.port, '/file?path=/tmp/x.png', { host: 'attacker.example' }), 403)
   assert.equal(await get(bridge.port, '/health', { host: `localhost:${bridge.port}` }), 200)
   assert.equal(await get(bridge.port, '/health', { host: `[::1]:${bridge.port}` }), 200)
+})
+
+test('local media endpoint does not expose arbitrary images from the home directory', async () => {
+  const outside = mkdtempSync(join(homedir(), '.jarvis-media-test-'))
+  const privateImage = join(outside, 'private.png')
+  const tempImage = join(tmpdir(), `jarvis-media-test-${process.pid}.png`)
+  try {
+    writeFileSync(privateImage, 'private')
+    writeFileSync(tempImage, 'temporary')
+    assert.equal(
+      await get(bridge.port, `/file?path=${encodeURIComponent(privateImage)}`, { host: `127.0.0.1:${bridge.port}` }),
+      400,
+    )
+    assert.equal(
+      await get(bridge.port, `/file?path=${encodeURIComponent(tempImage)}`, { host: `127.0.0.1:${bridge.port}` }),
+      200,
+    )
+  } finally {
+    rmSync(outside, { recursive: true, force: true })
+    rmSync(tempImage, { force: true })
+  }
 })
 
 test('refuses a WebSocket addressed to a foreign Host even with a local Origin', async () => {
