@@ -9,7 +9,7 @@ import { CloudAccess } from './ui/CloudAccess'
 import type { MemoryConfirmationChallenge } from './lib/bridge'
 import { useStore } from './store'
 import { startVoice, type CloudTranscriber, type Voice, type VoiceMode } from './lib/voice'
-import { createSpeaker, cycleVoice, currentVoiceName } from './lib/tts'
+import { createSpeaker, cycleVoice, currentVoiceName, unlockSpeech } from './lib/tts'
 import * as sfx from './lib/sfx'
 import * as music from './lib/music'
 import * as hands from './lib/hands'
@@ -386,7 +386,7 @@ export default function App() {
     // Must happen inside the click handler — browsers won't start an
     // AudioContext or speech synthesis without a user gesture.
     await sfx.unlockAudio()
-    // Keep audio unlocked for speech and tool sounds, but skip the decorative
+    // Prime iOS Safari speech output while this trusted user gesture is active.\n    unlockSpeech()\n    // Keep audio unlocked for speech and tool sounds, but skip the decorative
     // boot sting and ambient intro on every login. Tool audio remains available.
     music.enable()
 
