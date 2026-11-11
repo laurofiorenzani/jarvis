@@ -69,6 +69,8 @@ create table if not exists public.jarvis_memory_facts (
   constraint jarvis_memory_fact_conversation_owner
     foreign key (source_conversation_id, user_id)
     references public.jarvis_conversations(id, user_id) on delete cascade,
+  constraint jarvis_memory_fact_source_messages_require_conversation
+    check (cardinality(source_message_ids) = 0 or source_conversation_id is not null),
   constraint jarvis_memory_fact_validity
     check (valid_until is null or valid_until > valid_from),
   constraint jarvis_memory_fact_approval_valid
@@ -102,6 +104,64 @@ create index if not exists jarvis_memory_topic_links_user_from_idx
   on public.jarvis_memory_topic_links (user_id, from_topic_id);
 create index if not exists jarvis_memory_topic_links_user_to_idx
   on public.jarvis_memory_topic_links (user_id, to_topic_id);
+
+-- Verify message-level provenance, not just conversation ownership. A UUID
+-- copied from another user's conversation must never become a valid source.
+create or replace function public.jarvis_memory_assert_summary_message_owners()
+returns trigger
+language plpgsql
+security invoker
+set search_path = ''
+as $
+begin
+  if exists (
+    select 1
+    from unnest(new.source_message_ids) as ids(message_id)
+    where not exists (
+      select 1 from public.jarvis_messages m
+      where m.id = ids.message_id
+        and m.user_id = new.user_id
+        and m.conversation_id = new.conversation_id
+    )
+  ) then
+    raise exception 'memory summary message provenance ownership mismatch' using errcode = '23514';
+  end if;
+  return new;
+end;
+$;
+
+drop trigger if exists jarvis_memory_summary_message_owners on public.jarvis_memory_summaries;
+create trigger jarvis_memory_summary_message_owners
+before insert or update of source_message_ids, conversation_id, user_id on public.jarvis_memory_summaries
+for each row execute function public.jarvis_memory_assert_summary_message_owners();
+
+create or replace function public.jarvis_memory_assert_fact_message_owners()
+returns trigger
+language plpgsql
+security invoker
+set search_path = ''
+as $
+begin
+  if exists (
+    select 1
+    from unnest(new.source_message_ids) as ids(message_id)
+    where not exists (
+      select 1 from public.jarvis_messages m
+      where m.id = ids.message_id
+        and m.user_id = new.user_id
+        and m.conversation_id = new.source_conversation_id
+    )
+  ) then
+    raise exception 'memory fact message provenance ownership mismatch' using errcode = '23514';
+  end if;
+  return new;
+end;
+$;
+
+drop trigger if exists jarvis_memory_fact_message_owners on public.jarvis_memory_facts;
+create trigger jarvis_memory_fact_message_owners
+before insert or update of source_message_ids, source_conversation_id, user_id on public.jarvis_memory_facts
+for each row execute function public.jarvis_memory_assert_fact_message_owners();
 
 -- Enforce that linked rows belong to the same user, not merely that the caller
 -- owns the outer row. These triggers protect against cross-user references.
