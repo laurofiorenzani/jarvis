@@ -82,7 +82,7 @@ select lives_ok(
 -- Execute read assertions as authenticated sessions, not the postgres owner.
 set local role authenticated;
 select set_config('request.jwt.claim.sub', '00000000-0000-4000-8000-000000000001', true);
-do $
+do $$
 begin
   if (select count(*) from public.jarvis_memory_summaries) <> 1 then
     raise exception 'RLS isolation failed: user A summary visibility';
@@ -94,10 +94,10 @@ begin
     raise exception 'RLS isolation failed: user A topic visibility';
   end if;
 end;
-$;
+$$;
 
 select set_config('request.jwt.claim.sub', '00000000-0000-4000-8000-000000000002', true);
-do $
+do $$
 begin
   if (select count(*) from public.jarvis_memory_summaries) <> 1 then
     raise exception 'RLS isolation failed: user B summary visibility';
@@ -109,7 +109,7 @@ begin
     raise exception 'RLS isolation failed: user B topic visibility';
   end if;
 end;
-$;
+$$;
 
 reset role;
 select * from finish();
