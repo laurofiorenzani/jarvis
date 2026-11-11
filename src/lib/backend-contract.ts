@@ -80,7 +80,7 @@ export type SemanticMemoryCandidateListResponse = {
 
 export type SemanticMemoryCandidateDecisionResponse = {
   version: typeof CLOUD_API_VERSION
-  candidate: SemanticMemoryCandidate & { status: 'approved' | 'rejected'; approved_at?: string | null }
+  candidate: Omit<SemanticMemoryCandidate, 'status'> & { status: 'approved' | 'rejected'; approved_at?: string | null }
 }
 
 export type ConversationRole = 'user' | 'assistant'
