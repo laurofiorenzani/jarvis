@@ -60,6 +60,7 @@ export function CloudAccess({ onConnected, onDisconnected, onResumeConversation,
   const [message, setMessage] = useState('')
   const [memories, setMemories] = useState<CloudMemory[]>([])
   const [memoryCandidates, setMemoryCandidates] = useState<SemanticMemoryCandidate[]>([])
+  const [memoryReviewAvailable, setMemoryReviewAvailable] = useState(false)
   const [conversations, setConversations] = useState<ConversationSummary[]>([])
   const [conversationBusy, setConversationBusy] = useState(false)
   const [memoryContextEnabled, setMemoryContextEnabled] = useState(false)
@@ -74,16 +75,23 @@ export function CloudAccess({ onConnected, onDisconnected, onResumeConversation,
 
   const activateRuntime = async (runtime: ReturnType<typeof createCloudRuntime>) => {
     await runtime.brain.warm()
-    const [saved, preference, recentConversations, recentCandidates] = await Promise.all([
+    const [saved, preference, recentConversations] = await Promise.all([
       runtime.api.listMemories(),
       runtime.api.getMemoryPreference(),
       runtime.api.listConversations(),
-      runtime.api.listSemanticMemoryCandidates(),
     ])
     setMemories(saved.memories)
     setMemoryContextEnabled(preference.contextEnabled)
     setConversations(recentConversations.conversations)
-    setMemoryCandidates(recentCandidates.candidates)
+    try {
+      const recentCandidates = await runtime.api.listSemanticMemoryCandidates()
+      setMemoryCandidates(recentCandidates.candidates)
+      setMemoryReviewAvailable(true)
+    } catch {
+      // The feature-branch UI may be previewed before the matching Edge Function is deployed.
+      setMemoryCandidates([])
+      setMemoryReviewAvailable(false)
+    }
     try {
       const providers = await runtime.api.getProviderStatus()
       setProviderStatus(providers.configured
@@ -447,9 +455,11 @@ export function CloudAccess({ onConnected, onDisconnected, onResumeConversation,
             <section aria-label="Pending semantic memory candidates" style={{ borderTop: '1px solid #214653', borderBottom: '1px solid #214653', padding: '10px 0', marginBottom: 12 }}>
               <strong style={{ display: 'block', color: '#83d9e8', marginBottom: 8 }}>MEMORY REVIEW QUEUE · {memoryCandidates.length}</strong>
               <div style={{ color: '#7797a2', lineHeight: 1.5, letterSpacing: 0, marginBottom: 8 }}>
-                Candidates stay pending until you approve them. Approval is available only while personal memory context is enabled.
+                {memoryReviewAvailable
+                  ? 'Candidates stay pending until you approve them. Approval is available only while personal memory context is enabled.'
+                  : 'The candidate review API is not available on this backend yet. Existing cloud sign-in and saved memories remain unaffected.'}
               </div>
-              <div style={{ display: 'grid', gap: 8 }}>
+              {memoryReviewAvailable && <div style={{ display: 'grid', gap: 8 }}>
                 {memoryCandidates.map((candidate) => (
                   <article key={candidate.id} style={{ border: '1px solid #214653', borderRadius: 4, padding: 8, letterSpacing: 0 }}>
                     <div style={{ color: '#83d9e8', marginBottom: 5 }}>{candidate.fact_type.toUpperCase()}</div>
@@ -462,7 +472,7 @@ export function CloudAccess({ onConnected, onDisconnected, onResumeConversation,
                   </article>
                 ))}
                 {!memoryCandidates.length && <div style={{ color: '#7797a2', letterSpacing: 0 }}>No pending memory candidates.</div>}
-              </div>
+              </div>}
             </section>
             <section aria-label="Saved cloud conversations" style={{ borderTop: '1px solid #214653', borderBottom: '1px solid #214653', padding: '10px 0', marginBottom: 12 }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 8 }}>
