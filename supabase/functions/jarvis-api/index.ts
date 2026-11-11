@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js'
 import { getFreeProviderStatus, startFreeModelStream } from './model-router.ts'
+import { parseSemanticMemorySearch } from './semantic-memory.ts'
 
 const VERSION = 1
 const MAX_TEXT = 20_000
@@ -222,6 +223,53 @@ Deno.serve(async (request) => {
     } catch {
       return error('service_unavailable', 'Model provider configuration is invalid.', 503, false, cors)
     }
+  }
+
+  if (request.method === 'GET' && matchesPath('/semantic-memory/search')) {
+    const allowed = await consumeLimit('semantic_memory_search_minute', 30, 60)
+    if (allowed === null) return error('service_unavailable', 'Semantic memory search limiter is unavailable.', 503, true, cors)
+    if (!allowed) return error('rate_limited', 'Semantic memory search limit reached.', 429, true, cors)
+
+    const input = parseSemanticMemorySearch(url)
+    if (!input) return error('invalid_request', 'A search query of at least two characters is required.', 400, false, cors)
+
+    const { data: preference, error: preferenceError } = await db.from('jarvis_memory_preferences')
+      .select('context_enabled').eq('user_id', userId).maybeSingle()
+    if (preferenceError) return error('service_unavailable', 'Memory preference could not be checked.', 503, true, cors)
+    if (preference?.context_enabled !== true) {
+      return response({ version: VERSION, contextEnabled: false, results: [] }, 200, cors)
+    }
+
+    const now = new Date().toISOString()
+    const { data, error: searchError } = await db.from('jarvis_memory_facts')
+      .select('id,fact_type,content,confidence,source_conversation_id,source_message_ids,valid_from,valid_until,created_at,topic:jarvis_memory_topics(canonical_name,topic_type)')
+      .eq('user_id', userId)
+      .eq('status', 'approved')
+      .eq('sensitivity', 'normal')
+      .or(`valid_until.is.null,valid_until.gt.${now}`)
+      .textSearch('content', input.query, { config: 'simple', type: 'websearch' })
+      .order('created_at', { ascending: false })
+      .limit(input.limit)
+    if (searchError) return error('service_unavailable', 'Semantic memory search failed.', 503, true, cors)
+
+    return response({
+      version: VERSION,
+      contextEnabled: true,
+      results: (data ?? []).map((item) => ({
+        id: item.id,
+        type: item.fact_type,
+        content: item.content,
+        confidence: item.confidence,
+        topic: item.topic,
+        provenance: {
+          conversationId: item.source_conversation_id,
+          messageIds: item.source_message_ids,
+          recordedAt: item.created_at,
+        },
+        validFrom: item.valid_from,
+        validUntil: item.valid_until,
+      })),
+    }, 200, cors)
   }
 
   if (request.method === 'GET' && matchesPath('/memory-preferences')) {
