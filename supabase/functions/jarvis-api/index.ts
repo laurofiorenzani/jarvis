@@ -214,6 +214,58 @@ Deno.serve(async (request) => {
     return response({ version: VERSION, text: transcript }, 200, cors)
   }
 
+  if (request.method === 'POST' && matchesPath('/tts')) {
+    const allowed = await consumeLimit('speech_synthesis_minute', 30, 60)
+    if (allowed === null) return error('service_unavailable', 'Speech synthesis rate limiter is unavailable.', 503, true, cors)
+    if (!allowed) return error('rate_limited', 'Too many speech requests. Please pause briefly.', 429, true, cors)
+    let body: unknown
+    try { body = await readBoundedJson(request, 8_192) }
+    catch (cause) {
+      if (cause instanceof Error && cause.message === 'body_too_large') return error('invalid_request', 'Speech text is too large.', 413, false, cors)
+      return error('invalid_request', 'Speech request must be valid JSON.', 400, false, cors)
+    }
+    if (!isRecord(body) || body.version !== VERSION || typeof body.text !== 'string') return error('invalid_request', 'Invalid speech request.', 400, false, cors)
+    const text = body.text.replace(/[\u0000-\u001f\u007f]/g, ' ').replace(/\s+/g, ' ').trim()
+    if (!text || text.length > 2_000) return error('invalid_request', 'Speech text must contain between 1 and 2,000 characters.', 400, false, cors)
+    const apiKey = Deno.env.get('GOOGLE_AI_STUDIO_API_KEY')?.trim()
+    if (!apiKey) return error('service_unavailable', 'Speech provider is not configured.', 503, false, cors)
+    let upstream: Response | null = null
+    for (let attempt = 0; attempt < 2; attempt++) {
+      upstream = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-tts-preview:generateContent', {
+        method: 'POST', headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
+        body: JSON.stringify({
+          contents: [{ role: 'user', parts: [{ text: 'TTS the following transcript. Speak it exactly as written, in a composed, warm, precise male assistant voice with measured pacing and clear diction. Use natural Brazilian Portuguese for Portuguese text and neutral British English for English text. Do not translate, paraphrase, or add words. Transcript: ' + text }] }],
+          generationConfig: { responseModalities: ['AUDIO'], speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Charon' } } } },
+        }),
+        signal: AbortSignal.timeout(30_000),
+      }).catch(() => null)
+      if (upstream?.ok) break
+      if (attempt === 0 && upstream && upstream.status < 500 && upstream.status !== 429) break
+    }
+    if (!upstream) return error('service_unavailable', 'Speech synthesis service could not be reached.', 503, true, cors)
+    if (!upstream.ok) {
+      console.warn('[jarvis] speech synthesis provider returned non-success status', { status: upstream.status })
+      return error('service_unavailable', 'Speech synthesis failed. Please try again.', 503, true, cors)
+    }
+    const payload = await upstream.json().catch(() => null)
+    const parts = payload && typeof payload === 'object' ? (payload as { candidates?: Array<{ content?: { parts?: Array<{ inlineData?: { mimeType?: string; data?: string } }> } }> }).candidates?.[0]?.content?.parts ?? [] : []
+    const audioPart = parts.find((part) => part.inlineData?.data)
+    if (!audioPart?.inlineData?.data || (audioPart.inlineData.mimeType || '').split(';')[0].toLowerCase() !== 'audio/l16') return error('service_unavailable', 'Speech synthesis returned no compatible audio.', 503, true, cors)
+    let binary: string
+    try { binary = atob(audioPart.inlineData.data) } catch { return error('service_unavailable', 'Speech synthesis returned invalid audio.', 503, true, cors) }
+    const pcm = new Uint8Array(binary.length)
+    for (let i = 0; i < binary.length; i++) pcm[i] = binary.charCodeAt(i)
+    if (pcm.length < 2 || pcm.length > 4 * 1024 * 1024) return error('service_unavailable', 'Speech synthesis audio size is invalid.', 503, true, cors)
+    const wav = new Uint8Array(44 + pcm.length)
+    const view = new DataView(wav.buffer)
+    const ascii = (offset: number, value: string) => { for (let i = 0; i < value.length; i++) wav[offset + i] = value.charCodeAt(i) }
+    ascii(0, 'RIFF'); view.setUint32(4, 36 + pcm.length, true); ascii(8, 'WAVE')
+    ascii(12, 'fmt '); view.setUint32(16, 16, true); view.setUint16(20, 1, true); view.setUint16(22, 1, true)
+    view.setUint32(24, 24_000, true); view.setUint32(28, 48_000, true); view.setUint16(32, 2, true); view.setUint16(34, 16, true)
+    ascii(36, 'data'); view.setUint32(40, pcm.length, true); wav.set(pcm, 44)
+    return new Response(wav, { status: 200, headers: { ...cors, 'Content-Type': 'audio/wav', 'Content-Length': String(wav.byteLength), 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' } })
+  }
+
   if (request.method === 'GET' && matchesPath('/provider-status')) {
     const allowed = await consumeLimit('provider_status_minute', 60, 60)
     if (allowed === null) return error('service_unavailable', 'Rate limiter is unavailable.', 503, true, cors)
