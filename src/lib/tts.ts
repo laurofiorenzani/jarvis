@@ -45,6 +45,14 @@ type Speaker = {
 // What he is saying right now
 // ---------------------------------------------------------------------------
 
+export type CloudSpeechProvider = (text: string) => Promise<Blob>
+let cloudSpeechProvider: CloudSpeechProvider | null = null
+
+/** Install or clear the authenticated cloud speech provider with the cloud session. */
+export function setCloudSpeechProvider(provider: CloudSpeechProvider | null): void {
+  cloudSpeechProvider = provider
+}
+
 let speaking = ''
 let recent = ''
 let recentUntil = 0
@@ -774,6 +782,15 @@ export function createSpeaker(): Speaker {
 /** Only used when USE_ELEVENLABS is on. Bridge proxy first (it already holds
  *  the key), then a direct key, then null to fall back to the native voice. */
 async function fetchCloudAudio(text: string): Promise<string | null> {
+  if (cloudSpeechProvider) {
+    try {
+      const audio = await cloudSpeechProvider(text)
+      if (audio.size > 0 && audio.type.startsWith('audio/')) return URL.createObjectURL(audio)
+    } catch (error) {
+      console.warn('[jarvis] authenticated cloud speech generation failed:', error)
+    }
+  }
+
   if (BACKEND === 'bridge') {
     try {
       const res = await fetch(`${BRIDGE_HTTP_URL}/tts`, {
