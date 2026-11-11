@@ -542,7 +542,7 @@ test('semantic memory review rejects malformed IDs and decisions before network 
     getAccessToken: async () => 'token',
     fetchImpl: async () => { called = true; return new Response('{}') },
   })
-  await assert.rejects(client.decideSemanticMemoryCandidate('not-a-uuid', 'approved'), /Invalid memory candidate ID/)
-  await assert.rejects(client.decideSemanticMemoryCandidate('10000000-0000-4000-8000-000000000001', 'pending' as 'approved'), /Invalid memory decision/)
+  assert.throws(() => client.decideSemanticMemoryCandidate('not-a-uuid', 'approved'), /Invalid memory candidate ID/)
+  assert.throws(() => client.decideSemanticMemoryCandidate('10000000-0000-4000-8000-000000000001', 'pending' as 'approved'), /Invalid memory decision/)
   assert.equal(called, false)
 })
