@@ -123,7 +123,7 @@ returns trigger
 language plpgsql
 security invoker
 set search_path = ''
-as $
+as $$
 begin
   if new.supersedes_id is not null and not exists (
     select 1 from public.jarvis_memory_facts f
@@ -133,7 +133,7 @@ begin
   end if;
   return new;
 end;
-$;
+$$;
 
 drop trigger if exists jarvis_memory_fact_supersession_owner on public.jarvis_memory_facts;
 create trigger jarvis_memory_fact_supersession_owner
@@ -145,7 +145,7 @@ returns trigger
 language plpgsql
 security invoker
 set search_path = ''
-as $
+as $$
 begin
   if new.supersedes_id is not null and not exists (
     select 1 from public.jarvis_memory_summaries s
@@ -155,7 +155,7 @@ begin
   end if;
   return new;
 end;
-$;
+$$;
 
 drop trigger if exists jarvis_memory_summary_supersession_owner on public.jarvis_memory_summaries;
 create trigger jarvis_memory_summary_supersession_owner
