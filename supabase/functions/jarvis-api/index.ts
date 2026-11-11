@@ -259,7 +259,7 @@ Deno.serve(async (request) => {
     return response({ version: VERSION, candidates: data ?? [] }, 200, cors)
   }
 
-  const candidateMatch = matchPath(/^\\/semantic-memory\\/candidates\\/([0-9a-f-]+)$/i)
+  const candidateMatch = matchPath(new RegExp('^/semantic-memory/candidates/([0-9a-f-]+)$', 'i'))
   if (request.method === 'PUT' && candidateMatch) {
     const allowed = await consumeLimit('semantic_memory_candidate_decision_hour', 30, 3600)
     if (allowed === null) return error('service_unavailable', 'Memory decision limiter is unavailable.', 503, true, cors)
