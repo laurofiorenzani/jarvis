@@ -141,6 +141,8 @@ export const env = {
   // These are public client settings (never service-role credentials). Environment
   // values can override them for another Supabase project or deployment.
   supabaseUrl: str(viteEnv.VITE_SUPABASE_URL) ?? 'https://undmhmdwhxvjgvezvucy.supabase.co',
+  // Production defaults to the stable API. Preview branches can opt into an isolated function.
+  supabaseFunctionName: str(viteEnv.VITE_SUPABASE_FUNCTION_NAME) ?? 'jarvis-api',
   supabasePublishableKey: str(viteEnv.VITE_SUPABASE_PUBLISHABLE_KEY) ?? 'sb_publishable_oJvnF8wB4y1mrFWzlzSZOQ_kFy-jzVx',
 }
 
