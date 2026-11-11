@@ -60,6 +60,11 @@ For each authenticated turn:
 - No secrets or unapproved sensitive data enter model context.
 - Retrieval stays within a fixed token/row budget and reports uncertainty when evidence is insufficient.
 
-## Current known gap
+## Implementation status on the feature branch
 
-The existing cloud memory implementation is a bounded list of up to 20 approved records, not semantic retrieval. This contract defines the next layer; it is not evidence that the layer exists, has passed tests, or is deployed.
+- The existing `/memories` endpoint remains a bounded list of explicitly saved personal records.
+- The feature branch now adds an authenticated `GET /semantic-memory/search?q=...&limit=...` endpoint. It derives the user ID from the verified Supabase session, checks that user's memory preference, and returns only approved, normal-sensitivity, currently valid facts. Results include source conversation/message identifiers and are capped at 20.
+- Search currently uses PostgreSQL full-text search with the `simple` configuration. It is deterministic lexical retrieval, not embeddings or full semantic similarity.
+- The SQL schema and endpoint are not yet validated against a live test database. Cross-user integration tests, migration application, CI, and deployment remain release gates. The migration must not be applied to production before those gates and explicit review.
+
+This branch status describes committed code only; it is not evidence that the route or schema has passed runtime tests or is deployed.
