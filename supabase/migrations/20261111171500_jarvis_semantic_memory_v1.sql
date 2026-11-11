@@ -16,6 +16,9 @@ create table if not exists public.jarvis_memory_summaries (
   supersedes_id uuid references public.jarvis_memory_summaries(id) on delete set null,
   created_at timestamptz not null default now(),
   approved_at timestamptz,
+  constraint jarvis_memory_summary_conversation_owner
+    foreign key (conversation_id, user_id)
+    references public.jarvis_conversations(id, user_id) on delete cascade,
   constraint jarvis_memory_summary_range_valid
     check (covered_from is null or covered_through is null or covered_through >= covered_from),
   constraint jarvis_memory_summary_approval_valid
@@ -63,6 +66,9 @@ create table if not exists public.jarvis_memory_facts (
   supersedes_id uuid references public.jarvis_memory_facts(id) on delete set null,
   created_at timestamptz not null default now(),
   approved_at timestamptz,
+  constraint jarvis_memory_fact_conversation_owner
+    foreign key (source_conversation_id, user_id)
+    references public.jarvis_conversations(id, user_id) on delete cascade,
   constraint jarvis_memory_fact_validity
     check (valid_until is null or valid_until > valid_from),
   constraint jarvis_memory_fact_approval_valid
@@ -86,6 +92,9 @@ create table if not exists public.jarvis_memory_topic_links (
   source_conversation_id uuid,
   created_at timestamptz not null default now(),
   constraint jarvis_memory_topic_link_not_self check (from_topic_id <> to_topic_id),
+  constraint jarvis_memory_topic_link_conversation_owner
+    foreign key (source_conversation_id, user_id)
+    references public.jarvis_conversations(id, user_id) on delete cascade,
   unique (user_id, from_topic_id, to_topic_id, relationship_type)
 );
 
