@@ -17,11 +17,9 @@ This note records what is present in the integration branch and separates code-l
 
 ## CI evidence
 
-Current-head validation: GitHub Actions run [42908479881](https://github.com/laurofiorenzani/jarvis/actions/runs/42908479881) completed successfully on 10 November 2026 for commit `c669eb5f2fbfe10c5edeaea1a9802492f81b0837`. This run validates the latest branch head at that time, including Node dependency installation, npm audit workflow, production build, unit tests, lint, Deno provider-router tests, Supabase Edge Function type-check, and the configured production health/CORS smoke checks.
+Latest branch-head validation: GitHub Actions run [42909103656](https://github.com/laurofiorenzani/jarvis/actions/runs/42909103656) completed successfully for commit `d91c40b89569986a9b544eb074e6c3a991a8e515`. The parallel platform matrix [42909103732](https://github.com/laurofiorenzani/jarvis/actions/runs/42909103732) also completed successfully on Ubuntu and Windows, including the disposable Windows Credential Manager diagnostic. These runs validate the authentication confirmation-resend implementation, Node tests, build, lint, Deno provider-router tests, Supabase Edge Function type-check, and configured production health/CORS smoke checks.
 
-The immediately preceding run [42908452674](https://github.com/laurofiorenzani/jarvis/actions/runs/42908452674) was cancelled when a newer push superseded it; it is not a test failure. The successful run above is the authoritative result for the current branch head.
-
-CI success is repository-level validation. The production smoke test checks health and CORS only; it does not prove live model inference, successful sign-in from a user's device, or deployment of the latest frontend preview.
+CI success is repository-level validation. The production smoke test checks health and CORS only; it does not prove live model inference, successful sign-in from a user's device, or deployment of the latest frontend preview. Newer auth-redirect allowlist changes are pending their own current-head CI run.
 
 ## Recovered product decisions and continuity
 
@@ -36,14 +34,14 @@ CI success is repository-level validation. The production smoke test checks heal
 1. Confirm a live authenticated model inference with a controlled low-token turn. Recent project logs show successful health and provider-status smoke checks, but no new `POST /turns` from the user and therefore no fresh upstream diagnostic detail yet.
 2. After the next real JARVIS model request, inspect the bounded provider diagnostic. A prior 404 is consistent with a missing model or endpoint; it must not be mislabelled as quota exhaustion or “fixed” by rotating credentials without evidence.
 3. Validate cloud voice input/output, reconnects, conversation history, cancellation, and error states in a real browser session.
-4. Close the account-access gap: the current UI supports sign-in but does not implement account creation, email-confirmation resend, or password recovery. Existing authorised Supabase Auth users can sign in once their email-confirmation state and redirect configuration are correct.
+4. Validate the complete account-access flow in the browser: registration, email confirmation, resend confirmation, password recovery, and separate sign-in for each family member. The code supports these actions; actual delivery and redirect allowlist settings remain dependent on Supabase Auth dashboard configuration.
 5. Build the standalone iPhone app only after the cloud core passes its release checks: add Capacitor/native iOS project on macOS/Xcode, Keychain and native audio adapters, app icon/splash, and physical-device testing. A Safari/PWA shortcut is not the final deliverable.
 6. Keep production secrets, paid resources, network exposure, and personal-data migration behind separate explicit approval. Vendor integrations remain out of scope until the core is stable.
 
 ## Safety boundaries
 
 - Do not merge the open memory pull request into `main` as part of this work.
-- Supabase Edge Function `jarvis-api` is currently active at deployed version 29. The latest router diagnostics and routing changes on this branch have not been deployed to production; do not claim they are live until a deployment is explicitly completed and verified.
+- Supabase Edge Function `jarvis-api` is currently active at deployed version 29. The latest router diagnostics, auth UI, and redirect-allowlist changes on this branch have not been deployed to production; do not claim they are live until a deployment is explicitly completed and verified.
 - Do not change production secrets, create paid resources, change network exposure, or migrate personal data without a separate critical approval.
 - Keep local encrypted memory disabled until all release gates pass.
 
@@ -158,3 +156,12 @@ No secret values were read, changed, copied, or exposed in this investigation.
 - Added tests for round-robin order and provider failure classification.
 - GitHub Actions run `42908027920` passed all CI steps for the earlier diagnostics/doc commit. Newer commits trigger fresh CI; latest run observed during this update: `42908439893`, still in progress. Do not treat the new tests as passed until that run completes.
 - No production deployment or secret changes performed. No database migration required for this per-isolate routing improvement.
+
+## 11 November 2026 — account confirmation and preview redirect hardening
+
+- Added an explicit resend-signup-confirmation action using Supabase Auth POST /auth/v1/resend; it does not create a duplicate user. The UI gives a deliberately non-enumerating success message.
+- Added an automated test for the resend endpoint, trimmed email address, and exact redirect URL.
+- The email-link interstitial previously accepted only the production JARVIS origin, while signup/resend on the stable integration preview requested the current preview origin. This mismatch could make a valid preview confirmation email show as unavailable.
+- Updated the interstitial to accept exactly two origins: the production app and the stable integration-branch preview. Arbitrary preview subdomains and lookalike domains remain rejected. Added tests for the exact allowlist and negative cases.
+- Supabase Auth dashboard URL Configuration still needs to allow the production and stable preview redirect URLs. The Site URL should remain the production app. No dashboard setting, user account, password, or production secret was changed during this work.
+- Supabase security advisors currently report leaked-password protection disabled (a security hardening recommendation) and an RLS-enabled jarvis_rate_limits table with no client policies. The latter is intentional for the service-role-only rate limiter; do not add client policies. Enable leaked-password protection in Auth settings when the operator is ready.
