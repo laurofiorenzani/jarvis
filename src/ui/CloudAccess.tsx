@@ -61,6 +61,7 @@ export function CloudAccess({ onConnected, onDisconnected, onResumeConversation,
   const [memories, setMemories] = useState<CloudMemory[]>([])
   const [memoryCandidates, setMemoryCandidates] = useState<SemanticMemoryCandidate[]>([])
   const [memoryReviewAvailable, setMemoryReviewAvailable] = useState(false)
+  const [memoryReviewBusy, setMemoryReviewBusy] = useState(false)
   const [conversations, setConversations] = useState<ConversationSummary[]>([])
   const [conversationBusy, setConversationBusy] = useState(false)
   const [memoryContextEnabled, setMemoryContextEnabled] = useState(false)
@@ -335,6 +336,21 @@ export function CloudAccess({ onConnected, onDisconnected, onResumeConversation,
     setMessage('NEW CLOUD CONVERSATION READY')
   }
 
+  const refreshMemoryCandidates = async () => {
+    const runtime = runtimeRef.current
+    if (!runtime || memoryReviewBusy || !memoryReviewAvailable) return
+    setMemoryReviewBusy(true)
+    try {
+      const result = await runtime.api.listSemanticMemoryCandidates()
+      setMemoryCandidates(result.candidates)
+      setMessage('MEMORY REVIEW QUEUE REFRESHED · ' + result.candidates.length + ' PENDING')
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : 'Memory review queue could not be refreshed.')
+    } finally {
+      setMemoryReviewBusy(false)
+    }
+  }
+
   const toggleMemoryContext = async (enabled: boolean) => {
     const runtime = runtimeRef.current
     if (!runtime || memoryBusy) return
@@ -454,6 +470,11 @@ export function CloudAccess({ onConnected, onDisconnected, onResumeConversation,
             </div>
             <section aria-label="Pending semantic memory candidates" style={{ borderTop: '1px solid #214653', borderBottom: '1px solid #214653', padding: '10px 0', marginBottom: 12 }}>
               <strong style={{ display: 'block', color: '#83d9e8', marginBottom: 8 }}>MEMORY REVIEW QUEUE · {memoryCandidates.length}</strong>
+              {memoryReviewAvailable && <button type="button" disabled={memoryReviewBusy || memoryBusy}
+                onClick={() => void refreshMemoryCandidates()}
+                style={{ ...buttonStyle, width: '100%', marginBottom: 8 }}>
+                {memoryReviewBusy ? 'REFRESHING…' : 'REFRESH REVIEW QUEUE'}
+              </button>}
               <div style={{ color: '#7797a2', lineHeight: 1.5, letterSpacing: 0, marginBottom: 8 }}>
                 {memoryReviewAvailable
                   ? 'Candidates stay pending until you approve them. Approval is available only while personal memory context is enabled.'
