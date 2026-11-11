@@ -7,6 +7,12 @@
  */
 export const SUPABASE_AUTH_ORIGIN = 'https://undmhmdwhxvjgvezvucy.supabase.co'
 export const JARVIS_AUTH_REDIRECT_ORIGIN = 'https://jarvis-lauro-fiorenzani.vercel.app'
+// Exact allowlist: production plus the stable preview URL for the integration branch.
+// Arbitrary Vercel preview deployments and lookalike subdomains remain rejected.
+export const JARVIS_AUTH_REDIRECT_ORIGINS = new Set([
+  JARVIS_AUTH_REDIRECT_ORIGIN,
+  'https://jarvis-git-work-memory-integration-ready-lauro-fiorenzani.vercel.app',
+])
 
 export function getSafeConfirmationUrl(raw: string | null): string | null {
   if (!raw?.trim()) return null
@@ -32,7 +38,7 @@ export function getSafeConfirmationUrl(raw: string | null): string | null {
 
   try {
     const target = new URL(redirectTo)
-    if (target.origin !== JARVIS_AUTH_REDIRECT_ORIGIN) return null
+    if (!JARVIS_AUTH_REDIRECT_ORIGINS.has(target.origin)) return null
   } catch {
     return null
   }
