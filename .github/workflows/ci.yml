@@ -17,7 +17,7 @@ jobs:
   validate:
     name: Typecheck, build, tests and lint
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 35
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
@@ -73,6 +73,24 @@ jobs:
 
       - name: Type-check Supabase Edge Function
         run: deno check supabase/functions/jarvis-api/index.ts
+
+      - name: Set up Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Start isolated local Supabase database
+        run: supabase start
+
+      - name: Apply migrations to isolated local database
+        run: supabase db reset
+
+      - name: Run SQL isolation regression tests
+        run: supabase test db
+
+      - name: Stop isolated local Supabase stack
+        if: always()
+        run: supabase stop --no-backup
 
       - name: Smoke-test deployed cloud API and production CORS
         shell: bash
