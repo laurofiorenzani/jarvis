@@ -158,6 +158,30 @@ export function createCloudApiClient(options: CloudApiOptions) {
       if (!payload || typeof payload !== 'object' || typeof (payload as { text?: unknown }).text !== 'string') throw new CloudApiError('Speech service returned an invalid transcript.', response.status, 'invalid_response')
       return (payload as { text: string }).text.trim()
     },
+    synthesizeSpeech: async (text: string): Promise<Blob> => {
+      const spokenText = requireText(text, 'speech text', 2_000)
+      const token = await options.getAccessToken()
+      if (!token?.trim()) throw new CloudApiError('Sign-in is required.', 401, 'unauthenticated')
+      let response: Response
+      try {
+        response = await fetcher(`${baseUrl}/v1/tts`, {
+          method: 'POST',
+          headers: { apikey: options.publishableKey, Authorization: `Bearer ${token}`, 'Content-Type': 'application/json', Accept: 'audio/wav', 'X-Jarvis-Api-Version': String(CLOUD_API_VERSION) },
+          body: JSON.stringify({ version: CLOUD_API_VERSION, text: spokenText }),
+          credentials: 'omit', redirect: 'error',
+        })
+      } catch { throw new CloudApiError('Speech service could not be reached.', 0, 'network_error', undefined, true) }
+      if (!response.ok) {
+        const payload: unknown = await response.json().catch(() => null)
+        const body = payload as ApiError | null
+        throw new CloudApiError(body?.error?.message || 'Speech synthesis failed.', response.status, body?.error?.code || 'service_unavailable', body?.error?.requestId, true)
+      }
+      const contentType = response.headers.get('content-type') || ''
+      if (!contentType.toLowerCase().includes('audio/wav')) throw new CloudApiError('Speech service returned an invalid audio format.', response.status, 'invalid_response')
+      const audio = await response.blob()
+      if (audio.size < 44 || audio.size > 4 * 1024 * 1024) throw new CloudApiError('Speech service returned an invalid audio payload.', response.status, 'invalid_response')
+      return audio
+    },
     health: async () => {
       const result = await request<CloudHealth>('/v1/health', {}, false)
       if (result.version !== CLOUD_API_VERSION || !['ok', 'degraded'].includes(result.status)) {
