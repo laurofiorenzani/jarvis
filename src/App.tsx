@@ -386,7 +386,9 @@ export default function App() {
     // Must happen inside the click handler — browsers won't start an
     // AudioContext or speech synthesis without a user gesture.
     await sfx.unlockAudio()
-    // Prime iOS Safari speech output while this trusted user gesture is active.\n    unlockSpeech()\n    // Keep audio unlocked for speech and tool sounds, but skip the decorative
+    // Prime iOS Safari speech output while this trusted user gesture is active.
+    unlockSpeech()
+    // Keep audio unlocked for speech and tool sounds, but skip the decorative
     // boot sting and ambient intro on every login. Tool audio remains available.
     music.enable()
 
