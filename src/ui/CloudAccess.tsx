@@ -438,6 +438,7 @@ export function CloudAccess({ onConnected, onDisconnected, onResumeConversation,
     } finally {
       runtimeRef.current = null
       onSpeechApiReady?.(null)
+      onTtsApiReady?.(null)
       setConnected(false)
       setCanRestoreTabSession(false)
       try { window.sessionStorage.removeItem(TAB_SESSION_CHOICE) } catch { /* Sign-out remains complete if storage is unavailable. */ }
