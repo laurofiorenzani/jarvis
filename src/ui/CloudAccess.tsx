@@ -113,6 +113,7 @@ export function CloudAccess({ onConnected, onDisconnected, onResumeConversation,
     setMessage('')
     const runtime = createCloudRuntime({
       supabaseUrl: env.supabaseUrl,
+      functionName: env.supabaseFunctionName,
       supabasePublishableKey: env.supabasePublishableKey,
       tokenStore: createTabTokenStore(),
     })
@@ -156,6 +157,7 @@ export function CloudAccess({ onConnected, onDisconnected, onResumeConversation,
     setMessage('')
     const options: CloudRuntimeOptions = {
       supabaseUrl: env.supabaseUrl,
+      functionName: env.supabaseFunctionName,
       supabasePublishableKey: env.supabasePublishableKey,
       tokenStore: keepSessionInTab ? createTabTokenStore() : createVolatileTokenStore(),
     }
@@ -200,6 +202,7 @@ export function CloudAccess({ onConnected, onDisconnected, onResumeConversation,
     setMessage('')
     const runtime = createCloudRuntime({
       supabaseUrl: env.supabaseUrl,
+      functionName: env.supabaseFunctionName,
       supabasePublishableKey: env.supabasePublishableKey,
       tokenStore: keepSessionInTab ? createTabTokenStore() : createVolatileTokenStore(),
     })
@@ -232,6 +235,7 @@ export function CloudAccess({ onConnected, onDisconnected, onResumeConversation,
     setMessage('')
     const runtime = createCloudRuntime({
       supabaseUrl: env.supabaseUrl,
+      functionName: env.supabaseFunctionName,
       supabasePublishableKey: env.supabasePublishableKey,
       tokenStore: createVolatileTokenStore(),
     })
@@ -251,6 +255,7 @@ export function CloudAccess({ onConnected, onDisconnected, onResumeConversation,
     setMessage('')
     const runtime = createCloudRuntime({
       supabaseUrl: env.supabaseUrl,
+      functionName: env.supabaseFunctionName,
       supabasePublishableKey: env.supabasePublishableKey,
       tokenStore: createVolatileTokenStore(),
     })
@@ -280,6 +285,7 @@ export function CloudAccess({ onConnected, onDisconnected, onResumeConversation,
     setMessage('')
     const runtime = createCloudRuntime({
       supabaseUrl: env.supabaseUrl,
+      functionName: env.supabaseFunctionName,
       supabasePublishableKey: env.supabasePublishableKey,
       tokenStore: createVolatileTokenStore(),
     })
