@@ -386,14 +386,11 @@ export default function App() {
     // Must happen inside the click handler — browsers won't start an
     // AudioContext or speech synthesis without a user gesture.
     await sfx.unlockAudio()
-    sfx.play('boot')
-    // The score. Must be started from inside this click handler for the same
-    // reason as the rest of the audio.
+    // Keep audio unlocked for speech and tool sounds, but skip the decorative
+    // boot sting and ambient intro on every login. Tool audio remains available.
     music.enable()
-    music.playBoot()
-    music.startAmbient()
 
-    s.setPhase('boot')
+    s.setPhase('dormant')
 
     watchServers((servers) => store.getState().setConnected(servers))
     watchPanels((panel) => store.getState().pushPanel(panel))
@@ -531,11 +528,8 @@ export default function App() {
       }, 200)
     }
 
-    // Long enough for the four-beat start-up sequence in Boot.tsx to play —
-    // status bar, rings, suit schematic, reactor power-up — before the live
-    // interface takes over. Kept a touch under the boot cue so the music is
-    // still rising as the reactor lands.
-    await new Promise((r) => setTimeout(r, 9200)) // boot sequence
+    // No decorative boot animation delay: bring the assistant online as soon
+    // as its cloud warm-up completes.
     await warming
     store.getState().setConnected(connectedLabels())
 
