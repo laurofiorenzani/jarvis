@@ -388,7 +388,7 @@ if (typeof window !== 'undefined') {
  */
 export type CloudTranscriber = (audio: Blob) => Promise<string>
 
-export async function startVoice(h: VoiceHandlers, cloudTranscribe?: CloudTranscriber): Promise<Voice> {
+export async function startVoice(h: VoiceHandlers, cloudTranscribe?: CloudTranscriber, getCloudTranscriber?: () => CloudTranscriber | null): Promise<Voice> {
   try {
     await getMic()
   } catch (err) {
@@ -402,14 +402,14 @@ export async function startVoice(h: VoiceHandlers, cloudTranscribe?: CloudTransc
   }
   if (BACKEND === 'cloud' && cloudTranscribe) {
     diag.engine = 'gemini-cloud'
-    return startElevenVoice(h, cloudTranscribe)
+    return startElevenVoice(h, cloudTranscribe, getCloudTranscriber)
   }
   diag.engine = caps().stt ? 'elevenlabs' : 'browser'
   return caps().stt ? startElevenVoice(h) : startBrowserVoice(h)
 }
 
 /** VAD + ElevenLabs Scribe. */
-async function startElevenVoice(h: VoiceHandlers, cloudTranscribe?: CloudTranscriber): Promise<Voice> {
+async function startElevenVoice(h: VoiceHandlers, cloudTranscribe?: CloudTranscriber, getCloudTranscriber?: () => CloudTranscriber | null): Promise<Voice> {
   let lastWake = 0
   let vad: Vad | null = null
 
@@ -456,8 +456,11 @@ async function startElevenVoice(h: VoiceHandlers, cloudTranscribe?: CloudTranscr
     if (mode === 'deaf') return
     const t0 = performance.now()
     try {
-      const said = cloudTranscribe
-        ? await cloudTranscribe(blob)
+      // Resolve the cloud transcriber for each audio segment. Auth/session
+      // refreshes can replace the function while this long-lived voice loop runs.
+      const activeCloudTranscriber = getCloudTranscriber?.() ?? cloudTranscribe
+      const said = activeCloudTranscriber
+        ? await activeCloudTranscriber(blob)
         : await (async () => {
             const res = await fetch(`${BRIDGE_HTTP_URL}/stt`, {
               method: 'POST',
