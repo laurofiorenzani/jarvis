@@ -1,6 +1,6 @@
 begin;
 
-select plan(12);
+select plan(6);
 
 -- Two isolated fixture users, conversations, messages, topics and memory rows.
 insert into auth.users (id, aud, role, email, encrypted_password, email_confirmed_at, created_at, updated_at)
@@ -82,14 +82,35 @@ select lives_ok(
 -- Execute read assertions as authenticated sessions, not the postgres owner.
 set local role authenticated;
 select set_config('request.jwt.claim.sub', '00000000-0000-4000-8000-000000000001', true);
-select is((select count(*)::integer from public.jarvis_memory_summaries), 1, 'user A reads only their summary');
-select is((select count(*)::integer from public.jarvis_memory_facts), 1, 'user A reads only their fact');
-select is((select count(*)::integer from public.jarvis_memory_topics), 1, 'user A reads only their topic');
+do $
+begin
+  if (select count(*) from public.jarvis_memory_summaries) <> 1 then
+    raise exception 'RLS isolation failed: user A summary visibility';
+  end if;
+  if (select count(*) from public.jarvis_memory_facts) <> 1 then
+    raise exception 'RLS isolation failed: user A fact visibility';
+  end if;
+  if (select count(*) from public.jarvis_memory_topics) <> 1 then
+    raise exception 'RLS isolation failed: user A topic visibility';
+  end if;
+end;
+$;
 
 select set_config('request.jwt.claim.sub', '00000000-0000-4000-8000-000000000002', true);
-select is((select count(*)::integer from public.jarvis_memory_summaries), 1, 'user B reads only their summary');
-select is((select count(*)::integer from public.jarvis_memory_facts), 1, 'user B reads only their fact');
-select is((select count(*)::integer from public.jarvis_memory_topics), 1, 'user B reads only their topic');
+do $
+begin
+  if (select count(*) from public.jarvis_memory_summaries) <> 1 then
+    raise exception 'RLS isolation failed: user B summary visibility';
+  end if;
+  if (select count(*) from public.jarvis_memory_facts) <> 1 then
+    raise exception 'RLS isolation failed: user B fact visibility';
+  end if;
+  if (select count(*) from public.jarvis_memory_topics) <> 1 then
+    raise exception 'RLS isolation failed: user B topic visibility';
+  end if;
+end;
+$;
 
+reset role;
 select * from finish();
 rollback;
