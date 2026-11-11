@@ -564,7 +564,7 @@ export default function App() {
       onPartial,
       onUtterance,
       onError: onVoiceError,
-    }, cloudTranscriber.current ?? undefined)
+    }, cloudTranscriber.current ?? undefined, () => cloudTranscriber.current)
 
     store.getState().setPhase('dormant')
   }
