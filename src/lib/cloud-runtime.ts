@@ -13,6 +13,7 @@ import { createSupabaseAuth, type SecureTokenStore } from './cloud-auth'
 export type CloudRuntimeOptions = {
   supabaseUrl: string
   supabasePublishableKey: string
+  functionName?: string
   tokenStore: SecureTokenStore
   fetchImpl?: CloudFetch
 }
@@ -31,7 +32,9 @@ export function createCloudRuntime(options: CloudRuntimeOptions) {
 
   // Supabase Edge Functions are mounted below /functions/v1/<function>.
   // The project origin itself is used only for Supabase Auth.
-  const functionUrl = new URL('/functions/v1/jarvis-preview-api', options.supabaseUrl).toString().replace(/\/$/, '')
+  const functionName = options.functionName?.trim() || 'jarvis-api'
+  if (!/^[a-z0-9-]+$/.test(functionName)) throw new Error('Invalid Supabase function name.')
+  const functionUrl = new URL(`/functions/v1/${functionName}`, options.supabaseUrl).toString().replace(/\/$/, '')
   const api = createCloudApiClient({
     baseUrl: functionUrl,
     publishableKey: options.supabasePublishableKey,
