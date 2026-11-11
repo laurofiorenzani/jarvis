@@ -39,7 +39,7 @@ export function parseSemanticMemoryCandidate(value: unknown): SemanticMemoryCand
   const body = value as Record<string, unknown>
   if (body.version !== 1 || typeof body.factType !== 'string' || !FACT_TYPES.has(body.factType)) return null
   if (typeof body.content !== 'string') return null
-  const content = body.content.replace(/[\\u0000-\\u0008\\u000b\\u000c\\u000e-\\u001f\\u007f]/g, ' ').trim()
+  const content = body.content.replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/g, ' ').trim()
   if (content.length < 1 || content.length > 4000) return null
   const sourceConversationId = body.sourceConversationId
   if (sourceConversationId !== undefined &&
