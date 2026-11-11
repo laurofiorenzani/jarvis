@@ -112,7 +112,7 @@ returns trigger
 language plpgsql
 security invoker
 set search_path = ''
-as $
+as $$
 begin
   if exists (
     select 1
@@ -128,7 +128,7 @@ begin
   end if;
   return new;
 end;
-$;
+$$;
 
 drop trigger if exists jarvis_memory_summary_message_owners on public.jarvis_memory_summaries;
 create trigger jarvis_memory_summary_message_owners
@@ -140,7 +140,7 @@ returns trigger
 language plpgsql
 security invoker
 set search_path = ''
-as $
+as $$
 begin
   if exists (
     select 1
@@ -156,7 +156,7 @@ begin
   end if;
   return new;
 end;
-$;
+$$;
 
 drop trigger if exists jarvis_memory_fact_message_owners on public.jarvis_memory_facts;
 create trigger jarvis_memory_fact_message_owners
