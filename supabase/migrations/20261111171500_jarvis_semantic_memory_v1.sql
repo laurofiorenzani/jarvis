@@ -118,6 +118,50 @@ create trigger jarvis_memory_fact_topic_owner
 before insert or update of topic_id, user_id on public.jarvis_memory_facts
 for each row execute function public.jarvis_memory_assert_topic_owner();
 
+create or replace function public.jarvis_memory_assert_fact_supersession_owner()
+returns trigger
+language plpgsql
+security invoker
+set search_path = ''
+as $
+begin
+  if new.supersedes_id is not null and not exists (
+    select 1 from public.jarvis_memory_facts f
+    where f.id = new.supersedes_id and f.user_id = new.user_id
+  ) then
+    raise exception 'memory fact supersession ownership mismatch' using errcode = '23514';
+  end if;
+  return new;
+end;
+$;
+
+drop trigger if exists jarvis_memory_fact_supersession_owner on public.jarvis_memory_facts;
+create trigger jarvis_memory_fact_supersession_owner
+before insert or update of supersedes_id, user_id on public.jarvis_memory_facts
+for each row execute function public.jarvis_memory_assert_fact_supersession_owner();
+
+create or replace function public.jarvis_memory_assert_summary_supersession_owner()
+returns trigger
+language plpgsql
+security invoker
+set search_path = ''
+as $
+begin
+  if new.supersedes_id is not null and not exists (
+    select 1 from public.jarvis_memory_summaries s
+    where s.id = new.supersedes_id and s.user_id = new.user_id
+  ) then
+    raise exception 'memory summary supersession ownership mismatch' using errcode = '23514';
+  end if;
+  return new;
+end;
+$;
+
+drop trigger if exists jarvis_memory_summary_supersession_owner on public.jarvis_memory_summaries;
+create trigger jarvis_memory_summary_supersession_owner
+before insert or update of supersedes_id, user_id on public.jarvis_memory_summaries
+for each row execute function public.jarvis_memory_assert_summary_supersession_owner();
+
 create or replace function public.jarvis_memory_assert_link_owners()
 returns trigger
 language plpgsql
@@ -149,28 +193,28 @@ alter table public.jarvis_memory_facts enable row level security;
 alter table public.jarvis_memory_topic_links enable row level security;
 
 drop policy if exists "Users manage their own Jarvis memory summaries" on public.jarvis_memory_summaries;
-create policy "Users manage their own Jarvis memory summaries"
-  on public.jarvis_memory_summaries for all to authenticated
-  using (user_id = (select auth.uid()))
-  with check (user_id = (select auth.uid()));
+drop policy if exists "Users can read their own Jarvis memory summaries" on public.jarvis_memory_summaries;
+create policy "Users can read their own Jarvis memory summaries"
+  on public.jarvis_memory_summaries for select to authenticated
+  using (user_id = (select auth.uid()));
 
 drop policy if exists "Users manage their own Jarvis memory topics" on public.jarvis_memory_topics;
-create policy "Users manage their own Jarvis memory topics"
-  on public.jarvis_memory_topics for all to authenticated
-  using (user_id = (select auth.uid()))
-  with check (user_id = (select auth.uid()));
+drop policy if exists "Users can read their own Jarvis memory topics" on public.jarvis_memory_topics;
+create policy "Users can read their own Jarvis memory topics"
+  on public.jarvis_memory_topics for select to authenticated
+  using (user_id = (select auth.uid()));
 
 drop policy if exists "Users manage their own Jarvis memory facts" on public.jarvis_memory_facts;
-create policy "Users manage their own Jarvis memory facts"
-  on public.jarvis_memory_facts for all to authenticated
-  using (user_id = (select auth.uid()))
-  with check (user_id = (select auth.uid()));
+drop policy if exists "Users can read their own Jarvis memory facts" on public.jarvis_memory_facts;
+create policy "Users can read their own Jarvis memory facts"
+  on public.jarvis_memory_facts for select to authenticated
+  using (user_id = (select auth.uid()));
 
 drop policy if exists "Users manage their own Jarvis memory topic links" on public.jarvis_memory_topic_links;
-create policy "Users manage their own Jarvis memory topic links"
-  on public.jarvis_memory_topic_links for all to authenticated
-  using (user_id = (select auth.uid()))
-  with check (user_id = (select auth.uid()));
+drop policy if exists "Users can read their own Jarvis memory topic links" on public.jarvis_memory_topic_links;
+create policy "Users can read their own Jarvis memory topic links"
+  on public.jarvis_memory_topic_links for select to authenticated
+  using (user_id = (select auth.uid()));
 
 comment on table public.jarvis_memory_summaries is
   'Versioned, provenance-backed conversation summaries. Pending until explicitly approved.';
