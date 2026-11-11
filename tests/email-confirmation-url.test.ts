@@ -22,8 +22,16 @@ test('rejects links from an untrusted host or endpoint', () => {
   assert.equal(getSafeConfirmationUrl('https://undmhmdwhxvjgvezvucy.supabase.co/other?token=x&type=invite&redirect_to=https%3A%2F%2Fjarvis-lauro-fiorenzani.vercel.app'), null)
 })
 
-test('rejects an unexpected redirect origin to prevent open redirects', () => {
+test('accepts the exact stable integration preview origin', () => {
+  const preview = 'https://jarvis-git-work-memory-integration-ready-lauro-fiorenzani.vercel.app/'
+  const raw = confirmation('signup', undefined, preview)
+  assert.equal(getSafeConfirmationUrl(raw), raw)
+})
+
+test('rejects an unexpected redirect origin and Vercel lookalike subdomains', () => {
   assert.equal(getSafeConfirmationUrl(confirmation('invite', undefined, 'https://attacker.example/')), null)
+  assert.equal(getSafeConfirmationUrl(confirmation('invite', undefined, 'https://jarvis-lauro-fiorenzani.vercel.app.attacker.example/')), null)
+  assert.equal(getSafeConfirmationUrl(confirmation('invite', undefined, 'https://jarvis-git-other-branch-lauro-fiorenzani.vercel.app/')), null)
 })
 
 test('rejects unsupported types, missing tokens, and malformed values', () => {
