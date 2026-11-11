@@ -103,6 +103,30 @@ if (typeof window !== 'undefined') {
  */
 let nativeBroken = false
 
+/**
+ * Unlock the browser speech engine from the same trusted tap that powers on
+ * JARVIS. iOS Safari can reject later speechSynthesis calls unless the engine
+ * has first been exercised during a user activation. This silent utterance
+ * primes the engine without playing a greeting or changing the visible phase.
+ */
+export function unlockSpeech(): void {
+  if (typeof window === 'undefined' || !('speechSynthesis' in window)) return
+  try {
+    const engine = window.speechSynthesis
+    engine.getVoices()
+    engine.cancel()
+    engine.resume()
+    const primer = new SpeechSynthesisUtterance(' ')
+    primer.volume = 0
+    primer.rate = 1
+    primer.lang = 'pt-BR'
+    engine.speak(primer)
+    primer.onend = () => engine.resume()
+  } catch (error) {
+    console.warn('[jarvis] speech engine could not be unlocked:', error)
+  }
+}
+
 let speakingAt = 0
 
 /** When the current sentence started, or 0 if nothing is being spoken. The
