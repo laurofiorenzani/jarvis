@@ -1,6 +1,6 @@
 begin;
 
-select plan(7);
+select plan(8);
 
 -- Two isolated fixture users, conversations, messages, topics and memory rows.
 insert into auth.users (id, aud, role, email, encrypted_password, email_confirmed_at, created_at, updated_at)
