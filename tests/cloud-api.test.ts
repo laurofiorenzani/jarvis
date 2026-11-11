@@ -495,3 +495,54 @@ test('provider status is requested through the authenticated cloud API', async (
   assert.equal(requested.endsWith('/v1/provider-status'), true)
   assert.equal(auth, 'Bearer private-access-token')
 })
+
+
+test('semantic memory review requests are authenticated and account-scoped by the API', async () => {
+  const requests: Array<{ url: string; init?: RequestInit }> = []
+  const candidateId = '10000000-0000-4000-8000-000000000001'
+  const client = createCloudApiClient({
+    baseUrl: 'https://api.example.test',
+    publishableKey: 'test-publishable-key',
+    getAccessToken: async () => 'account-a-token',
+    fetchImpl: async (input, init) => {
+      requests.push({ url: String(input), init })
+      const payload = requests.length === 1
+        ? { version: 1, candidates: [{
+            id: candidateId, fact_type: 'preference', content: 'Prefers concise answers', status: 'pending',
+            source_conversation_id: null, source_message_ids: [], created_at: '2026-11-11T00:00:00Z',
+          }] }
+        : { version: 1, candidate: {
+            id: candidateId, fact_type: 'preference', content: 'Prefers concise answers', status: 'approved',
+            source_conversation_id: null, source_message_ids: [], created_at: '2026-11-11T00:00:00Z', approved_at: '2026-11-11T00:01:00Z',
+          } }
+      return new Response(JSON.stringify(payload), { status: 200, headers: { 'Content-Type': 'application/json' } })
+    },
+  })
+  const listed = await client.listSemanticMemoryCandidates()
+  assert.equal(listed.candidates[0].status, 'pending')
+  const decided = await client.decideSemanticMemoryCandidate(candidateId, 'approved')
+  assert.equal(decided.candidate.status, 'approved')
+  assert.equal(requests[0].url, 'https://api.example.test/v1/semantic-memory/candidates')
+  assert.equal(requests[1].url, `https://api.example.test/v1/semantic-memory/candidates/${candidateId}`)
+  assert.equal(requests[1].init?.method, 'PUT')
+  assert.deepEqual(JSON.parse(String(requests[1].init?.body)), { version: 1, decision: 'approved' })
+  for (const request of requests) {
+    const headers = new Headers(request.init?.headers)
+    assert.equal(headers.get('Authorization'), 'Bearer account-a-token')
+    assert.equal(headers.get('apikey'), 'test-publishable-key')
+    assert.equal(request.init?.credentials, 'omit')
+  }
+})
+
+test('semantic memory review rejects malformed IDs and decisions before network access', async () => {
+  let called = false
+  const client = createCloudApiClient({
+    baseUrl: 'https://api.example.test',
+    publishableKey: 'test-publishable-key',
+    getAccessToken: async () => 'token',
+    fetchImpl: async () => { called = true; return new Response('{}') },
+  })
+  await assert.rejects(client.decideSemanticMemoryCandidate('not-a-uuid', 'approved'), /Invalid memory candidate ID/)
+  await assert.rejects(client.decideSemanticMemoryCandidate('10000000-0000-4000-8000-000000000001', 'pending' as 'approved'), /Invalid memory decision/)
+  assert.equal(called, false)
+})
