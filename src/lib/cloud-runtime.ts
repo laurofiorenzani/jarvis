@@ -31,7 +31,7 @@ export function createCloudRuntime(options: CloudRuntimeOptions) {
 
   // Supabase Edge Functions are mounted below /functions/v1/<function>.
   // The project origin itself is used only for Supabase Auth.
-  const functionUrl = new URL('/functions/v1/jarvis-api', options.supabaseUrl).toString().replace(/\/$/, '')
+  const functionUrl = new URL('/functions/v1/jarvis-preview-api', options.supabaseUrl).toString().replace(/\/$/, '')
   const api = createCloudApiClient({
     baseUrl: functionUrl,
     publishableKey: options.supabasePublishableKey,
