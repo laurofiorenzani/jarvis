@@ -16,6 +16,8 @@ import {
   type ListMemoriesResponse,
   type CreateMemoryResponse,
   type MemoryPreferenceResponse,
+  type SemanticMemoryCandidateListResponse,
+  type SemanticMemoryCandidateDecisionResponse,
   type MemoryCategory,
   type SendTurnRequest,
 } from './backend-contract'
@@ -183,6 +185,21 @@ export function createCloudApiClient(options: CloudApiOptions) {
         body: JSON.stringify({ version: CLOUD_API_VERSION, contextEnabled }),
       }),
     listMemories: () => request<ListMemoriesResponse>('/v1/memories'),
+    listSemanticMemoryCandidates: () =>
+      request<SemanticMemoryCandidateListResponse>('/v1/semantic-memory/candidates'),
+    decideSemanticMemoryCandidate: (candidateId: string, decision: 'approved' | 'rejected') => {
+      const id = requireText(candidateId, 'memory candidate ID', 64)
+      if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id)) {
+        throw new CloudApiError('Invalid memory candidate ID.', 400, 'invalid_request')
+      }
+      if (decision !== 'approved' && decision !== 'rejected') {
+        throw new CloudApiError('Invalid memory decision.', 400, 'invalid_request')
+      }
+      return request<SemanticMemoryCandidateDecisionResponse>(
+        `/v1/semantic-memory/candidates/${encodeURIComponent(id)}`,
+        { method: 'PUT', body: JSON.stringify({ version: CLOUD_API_VERSION, decision }) },
+      )
+    },
     createMemory: (input: { category: MemoryCategory; content: string; expiresAt?: string | null }) => {
       const content = requireText(input.content, 'memory content', 2_000)
       if (!['preference', 'project', 'workflow', 'fact'].includes(input.category)) {
