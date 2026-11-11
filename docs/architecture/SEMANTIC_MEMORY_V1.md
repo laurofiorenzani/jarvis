@@ -49,7 +49,7 @@ For each authenticated turn:
 3. Add authenticated read/search API with bounded results and provenance.
 4. Add extraction as a separate opt-in job; persist pending candidates and require approval before promotion to durable memory.
 5. Add regression tests for topic separation, cross-conversation recall, stale/superseded facts, conflicting facts, deletion, expiry, idempotency and two-user isolation.
-6. Run CI on the feature branch. Do not deploy migrations or seed production memory until explicit review and approval.
+6. Run the pgTAP isolation suite with `supabase test db` against a disposable local/test database, then run CI on the feature branch. Do not deploy migrations or seed production memory until explicit review and approval.
 
 ## Release gates
 
@@ -65,6 +65,7 @@ For each authenticated turn:
 - The existing `/memories` endpoint remains a bounded list of explicitly saved personal records.
 - The feature branch now adds an authenticated `GET /semantic-memory/search?q=...&limit=...` endpoint. It derives the user ID from the verified Supabase session, checks that user's memory preference, and returns only approved, normal-sensitivity, currently valid facts. Results include source conversation/message identifiers and are capped at 20.
 - Search currently uses PostgreSQL full-text search with the `simple` configuration. It is deterministic lexical retrieval, not embeddings or full semantic similarity.
-- The SQL schema and endpoint are not yet validated against a live test database. Cross-user integration tests, migration application, CI, and deployment remain release gates. The migration must not be applied to production before those gates and explicit review.
+- The feature branch includes a pgTAP regression suite at `supabase/tests/semantic_memory_isolation.test.sql`. It exercises same-user provenance acceptance and cross-user message/topic rejection with two isolated fixture users. The suite is committed but has not yet been executed against a disposable Postgres/Supabase test database.
+- GitHub CI has passed the TypeScript/build/lint/provider privacy/Edge Function checks for the previous commit; a new run is required for the pgTAP addition. The SQL migration and route are not validated against a live test database. Migration application and deployment remain release gates. Do not apply the migration to production before those gates and explicit review.
 
 This branch status describes committed code only; it is not evidence that the route or schema has passed runtime tests or is deployed.
