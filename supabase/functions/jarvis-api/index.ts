@@ -1,6 +1,6 @@
 import { createClient } from '@supabase/supabase-js'
 import { getFreeProviderStatus, startFreeModelStream } from './model-router.ts'
-import { isSemanticMemoryId, normalizeSemanticMemoryQuery, parseSemanticMemoryCandidate, parseSemanticMemoryDecision, parseSemanticMemorySearch } from './semantic-memory.ts'
+import { isSemanticMemoryId, isSafeAutoMemorySource, mergeSemanticMemoryPreferences, normalizeSemanticMemoryQuery, parseAutoMemoryCandidates, parseSemanticMemoryCandidate, parseSemanticMemoryDecision, parseSemanticMemorySearch } from './semantic-memory.ts'
 
 const VERSION = 1
 const MAX_TEXT = 20_000
@@ -173,6 +173,88 @@ Deno.serve(async (request) => {
       p_user_id: userId, p_bucket: bucket, p_limit: limit, p_window_seconds: windowSeconds,
     })
     return limitError ? null : data === true
+  }
+
+  const captureAutomaticMemory = async (
+    sourceConversationId: string,
+    sourceMessageIds: string[],
+    userText: string,
+    assistantText: string,
+  ) => {
+    // A separate per-user rate limit keeps this optional second model call bounded.
+    const allowed = await consumeLimit('semantic_memory_auto_capture_hour', 5, 3600)
+    if (allowed !== true || !isSafeAutoMemorySource(userText + '\n' + assistantText)) return
+    try {
+      const routed = await startFreeModelStream([
+        {
+          role: 'system',
+          content: 'You extract durable, useful, non-sensitive memory suggestions from one conversation exchange. Never infer or invent. Exclude health, medical, financial, legal, identity, contact, authentication, political, religious, sexual, intimate, and other sensitive personal data. Exclude secrets, credentials, tokens, passwords, account numbers, addresses, phone numbers, and email addresses. Do not store transient requests, one-off questions, temporary plans, or details that are only true for the current moment. Return ONLY valid JSON in this exact shape: {"candidates":[{"factType":"preference|fact|decision|goal|workflow|constraint","content":"short standalone factual statement"}]}. Return an empty candidates array if nothing is clearly durable and useful. Maximum 5 candidates.',
+        },
+        {
+          role: 'user',
+          content: JSON.stringify({ userMessage: userText.slice(0, 6_000), assistantReply: assistantText.slice(0, 6_000) }),
+        },
+      ], AbortSignal.timeout(20_000))
+      if (!routed.response.body) return
+      const reader = routed.response.body.getReader()
+      const decoder = new TextDecoder()
+      let buffer = ''
+      let extracted = ''
+      const consumeFrame = (frame: string) => {
+        const dataLine = frame.split(/\r?\n/).find((line) => line.startsWith('data:'))
+        if (!dataLine) return
+        const raw = dataLine.slice(5).trim()
+        if (!raw || raw === '[DONE]') return
+        const event = JSON.parse(raw)
+        if (isRecord(event) && event.type === 'content_block_delta' &&
+            isRecord(event.delta) && event.delta.type === 'text_delta' &&
+            typeof event.delta.text === 'string') {
+          extracted += event.delta.text
+          if (extracted.length > 12_000) throw new Error('memory_extraction_too_large')
+        }
+      }
+      try {
+        while (true) {
+          const { value, done } = await reader.read()
+          if (done) break
+          buffer += decoder.decode(value, { stream: true })
+          let separator: RegExpExecArray | null
+          while ((separator = /\r?\n\r?\n/.exec(buffer)) !== null) {
+            const frame = buffer.slice(0, separator.index)
+            buffer = buffer.slice(separator.index + separator[0].length)
+            consumeFrame(frame)
+          }
+        }
+        buffer += decoder.decode()
+        if (buffer.trim()) consumeFrame(buffer)
+      } finally {
+        reader.releaseLock()
+      }
+      const cleaned = extracted.trim()
+        .replace(/^\`\`\`(?:json)?\s*/i, '')
+        .replace(/\s*\`\`\`$/, '')
+      const parsed = JSON.parse(cleaned)
+      const candidates = parseAutoMemoryCandidates(parsed, sourceConversationId, sourceMessageIds)
+      for (const candidate of candidates) {
+        const { data: existing, error: duplicateError } = await db.from('jarvis_memory_facts')
+          .select('id').eq('user_id', userId).eq('content', candidate.content)
+          .in('status', ['pending', 'approved']).limit(1)
+        if (duplicateError || existing?.length) continue
+        await db.from('jarvis_memory_facts').insert({
+          user_id: userId,
+          fact_type: candidate.factType,
+          content: candidate.content,
+          source_conversation_id: candidate.sourceConversationId,
+          source_message_ids: candidate.sourceMessageIds,
+          confidence: 0.65,
+          sensitivity: 'normal',
+          status: 'pending',
+        })
+      }
+    } catch {
+      // Extraction is best-effort and must never fail or delay the completed chat turn.
+      console.warn('[jarvis] automatic memory candidate extraction failed')
+    }
   }
 
   if (request.method === 'POST' && matchesPath('/stt')) {
@@ -399,9 +481,13 @@ Deno.serve(async (request) => {
     if (allowed === null) return error('service_unavailable', 'Rate limiter is unavailable.', 503, true, cors)
     if (!allowed) return error('rate_limited', 'Memory preference request limit reached.', 429, true, cors)
     const { data, error: preferenceError } = await db.from('jarvis_memory_preferences')
-      .select('context_enabled').eq('user_id', userId).maybeSingle()
+      .select('context_enabled,auto_capture_enabled').eq('user_id', userId).maybeSingle()
     if (preferenceError) return error('service_unavailable', 'Memory preferences could not be loaded.', 503, true, cors)
-    return response({ version: VERSION, contextEnabled: data?.context_enabled === true }, 200, cors)
+    return response({
+      version: VERSION,
+      contextEnabled: data?.context_enabled === true,
+      autoCaptureEnabled: data?.auto_capture_enabled === true,
+    }, 200, cors)
   }
 
   if (request.method === 'PUT' && matchesPath('/memory-preferences')) {
@@ -411,18 +497,33 @@ Deno.serve(async (request) => {
     let body: unknown
     try { body = await readBoundedJson(request, 1_024) }
     catch { return error('invalid_request', 'Request body must be valid JSON.', 400, false, cors) }
-    if (!isRecord(body) || body.version !== VERSION || typeof body.contextEnabled !== 'boolean') {
+    if (!isRecord(body) || body.version !== VERSION ||
+        (typeof body.contextEnabled !== 'boolean' && typeof body.autoCaptureEnabled !== 'boolean')) {
       return error('invalid_request', 'Invalid memory preference.', 400, false, cors)
     }
+    const { data: current, error: currentError } = await db.from('jarvis_memory_preferences')
+      .select('context_enabled,auto_capture_enabled').eq('user_id', userId).maybeSingle()
+    if (currentError) return error('service_unavailable', 'Current memory preferences could not be loaded.', 503, true, cors)
+    const nextPreferences = mergeSemanticMemoryPreferences({
+      contextEnabled: current?.context_enabled === true,
+      autoCaptureEnabled: current?.auto_capture_enabled === true,
+    }, {
+      ...(typeof body.contextEnabled === 'boolean' ? { contextEnabled: body.contextEnabled } : {}),
+      ...(typeof body.autoCaptureEnabled === 'boolean' ? { autoCaptureEnabled: body.autoCaptureEnabled } : {}),
+    })
+    const { contextEnabled, autoCaptureEnabled } = nextPreferences
     const { error: preferenceError } = await db.from('jarvis_memory_preferences').upsert({
-      user_id: userId, context_enabled: body.contextEnabled, updated_at: new Date().toISOString(),
+      user_id: userId,
+      context_enabled: contextEnabled,
+      auto_capture_enabled: autoCaptureEnabled,
+      updated_at: new Date().toISOString(),
     }, { onConflict: 'user_id' })
     if (preferenceError) return error('service_unavailable', 'Memory preference could not be saved.', 503, true, cors)
-    return response({ version: VERSION, contextEnabled: body.contextEnabled }, 200, cors)
+    return response({ version: VERSION, contextEnabled, autoCaptureEnabled }, 200, cors)
   }
 
-  // Personal memory is written only through this explicit authenticated endpoint.
-  // Chat turns never auto-populate this table; the caller must request a save.
+  // Legacy jarvis_memories remain explicit-only. Semantic facts are separate:
+  // opted-in cloud turns may create pending suggestions, never approved facts.
   if (request.method === 'GET' && matchesPath('/memories')) {
     const allowed = await consumeLimit('memory_read_minute', 30, 60)
     if (allowed === null) return error('service_unavailable', 'Rate limiter is unavailable.', 503, true, cors)
@@ -643,10 +744,10 @@ Deno.serve(async (request) => {
       return error('service_unavailable', 'Turn could not be reserved.', 503, true, cors)
     }
 
-    const { error: messageError } = await db.from('jarvis_messages').insert({
+    const { data: userMessage, error: messageError } = await db.from('jarvis_messages').insert({
       conversation_id: conversationId, user_id: userId, role: 'user', content: text,
-    })
-    if (messageError) {
+    }).select('id').single()
+    if (messageError || !userMessage) {
       await db.from('jarvis_turns').update({ status: 'failed', error_code: 'internal_error' })
         .eq('id', turnId).eq('user_id', userId)
       return error('service_unavailable', 'Message could not be saved.', 503, true, cors)
@@ -657,7 +758,7 @@ Deno.serve(async (request) => {
       .eq('user_id', userId).order('created_at', { ascending: false }).limit(40)
 
     const { data: memoryPreference, error: preferenceReadError } = await db.from('jarvis_memory_preferences')
-      .select('context_enabled').eq('user_id', userId).maybeSingle()
+      .select('context_enabled,auto_capture_enabled').eq('user_id', userId).maybeSingle()
     if (preferenceReadError) {
       await db.from('jarvis_turns').update({ status: 'failed', error_code: 'service_unavailable' })
         .eq('id', turnId).eq('user_id', userId)
@@ -876,6 +977,19 @@ Deno.serve(async (request) => {
           }
           await db.from('jarvis_conversations').update({ updated_at: new Date().toISOString() })
             .eq('id', conversationId).eq('user_id', userId)
+          if (memoryPreference?.context_enabled === true && memoryPreference.auto_capture_enabled === true) {
+            const task = captureAutomaticMemory(
+              conversationId,
+              [userMessage.id, assistantMessage.id],
+              text,
+              answer,
+            )
+            const edgeRuntime = (globalThis as unknown as {
+              EdgeRuntime?: { waitUntil?: (promise: Promise<unknown>) => void }
+            }).EdgeRuntime
+            if (edgeRuntime?.waitUntil) edgeRuntime.waitUntil(task)
+            else void task
+          }
           emit({
             version: VERSION, type: 'turn.completed', conversationId, turnId,
             assistantMessage: {
