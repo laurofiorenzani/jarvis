@@ -98,3 +98,12 @@ Continue autonomously across independent workstreams wherever safe. User explici
 8. Implement Family CFO read/analysis first, then draft allocations and one-click approved execution via supported financial provider APIs.
 9. Design and implement self-evolution in isolated development environments with tests, reviewable diffs, approval-gated production release, and rollback.
 10. Keep PR #7 draft and do not merge or promote production without explicit user approval.
+
+
+## Latest work completed — 2026-11-12
+- Added user-aligned persona guidance to the default local bridge system prompt: warm/familiar conversational style, contextual variation, occasional user-approved nicknames ("El Chapo Fiorenzani", "chefão", "mestre", "meu chapa"), language matching, and a serious register for consequential matters. Removed the conflicting instruction that the user must never be addressed by name and the forced British-butler register.
+- Updated wake-word acknowledgements to vary across familiar Portuguese greetings instead of only "sir" variants. The browser-direct system prompt was aligned too.
+- Code commits: `c87e84d7443a30e2ead86cc78bb2f3711e36119f`, `19dd74ef43bd6b9a6e85cf682e51feeeb35bb1fb`, `d1d7cd3995d8cb4c790857c21e114b42b7e5f264`, and `6071775245c8629e2204f71a4b98982dc8e504bc`.
+- GitHub Actions run #208 (`43286388314`) passed on code head `6071775245c8629e2204f71a4b98982dc8e504bc`: dependency installation, high-severity npm audit, TypeScript/Vite production build, Node regression tests, lint, production and preview Deno typechecks, and both Deno semantic-memory test suites.
+- A Vercel preview deployment was attempted for that validated head but the account still returns `api-deployments-free-per-day` (HTTP 402, retry after 24 hours). No billing or plan changes were made. The latest READY preview remains behind this code head; do not claim the persona changes are live until a deployment and browser test succeed.
+- The new one-click critical-action approval lifecycle is still not implemented. Current bridge policy is primarily a global read-only / `--writes` gate; do not describe it as the intended per-action approval UX. This is a major V1 gap and must be designed/tested before enabling autonomous effectful actions.
