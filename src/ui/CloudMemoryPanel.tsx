@@ -20,10 +20,12 @@ export function CloudMemoryPanel() {
 
   useEffect(() => cloudAuth.subscribe(setSession), [])
 
-  const load = useCallback(async (token: string) => {
+  const load = useCallback(async () => {
     setBusy(true)
     setError('')
     try {
+      const token = await cloudAuth.getValidAccessToken()
+      if (!token) throw new Error('Sign in again to access cloud memory.')
       const [preference, pending, status] = await Promise.all([
         cloudApi.getMemoryPreference(token),
         cloudApi.listMemoryCandidates(token),
@@ -31,9 +33,10 @@ export function CloudMemoryPanel() {
       ])
       setEnabled(preference.contextEnabled)
       setCandidates(pending.candidates.filter((item) => item.status === 'pending'))
-      const info = status.provider
-      const name = typeof info.name === 'string' ? info.name : typeof info.provider === 'string' ? info.provider : 'CONFIGURED'
-      setProvider(name.toUpperCase())
+      const names = Array.isArray(status.provider.providers)
+        ? status.provider.providers.map((item) => item.name).filter(Boolean).join(' / ')
+        : ''
+      setProvider(names ? names.toUpperCase() : status.provider.configured === true ? 'CONFIGURED' : 'UNAVAILABLE')
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Cloud data could not be loaded.')
     } finally {
@@ -48,10 +51,7 @@ export function CloudMemoryPanel() {
       setProvider('NOT SIGNED IN')
       return
     }
-    void cloudAuth.getValidAccessToken().then((token) => {
-      if (token) return load(token)
-      setError('Cloud session expired. Sign in again.')
-    }).catch((cause: Error) => setError(cause.message))
+    void load()
   }, [session?.user.id, load])
 
   async function signIn(event: React.FormEvent) {
@@ -110,7 +110,7 @@ export function CloudMemoryPanel() {
         <>
           <div style={muted}>{session.user.email || session.user.id}</div>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-            <button style={action} type="button" disabled={busy} onClick={() => void load(session.access_token)}>REFRESH CLOUD DATA</button>
+            <button style={action} type="button" disabled={busy} onClick={() => void load()}>REFRESH CLOUD DATA</button>
             <button style={action} type="button" disabled={busy} onClick={() => void cloudAuth.signOut()}>SIGN OUT</button>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
