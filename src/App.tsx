@@ -1,9 +1,10 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
-import { Scene } from './scene/Scene'
-import { Hud } from './ui/Hud'
+import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react'
+const Scene = lazy(() => import('./scene/Scene').then((module) => ({ default: module.Scene })))
+const Hud = lazy(() => import('./ui/Hud').then((module) => ({ default: module.Hud })))
 import { Boot } from './ui/Boot'
 import { Ignition } from './ui/Ignition'
-import { Diagnostics } from './ui/Diagnostics'
+const Diagnostics = lazy(() => import('./ui/Diagnostics').then((module) => ({ default: module.Diagnostics })))
+import { AppErrorBoundary } from './ui/AppErrorBoundary'
 import { MemoryConfirmation } from './ui/MemoryConfirmation'
 import { CloudAccess } from './ui/CloudAccess'
 import type { MemoryConfirmationChallenge } from './lib/bridge'
@@ -738,9 +739,12 @@ export default function App() {
   }, [])
 
   return (
-    <>
-      <Scene />
-      <Hud />
+    <AppErrorBoundary>
+      <Suspense fallback={<div className="scene-loading" aria-label="Initialising JARVIS" />}>
+        <Scene />
+      </Suspense>
+      <Suspense fallback={null}>
+        <Hud />
       <CloudAccess
         onConnected={() => store.getState().setConnected(connectedLabels())}
         onDisconnected={() => { cloudTranscriber.current = null; store.getState().setConnected(connectedLabels()) }}
@@ -757,13 +761,14 @@ export default function App() {
         }}
       />
       <Boot />
-      <Diagnostics />
+        <Diagnostics />
+      </Suspense>
       <MemoryConfirmation
         challenge={memoryConfirmations[0] ?? null}
         queued={Math.max(0, memoryConfirmations.length - 1)}
         onDecision={decideMemory}
       />
       <Ignition onStart={() => void powerOn()} />
-    </>
+    </AppErrorBoundary>
   )
 }
