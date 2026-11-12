@@ -30,7 +30,7 @@ export function classifyToolRisk(toolName) {
   if (!tool || DENY_VERB.test(tool)) {
     return { risk: 'deny', reason: 'Tool is invalid or matches a prohibited action pattern.' }
   }
-  if (READ_ONLY_BUILTINS.has(tool)) {
+  if (!server && READ_ONLY_BUILTINS.has(tool)) {
     return { risk: 'read', reason: 'Explicit read-only built-in tool.' }
   }
   if (EFFECTFUL_VERB.test(tool)) {
