@@ -11,7 +11,7 @@ const READ_ONLY_BUILTINS = new Set([
   'ReadMcpResource', 'ReadMcpResourceTool',
   'BashOutput', 'TaskOutput',
 ])
-const READ_VERB = /^(get|list|read|search|find|query|fetch|check|describe|inspect|show|view|explain|screenshot)(?:_|$)/i
+const READ_VERB = /^(get|list|read|search|find|query|fetch|check|describe|inspect|show|view|explain|screenshot)_/i
 const EFFECTFUL_VERB = /(?:send|call|post|create|delete|remove|update|edit|write|install|launch|tap|swipe|press|type|buy|pay|charge|publish|deploy|outbound|download|transfer|trade|book|share|invite|revoke)/i
 const DENY_VERB = /(?:exfiltrat|credential.?dump|steal.?secret|bypass.?auth|disable.?security|ransomware|keylog)/i
 
