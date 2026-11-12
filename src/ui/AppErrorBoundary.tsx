@@ -30,7 +30,7 @@ export class AppErrorBoundary extends Component<Props, State> {
           <p style={{ maxWidth: 520, color: '#b8c7d2', fontSize: 13, lineHeight: 1.6 }}>
             The application is still available for diagnostics. Reload to try again.
           </p>
-          <details style={{ maxWidth: 560, width: '100%', textAlign: 'left', color: '#ffcf9c' }}>
+          <details open style={{ maxWidth: 560, width: '100%', textAlign: 'left', color: '#ffcf9c' }}>
             <summary style={{ cursor: 'pointer', fontSize: 11, letterSpacing: '.12em' }}>ERROR DETAILS</summary>
             <pre style={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', fontSize: 10, lineHeight: 1.5 }}>
               {this.state.error.stack ?? this.state.error.message}
