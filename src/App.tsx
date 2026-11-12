@@ -88,6 +88,7 @@ export default function App() {
   const speaker = useRef<ReturnType<typeof createSpeaker> | null>(null)
   const voice = useRef<Voice | null>(null)
   const cloudTranscriber = useRef<CloudTranscriber | null>(null)
+  const cloudTtsProvider = useRef<((text: string) => Promise<Blob>) | null>(null)
 
   /**
    * Monotonic turn counter. Every await in a turn checks it on the way out:
@@ -752,6 +753,7 @@ export default function App() {
           // account-scoped surface before another identity can connect.
           history.current = []
           cloudTranscriber.current = null
+          cloudTtsProvider.current = null
           setCloudSpeechProvider(null)
           setMemoryConfirmations([])
           useStore.setState({ turns: [] })
@@ -761,8 +763,36 @@ export default function App() {
           store.getState().setCaption('')
           store.getState().setConnected(connectedLabels())
         }}
-        onSpeechApiReady={(transcribe) => { cloudTranscriber.current = transcribe }}
-        onTtsApiReady={(synthesize) => { setCloudSpeechProvider(synthesize) }}
+        onSpeechApiReady={(transcribe) => {
+          if (!transcribe) {
+            cloudTranscriber.current = null
+            return
+          }
+          const guarded: CloudTranscriber = async (audio) => {
+            const text = await transcribe(audio)
+            if (cloudTranscriber.current !== guarded) {
+              throw new Error('Speech result discarded because the JARVIS account changed.')
+            }
+            return text
+          }
+          cloudTranscriber.current = guarded
+        }}
+        onTtsApiReady={(synthesize) => {
+          if (!synthesize) {
+            cloudTtsProvider.current = null
+            setCloudSpeechProvider(null)
+            return
+          }
+          const guarded = async (text: string) => {
+            const audio = await synthesize(text)
+            if (cloudTtsProvider.current !== guarded) {
+              throw new Error('Speech playback discarded because the JARVIS account changed.')
+            }
+            return audio
+          }
+          cloudTtsProvider.current = guarded
+          setCloudSpeechProvider(guarded)
+        }}
         onResumeConversation={(messages) => {
           useStore.setState({
             turns: messages.map((message) => ({
