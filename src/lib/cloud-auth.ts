@@ -167,8 +167,8 @@ export const cloudAuth = {
       }
     } finally {
       const latest = readSession()
-      if (revision === authRevision && latest?.user.id === session?.user.id &&
-          latest.refresh_token === session?.refresh_token) {
+      if (session && revision === authRevision && latest?.user.id === session.user.id &&
+          latest.refresh_token === session.refresh_token) {
         localStorage.removeItem(storageKey)
         emit(null)
       }
