@@ -198,7 +198,19 @@ export function Scene() {
       className="scene"
       camera={{ position: [0, 0, 6.2], fov: 45 }}
       gl={{ antialias: true, alpha: true }}
-      dpr={[1, 2]}
+      dpr={[1, 1.5]}
+      fallback={
+        <div style={{
+          position: 'fixed', inset: 0, display: 'grid', placeContent: 'center',
+          padding: 24, background: '#01060c', color: '#ffb36b',
+          fontFamily: 'system-ui, sans-serif', textAlign: 'center',
+        }}>
+          <strong>3D DISPLAY UNAVAILABLE</strong>
+          <span style={{ marginTop: 10, color: '#b8c7d2', fontSize: 12 }}>
+            The command interface can still be used without WebGL.
+          </span>
+        </div>
+      }
     >
       <Rig />
       {/*
