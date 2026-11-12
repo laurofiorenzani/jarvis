@@ -107,7 +107,7 @@ jobs:
             cat /tmp/jarvis-functions.log
             exit 1
           fi
-          supabase status --env --output-format text > /tmp/jarvis-supabase.env
+          supabase status -o env > /tmp/jarvis-supabase.env
           set -a
           source /tmp/jarvis-supabase.env
           set +a
