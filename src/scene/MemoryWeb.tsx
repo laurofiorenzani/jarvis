@@ -35,15 +35,19 @@ const MEMORY_NODES: THREE.Vector3[] = DOMAINS.map((_, index) => {
 
 const MEMORY_LINES = (() => {
   const vertices: number[] = []
-  MEMORY_NODES.forEach((point, index) => {
+  for (let index = 0; index < MEMORY_NODES.length; index++) {
+    const point = MEMORY_NODES[index]
+    if (!point) continue
     vertices.push(0, 0, 0, point.x, point.y, point.z)
-    for (const neighbour of [index + 1, (index + 3) % MEMORY_NODES.length]) {
-      if (neighbour <= index) continue
+    const neighbours = [index + 1, (index + 3) % MEMORY_NODES.length]
+    for (let offset = 0; offset < neighbours.length; offset++) {
+      const neighbour = neighbours[offset]
+      if (neighbour === undefined || neighbour <= index) continue
       const other = MEMORY_NODES[neighbour]
       if (!other) continue
       vertices.push(point.x, point.y, point.z, other.x, other.y, other.z)
     }
-  })
+  }
   const geometry = new THREE.BufferGeometry()
   geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3))
   return geometry
