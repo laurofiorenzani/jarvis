@@ -32,6 +32,8 @@ test('normalizes only allowlisted operational metadata', () => {
 test('rejects unknown sources, invalid timestamps and inconsistent HTTP status', () => {
   assert.equal(normalizeObservation({ source: 'email', status: 'failed', observedAt: '2026-11-12T12:00:00Z' }), null)
   assert.equal(normalizeObservation({ source: 'api', status: 'healthy', observedAt: 'not-a-date', httpStatus: 200 }), null)
+  assert.equal(normalizeObservation({ source: 'api', status: 'healthy', observedAt: '2026-11-12T12:00:00' }), null)
+  assert.equal(normalizeObservation(null as never), null)
   assert.equal(normalizeObservation({ source: 'api', status: 'healthy', observedAt: '2026-11-12T12:00:00Z', httpStatus: 503 }), null)
   assert.equal(normalizeObservation({ source: 'api', status: 'unavailable', observedAt: '2026-11-12T12:00:00Z', httpStatus: 200 }), null)
 })
