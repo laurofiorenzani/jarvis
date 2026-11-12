@@ -1,6 +1,6 @@
 # JARVIS Self-Evolution Engine — Foundation Design
 
-Status: design proposal; not enabled in production.
+Status: foundation and first read-only observer/triage prototype implemented on `work/self-evolution-engine-foundation`; not enabled in production.
 
 ## Goal
 
@@ -77,10 +77,14 @@ Signals → Observer → Triage → Improvement proposal
 - Add a read-only observer role; do not add production write credentials.
 
 ### Phase 1 — Read-only observer
-- Poll CI and deployment metadata.
-- Read function health and sanitized logs where supported.
-- Produce an internal status snapshot and incident record.
-- Test that private conversation content and secrets are excluded.
+- [x] Add a GitHub Actions workflow that checks the public production API health endpoint and the verified Vercel project domain.
+- [x] Normalize allowlisted service metadata into a strict observation contract; reject unknown sources, invalid timestamps and inconsistent HTTP status.
+- [x] Add bounded severity classification, low-cardinality fingerprints and deterministic deduplication/triage.
+- [x] Add tests proving prompt-like strings and bearer tokens are not retained, and every proposed remediation remains subject to human approval.
+- [ ] Extend observation to CI and deployment metadata using read-only GitHub/Vercel permissions.
+- [ ] Persist sanitized snapshots and incident records only after retention, access and RLS policies are implemented and reviewed.
+
+The workflow runs on branch pushes and can be manually dispatched. Its scheduled checks become active only after the workflow is merged into the default branch. It performs HTTP availability checks only; it does not collect logs, request bodies, private messages, credentials or account data.
 
 ### Phase 2 — Proposal-only planner
 - Convert incidents into structured improvement proposals.
