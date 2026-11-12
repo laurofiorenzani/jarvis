@@ -9,14 +9,14 @@ import {
 } from '@react-three/postprocessing'
 import { BlendFunction } from 'postprocessing'
 import * as THREE from 'three'
-import { Core } from './Core'
 import { Particles } from './Particles'
 import { Orbits } from './Orbits'
+import { MemoryWeb } from './MemoryWeb'
 import { useStore, phaseColor, accentFor, type Phase } from '../store'
 
 /** Rings spin harder while JARVIS is working — reads as effort. */
 const spinFor: Record<Phase, number> = {
-  offline: 0.08, // barely turning — the machine is off
+  offline: 0.32, // the globe keeps a slow continuous 360-degree idle rotation
   boot: 3.2,
   dormant: 0.25,
   waking: 4.5,
@@ -119,7 +119,7 @@ function Rig() {
         scale: 1,
         intensity: 1,
         spin: 1,
-        style: STYLE_INDEX.ring,
+        style: STYLE_INDEX.sphere,
         visible: true,
       },
     }),
@@ -185,8 +185,8 @@ function Rig() {
   // subject is one unbroken one.
   return (
     <>
-      <Core drive={drive} />
       <Particles drive={drive} />
+      <MemoryWeb drive={drive} />
       <Orbits />
     </>
   )
@@ -198,7 +198,19 @@ export function Scene() {
       className="scene"
       camera={{ position: [0, 0, 6.2], fov: 45 }}
       gl={{ antialias: true, alpha: true }}
-      dpr={[1, 2]}
+      dpr={[1, 1.5]}
+      fallback={
+        <div style={{
+          position: 'fixed', inset: 0, display: 'grid', placeContent: 'center',
+          padding: 24, background: '#01060c', color: '#ffb36b',
+          fontFamily: 'system-ui, sans-serif', textAlign: 'center',
+        }}>
+          <strong>3D DISPLAY UNAVAILABLE</strong>
+          <span style={{ marginTop: 10, color: '#b8c7d2', fontSize: 12 }}>
+            The command interface can still be used without WebGL.
+          </span>
+        </div>
+      }
     >
       <Rig />
       {/*
@@ -219,10 +231,10 @@ export function Scene() {
       <EffectComposer multisampling={0}>
         {/* Bloom is what turns additive lines into "hologram". */}
         <Bloom
-          intensity={1.15}
+          intensity={1.38}
           // A higher threshold keeps the mid-tones intact so the orb doesn't
           // flatten into a solid white disc.
-          luminanceThreshold={0.22}
+          luminanceThreshold={0.18}
           luminanceSmoothing={0.85}
           mipmapBlur
           radius={0.72}
