@@ -8,7 +8,7 @@ import type { Drive } from './Scene'
  * pushed outward by loudness, so the whole cloud expands when JARVIS speaks.
  */
 
-const COUNT = 4000
+const COUNT = 5600
 
 const vertex = /* glsl */ `
   uniform float uTime;
@@ -96,8 +96,8 @@ export function Particles({ drive }: { drive: Drive }) {
     () => ({
       uTime: { value: 0 },
       uLevel: { value: 0 },
-      uSize: { value: 3.4 },
-      uColor: { value: new THREE.Color('#00e5ff') },
+      uSize: { value: 4.0 },
+      uColor: { value: new THREE.Color('#ff9a36') },
       uIntensity: { value: 1 },
     }),
     [],
