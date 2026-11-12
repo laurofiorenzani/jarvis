@@ -25,6 +25,10 @@ which documents the server-side setup and its free-tier privacy trade-off.
 
 ---
 
+## Product direction
+
+The target multimodal interface and capability roadmap are documented in [J.A.R.V.I.S. Experience Vision](docs/product/JARVIS_EXPERIENCE_VISION.md). This describes the intended amber holographic HUD, memory constellation, vision, connected-device control, observable autonomy and safety boundaries; it is a roadmap, not a claim that every integration is already live.
+
 ## Requirements
 
 **To use the cloud app:** a supported browser (Chrome or Edge), microphone
