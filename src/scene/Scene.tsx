@@ -9,7 +9,6 @@ import {
 } from '@react-three/postprocessing'
 import { BlendFunction } from 'postprocessing'
 import * as THREE from 'three'
-import { Core } from './Core'
 import { Particles } from './Particles'
 import { Orbits } from './Orbits'
 import { MemoryWeb } from './MemoryWeb'
@@ -186,7 +185,6 @@ function Rig() {
   // subject is one unbroken one.
   return (
     <>
-      <Core drive={drive} />
       <Particles drive={drive} />
       <MemoryWeb drive={drive} />
       <Orbits />
