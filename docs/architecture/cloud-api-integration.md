@@ -29,7 +29,7 @@ The production Supabase Edge Function currently serves the cloud API. Branch cha
 - `GET /provider-status`
 - `GET|POST /conversations`, `GET|DELETE /conversations/:id`
 - `POST /turns` (SSE) and `POST /turns/cancel`
-- `GET|PUT /memory-preferences`
+- `GET|PUT /memory-preferences` (includes separate `contextEnabled` and `autoCaptureEnabled` flags)
 - `GET /semantic-memory/candidates`
 - `POST /semantic-memory/candidates`
 - `PUT /semantic-memory/candidates/:id`
@@ -39,11 +39,13 @@ The production Supabase Edge Function currently serves the cloud API. Branch cha
 - `src/lib/sse-frames.js` owns SSE framing and stream consumption for the browser client.
 - It handles LF/CRLF frame boundaries, network chunk splits, multiline `data:` fields, final unterminated frames, AbortSignal cancellation, and reader cancellation on parser/callback errors.
 - `src/lib/sse-frames.test.mjs` covers these cases with Node's built-in test runner.
-- The cloud API's turn ID is client-generated and bound to the authenticated user and owned conversation server-side. Server-side cancellation updates only a turn matching the authenticated `user_id`, conversation ID, and turn ID.
+- The cloud API's turn ID is client-generated and bound to the authenticated user and owned conversation server-side.
+- The Edge Function source is now tracked under `supabase/functions/jarvis-api/`; Deno tests cover semantic-memory parsing and automatic-capture privacy filters. The CI workflow runs Deno typecheck/tests and publishes a `JARVIS CI` commit status. Server-side cancellation updates only a turn matching the authenticated `user_id`, conversation ID, and turn ID.
 
 ## Database and security maintenance
 - All JARVIS application tables have RLS enabled. `jarvis_rate_limits` intentionally has no client policy; only server-side service-role code accesses it.
 - Supabase's performance advisor found eight unindexed semantic-memory foreign keys. The additive migration `20261112182117_jarvis_memory_foreign_key_indexes` was applied and all eight indexes were verified. The advisor no longer reports unindexed foreign keys.
+- The separate automatic-capture preference column is applied with default false; no account has auto-capture enabled yet. Do not enable until the updated Edge Function is deployed and validated.
 - Supabase's security advisor reports leaked-password protection disabled. Enable it in Supabase Auth settings when an authorized dashboard session is available; no setting was changed by this workflow.
 - Edge Function `verify_jwt=false` is paired with explicit manual bearer-token validation using `auth.getUser(token)` before authenticated routes. Keep this validation if the platform JWT gate remains disabled.
 - CORS allows the configured PWA and current branch preview origins, local development, and the exact headers used by the browser client. Verify preflight from a READY deployment.
