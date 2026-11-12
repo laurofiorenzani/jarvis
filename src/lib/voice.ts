@@ -332,7 +332,7 @@ function isEcho(heard: string, spoken: string): boolean {
  * apart in one glance.
  */
 export const diag = {
-  /** Which input engine is running: 'elevenlabs' (VAD+Scribe) or 'browser'. */
+  /** Which input engine is running: 'cloud' (VAD + hosted transcription) or 'browser'. */
   engine: 'browser',
   /** Whether the microphone pipeline is live. */
   running: false,
@@ -398,12 +398,12 @@ export async function startVoice(h: VoiceHandlers): Promise<Voice> {
     )
     return { stop: () => {}, live: () => false }
   }
-  diag.engine = caps().stt ? 'elevenlabs' : 'browser'
-  return caps().stt ? startElevenVoice(h) : startBrowserVoice(h)
+  diag.engine = caps().stt ? 'cloud' : 'browser'
+  return caps().stt ? startCloudVoice(h) : startBrowserVoice(h)
 }
 
-/** VAD + ElevenLabs Scribe. */
-async function startElevenVoice(h: VoiceHandlers): Promise<Voice> {
+/** VAD + hosted cloud speech transcription. */
+async function startCloudVoice(h: VoiceHandlers): Promise<Voice> {
   let lastWake = 0
   let vad: Vad | null = null
 
