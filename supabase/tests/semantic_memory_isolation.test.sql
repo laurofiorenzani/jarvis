@@ -97,8 +97,8 @@ end;
 $$;
 
 select throws_ok(
-  $insert into public.jarvis_memory_facts (user_id, fact_type, content)
-    values ('00000000-0000-4000-8000-000000000001', 'fact', 'Direct client write')$,
+  $$insert into public.jarvis_memory_facts (user_id, fact_type, content)
+    values ('00000000-0000-4000-8000-000000000001', 'fact', 'Direct client write')$$,
   '42501', null,
   'authenticated user cannot bypass the review API with a direct memory insert'
 );
@@ -128,8 +128,8 @@ end;
 $$;
 
 select throws_ok(
-  $insert into public.jarvis_memory_facts (user_id, fact_type, content)
-    values ('00000000-0000-4000-8000-000000000002', 'fact', 'Direct client write')$,
+  $$insert into public.jarvis_memory_facts (user_id, fact_type, content)
+    values ('00000000-0000-4000-8000-000000000002', 'fact', 'Direct client write')$$,
   '42501', null,
   'second authenticated user also cannot bypass the review API with a direct memory insert'
 );
