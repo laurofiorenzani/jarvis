@@ -40,10 +40,6 @@ jobs:
         run: |
           npm audit --json > npm-audit.json || true
           node -e "const r=require('./npm-audit.json'); console.log('npm audit summary:', JSON.stringify(r.metadata?.vulnerabilities ?? {})); for (const [name, item] of Object.entries(r.vulnerabilities ?? {})) console.log(name, JSON.stringify({severity:item.severity,isDirect:item.isDirect,range:item.range,fixAvailable:item.fixAvailable}))"
-      - name: Apply compatible dependency security updates
-        run: npm audit fix --package-lock-only
-      - name: Install patched dependencies
-        run: npm ci
       - name: Resolve compatible npm security fixes
         run: npm audit fix --package-lock-only --ignore-scripts || true
       - name: Install patched dependency tree
