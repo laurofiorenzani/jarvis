@@ -1,4 +1,4 @@
-/** SSE frame splitting shared by the cloud client and Node tests. */
+/** SSE frame splitting and stream consumption shared by the cloud client and Node tests. */
 export function takeSseFrames(buffer, final = false) {
   const frames = []
   let remainder = buffer
@@ -21,4 +21,43 @@ export function sseFrameData(frame) {
     .filter((line) => line.startsWith('data:'))
     .map((line) => line.slice(5).replace(/^ /, ''))
     .join('\n')
+}
+
+function abortError() {
+  return new DOMException('The stream was cancelled.', 'AbortError')
+}
+
+/**
+ * Consume a Fetch-compatible SSE body. Cancellation and callback/parser errors
+ * cancel the underlying reader before releasing its lock.
+ */
+export async function consumeSseStream(stream, onData, signal) {
+  const reader = stream.getReader()
+  const decoder = new TextDecoder()
+  let buffer = ''
+  const onAbort = () => { void reader.cancel(signal?.reason).catch(() => {}) }
+
+  try {
+    if (signal?.aborted) throw abortError()
+    signal?.addEventListener('abort', onAbort, { once: true })
+    while (true) {
+      if (signal?.aborted) throw abortError()
+      const { value, done } = await reader.read()
+      if (done) break
+      buffer += decoder.decode(value, { stream: true })
+      const parsed = takeSseFrames(buffer)
+      buffer = parsed.remainder
+      for (const frame of parsed.frames) onData(sseFrameData(frame))
+    }
+    if (signal?.aborted) throw abortError()
+    buffer += decoder.decode()
+    const final = takeSseFrames(buffer, true)
+    for (const frame of final.frames) onData(sseFrameData(frame))
+  } catch (cause) {
+    try { await reader.cancel(cause) } catch { /* stream may already be cancelled */ }
+    throw cause
+  } finally {
+    signal?.removeEventListener('abort', onAbort)
+    try { reader.releaseLock() } catch { /* lock can already be released by a failed stream */ }
+  }
 }
