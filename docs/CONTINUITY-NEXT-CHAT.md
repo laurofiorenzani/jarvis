@@ -131,3 +131,12 @@ Continue autonomously across independent workstreams wherever safe. User explici
 - Commits include `d49a88c`, `e02a498`, `97f037c`, `61090ac`, `405d8db`, `0f6f3d2`, `faa2ae3`, `e0a4217`, and `413ea8f`.
 - Important limitation: these modules are still not wired into the bridge's `PreToolUse` hook or WebSocket/HUD protocol. The current global read-only/--writes policy remains the only live enforcement. Do not describe action approvals as implemented or enable broad writes.
 - Next: validate the new modules in GitHub Actions; then implement bridge-side ownership and WebSocket decision handling, disconnect cleanup, and a visible accessible approval card. Verify actual SDK hook behavior before allowing the tool call to proceed.
+
+
+## Approval primitive hardening — 2026-11-12 (continued)
+- Hardened canonical argument serialization to reject getters/accessors (without invoking them), symbol keys, non-enumerable/hidden properties, sparse arrays and arrays with extra properties, in addition to cycles, non-finite numbers, class instances and dangerous object keys.
+- Hardened the pending registry with a 32-request cap, bounded identifiers, duplicate session/tool-use invocation rejection and strict decision-envelope fields.
+- Added regression tests for these cases.
+- These remain isolated, unintegrated primitives. They do not pause the Claude Agent SDK hook, do not establish authenticated account ownership, and do not create a usable UI approval flow. The current global write gate remains authoritative; do not enable broad writes.
+- Latest commits: `d634fdb`, `80f07c7`, `04728c0`, `8359dd8`.
+- CI run observed for earlier head `f9ef2d5` (run #238) passed dependency install, high-severity audit and TypeScript/Vite build; unit/regression tests were still running at last inspection. Newer commits were pushed after that run, so a successful CI result for the current head is still required.
