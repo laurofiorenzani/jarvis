@@ -221,6 +221,11 @@ export function createCloudApiClient(options: CloudApiOptions) {
       ),
     getProviderStatus: () => request<{ version: typeof CLOUD_API_VERSION; configured: boolean; providers: { name: string; model: string }[] }>('/v1/provider-status'),
     getMemoryPreference: () => request<MemoryPreferenceResponse>('/v1/memory-preferences'),
+    setMemoryPreferences: (patch: Partial<Pick<MemoryPreferenceResponse, 'contextEnabled' | 'autoCaptureEnabled'>>) =>
+      request<MemoryPreferenceResponse>('/v1/memory-preferences', {
+        method: 'PUT',
+        body: JSON.stringify({ version: CLOUD_API_VERSION, ...patch }),
+      }),
     setMemoryContextEnabled: (contextEnabled: boolean) =>
       request<MemoryPreferenceResponse>('/v1/memory-preferences', {
         method: 'PUT',
