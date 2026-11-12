@@ -54,26 +54,26 @@ export function MemoryWeb({ drive }: { drive: Drive }) {
   useFrame((state, dt) => {
     if (!group.current) return
     const phaseSpeed =
-      drive.spin * (drive.level > 0.18 ? 0.32 + drive.level * 0.7 : 0.12)
+      drive.spin * (drive.level > 0.18 ? 0.72 + drive.level * 0.85 : 0.42)
     group.current.rotation.y += dt * phaseSpeed
     group.current.rotation.z += dt * phaseSpeed * 0.31
     group.current.rotation.x = Math.sin(state.clock.elapsedTime * 0.16) * 0.12
-    const scale = 0.88 + drive.open * 0.13 + Math.sin(state.clock.elapsedTime * 1.1) * 0.025
+    const scale = 0.94 + drive.open * 0.10 + Math.sin(state.clock.elapsedTime * 1.1) * 0.025
     group.current.scale.setScalar(scale)
   })
 
   return (
     <group ref={group}>
       <mesh>
-        <sphereGeometry args={[1.48, 40, 28]} />
-        <meshBasicMaterial color="#ff9b43" wireframe transparent opacity={0.105} depthWrite={false} />
+        <sphereGeometry args={[1.48, 48, 32]} />
+        <meshBasicMaterial color="#ff9b43" wireframe transparent opacity={0.30} depthWrite={false} />
       </mesh>
       <mesh rotation={[0.35, 0.2, 0]}>
-        <sphereGeometry args={[1.62, 28, 20]} />
-        <meshBasicMaterial color="#ffc477" wireframe transparent opacity={0.055} depthWrite={false} />
+        <sphereGeometry args={[1.68, 40, 28]} />
+        <meshBasicMaterial color="#ffc477" wireframe transparent opacity={0.18} depthWrite={false} />
       </mesh>
       <lineSegments geometry={lineGeometry}>
-        <lineBasicMaterial color="#ff9b43" transparent opacity={0.28} depthWrite={false} />
+        <lineBasicMaterial color="#ff9b43" transparent opacity={0.52} depthWrite={false} />
       </lineSegments>
       {nodes.map((point, index) => (
         <group key={DOMAINS[index]} position={point}>
