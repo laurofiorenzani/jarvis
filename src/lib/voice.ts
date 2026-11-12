@@ -1,4 +1,6 @@
-import { BRIDGE_HTTP_URL, SPEECH_LOCALE } from '../config'
+import { BACKEND, BRIDGE_HTTP_URL, SPEECH_LOCALE } from '../config'
+import { cloudAuth } from './cloud-auth'
+import { cloudApi } from './cloud-api'
 import { getMic } from './audio'
 import { speakingNow, speakingSince } from './tts'
 import { startVad, type Vad } from './vad'
@@ -398,12 +400,21 @@ export async function startVoice(h: VoiceHandlers): Promise<Voice> {
     )
     return { stop: () => {}, live: () => false }
   }
+  if (BACKEND === 'cloud') {
+    const token = await cloudAuth.getValidAccessToken().catch(() => null)
+    if (!token) {
+      h.onError('Sign in to JARVIS Cloud before using cloud voice.')
+      return { stop: () => {}, live: () => false }
+    }
+    diag.engine = 'cloud'
+    return startCloudVoice(h, 'cloud')
+  }
   diag.engine = caps().stt ? 'cloud' : 'browser'
-  return caps().stt ? startCloudVoice(h) : startBrowserVoice(h)
+  return caps().stt ? startCloudVoice(h, 'bridge') : startBrowserVoice(h)
 }
 
 /** VAD + hosted cloud speech transcription. */
-async function startCloudVoice(h: VoiceHandlers): Promise<Voice> {
+async function startCloudVoice(h: VoiceHandlers, transport: 'cloud' | 'bridge'): Promise<Voice> {
   let lastWake = 0
   let vad: Vad | null = null
 
@@ -466,13 +477,18 @@ async function startCloudVoice(h: VoiceHandlers): Promise<Voice> {
     if (mode === 'deaf') return
     const t0 = performance.now()
     try {
-      const res = await fetch(`${BRIDGE_HTTP_URL}/stt`, {
-        method: 'POST',
-        headers: { 'content-type': blob.type || 'audio/webm' },
-        body: blob,
-      })
-      diag.idleMs = Math.round(performance.now() - t0)
-      if (!res.ok) {
+      let said = ''
+      if (transport === 'cloud') {
+        const token = await cloudAuth.getValidAccessToken()
+        if (!token) throw new Error('Cloud session expired. Sign in again.')
+        said = await cloudApi.transcribeAudio(token, blob)
+      } else {
+        const res = await fetch(`${BRIDGE_HTTP_URL}/stt`, {
+          method: 'POST',
+          headers: { 'content-type': blob.type || 'audio/webm' },
+          body: blob,
+        })
+        if (!res.ok) {
         diag.restarts++
         if (res.status === 429 || res.status === 503) {
           // Quota exhaustion and provider outages should not leave voice deaf.
@@ -482,9 +498,11 @@ async function startCloudVoice(h: VoiceHandlers): Promise<Voice> {
         diag.lastError = `stt ${res.status}`
         drop(`transcription failed (${res.status})`)
         return
+        }
+        const payload = await res.json() as { text?: string }
+        said = (payload.text || '').trim()
       }
-      const { text } = (await res.json()) as { text?: string }
-      const said = (text ?? '').trim()
+      diag.idleMs = Math.round(performance.now() - t0)
       diag.lastError = ''
 
       if (!said) {
