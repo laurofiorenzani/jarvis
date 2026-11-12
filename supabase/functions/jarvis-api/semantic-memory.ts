@@ -70,18 +70,21 @@ export function isSemanticMemoryId(value: string): boolean {
 const AUTO_MEMORY_SENSITIVE = /\b(?:password|passphrase|passcode|pin code|api[\s_-]?key|access token|refresh token|credential|secret|private key|health|medical|diagnos|medication|prescription|hormone|therapy|sexual|intimate|religion|politic|ethnic|race|bank|iban|swift|credit card|debit card|account number|salary|income|mortgage|loan|investment|portfolio|financial|finance|tax return|tax id|passport|national id|social security|criminal|lawsuit|home address|street address|postal code|postcode|eircode|gps|coordinates|date of birth|birthdate|dob|nationality|immigration|visa|work permit|identity|contact details|phone number|email address)\b/i
 const AUTO_MEMORY_EMAIL = /\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/i
 const AUTO_MEMORY_PHONE = /(?:\+?\d[\d\s().-]{7,}\d)/
+const AUTO_MEMORY_ADDRESS = /\b\d{1,5}\s+(?:[A-Z0-9.'-]+\s+){0,4}(?:street|st|road|rd|avenue|ave|lane|ln|drive|dr|court|ct|close|crescent|terrace|way|place|pl|square|sq)\b/i
+const AUTO_MEMORY_EIRCODE = /\b[A-Z]\d{2}\s?[A-Z0-9]{4}\b/i
+const AUTO_MEMORY_DATE = /\b(?:\d{1,2}[/-]\d{1,2}[/-]\d{2,4}|\d{4}-\d{2}-\d{2}|\d{1,2}\s+(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\s+\d{4})\b/i
 
 /** Conservative post-model filter: memory suggestions must never contain secrets or sensitive personal data. */
 export function isSafeAutoMemorySource(value: string): boolean {
   const source = value.replace(/[\u0000-\u001f\u007f]/g, ' ').trim()
   if (!source || source.length > 12_000) return false
-  return !AUTO_MEMORY_SENSITIVE.test(source) && !AUTO_MEMORY_EMAIL.test(source) && !AUTO_MEMORY_PHONE.test(source)
+  return !AUTO_MEMORY_SENSITIVE.test(source) && !AUTO_MEMORY_EMAIL.test(source) && !AUTO_MEMORY_PHONE.test(source) && !AUTO_MEMORY_ADDRESS.test(source) && !AUTO_MEMORY_EIRCODE.test(source) && !AUTO_MEMORY_DATE.test(source)
 }
 
 export function isSafeAutoMemoryContent(value: string): boolean {
   const content = value.replace(/[\u0000-\u001f\u007f]/g, ' ').replace(/\s+/g, ' ').trim()
   if (content.length < 12 || content.length > 1_000) return false
-  if (AUTO_MEMORY_SENSITIVE.test(content) || AUTO_MEMORY_EMAIL.test(content) || AUTO_MEMORY_PHONE.test(content)) return false
+  if (AUTO_MEMORY_SENSITIVE.test(content) || AUTO_MEMORY_EMAIL.test(content) || AUTO_MEMORY_PHONE.test(content) || AUTO_MEMORY_ADDRESS.test(content) || AUTO_MEMORY_EIRCODE.test(content) || AUTO_MEMORY_DATE.test(content)) return false
   return true
 }
 
