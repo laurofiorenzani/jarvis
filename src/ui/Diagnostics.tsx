@@ -29,6 +29,8 @@ type VoiceDiag = {
   dropped: string
   accepted: number
   restarts: number
+  transcriptionFailures: number
+  queuedSegmentsDropped: number
   idleMs: number
 }
 
@@ -79,8 +81,6 @@ export function Diagnostics() {
     return () => clearInterval(id)
   }, [open])
 
-  if (!open) return null
-
   const w = window as unknown as Record<string, unknown>
   const v = (w.__voice ?? {}) as Partial<VoiceDiag>
   const t = (w.__tts ?? {}) as Partial<TtsDiag>
@@ -91,8 +91,24 @@ export function Diagnostics() {
   const mouthOk = (t.started ?? 0) > 0 || (t.rescued ?? 0) > 0
 
   return (
-    <div className="diag" aria-live="polite">
-      <div className="diag-head">DIAGNOSTICS · D to close</div>
+    <>
+      <button
+        type="button"
+        aria-label={open ? 'Close voice diagnostics' : 'Open voice diagnostics'}
+        onClick={() => setOpen((value) => !value)}
+        style={{
+          position: 'fixed', right: 12, bottom: 12, zIndex: 40,
+          pointerEvents: 'auto', padding: '8px 10px',
+          color: '#b9f6ff', background: 'rgba(1, 12, 22, .88)',
+          border: '1px solid rgba(75, 220, 255, .55)', borderRadius: 6,
+          font: '10px ui-monospace, SFMono-Regular, Menlo, monospace',
+          letterSpacing: '.12em',
+        }}
+      >
+        {open ? 'CLOSE DIAG' : 'VOICE DIAG'}
+      </button>
+      {open && <div className="diag" aria-live="polite">
+      <div className="diag-head">DIAGNOSTICS · VOICE</div>
 
       <div className="diag-verdict">
         <span className={earsOk ? 'diag-ok' : 'diag-bad'}>
@@ -111,13 +127,16 @@ export function Diagnostics() {
         v={`${((v.idleMs ?? 0) / 1000).toFixed(1)}s`}
         bad={(v.idleMs ?? 0) > 15000}
       />
-      <Row k="forced restarts" v={String(v.restarts ?? 0)} bad={(v.restarts ?? 0) > 0} />
+      <Row k="recogniser restarts" v={String(v.restarts ?? 0)} bad={(v.restarts ?? 0) > 0} />
+      <Row k="transcription failures" v={String(v.transcriptionFailures ?? 0)} bad={(v.transcriptionFailures ?? 0) > 0} />
+      <Row k="queue drops (audio)" v={String(v.queuedSegmentsDropped ?? 0)} bad={(v.queuedSegmentsDropped ?? 0) > 0} />
       <Row k="mode" v={`${v.mode ?? '—'} (phase ${phase})`} />
       <Row k="accepted" v={String(v.accepted ?? 0)} bad={(v.accepted ?? 0) === 0} />
       <Row k="wakes" v={String(v.wakes ?? 0)} />
       <Row k="last heard" v={v.heard ? `"${v.heard}" ${ago(v.heardAt ?? 0)}` : '— nothing yet'} bad={!v.heard} />
       <Row k="last drop" v={v.dropped || '—'} bad={Boolean(v.dropped)} />
-      <Row k="error" v={v.lastError || '—'} bad={Boolean(v.lastError)} />
+      <Row k="last transcript" v={v.heard || '—'} bad={!v.heard} />
+      <Row k="last error" v={v.lastError || '—'} bad={Boolean(v.lastError)} />
 
       <div className="diag-sec">SPEAKING · press T to test</div>
       <Row k="engine" v={String(t.engine ?? 'system')} />
@@ -127,6 +146,7 @@ export function Diagnostics() {
       <Row k="failures" v={String(t.failures ?? 0)} bad={(t.failures ?? 0) > 0} />
       <Row k="cloud rescues" v={String(t.rescued ?? 0)} />
       <Row k="error" v={t.lastError || '—'} bad={Boolean(t.lastError)} />
-    </div>
+    </div>}
+    </>
   )
 }

@@ -16,6 +16,8 @@ import {
   type ListMemoriesResponse,
   type CreateMemoryResponse,
   type MemoryPreferenceResponse,
+  type SemanticMemoryCandidateListResponse,
+  type SemanticMemoryCandidateDecisionResponse,
   type MemoryCategory,
   type SendTurnRequest,
 } from './backend-contract'
@@ -45,6 +47,7 @@ export class CloudApiError extends Error {
   readonly code: ApiError['error']['code'] | 'network_error' | 'invalid_response'
   readonly requestId?: string
   readonly retryable: boolean
+  readonly retryAfterMs?: number
 
   constructor(
     message: string,
@@ -52,6 +55,7 @@ export class CloudApiError extends Error {
     code: ApiError['error']['code'] | 'network_error' | 'invalid_response',
     requestId?: string,
     retryable = false,
+    retryAfterMs?: number,
   ) {
     super(message)
     this.name = 'CloudApiError'
@@ -59,6 +63,7 @@ export class CloudApiError extends Error {
     this.code = code
     this.requestId = requestId
     this.retryable = retryable
+    this.retryAfterMs = retryAfterMs
   }
 }
 
@@ -151,10 +156,49 @@ export function createCloudApiClient(options: CloudApiOptions) {
       const payload: unknown = await response.json().catch(() => null)
       if (!response.ok) {
         const body = payload as ApiError | null
-        throw new CloudApiError(body?.error?.message || 'Speech transcription failed.', response.status, body?.error?.code || 'service_unavailable', body?.error?.requestId, true)
+        const rawCode = body?.error?.code
+        const code = (API_ERROR_CODES as readonly string[]).includes(String(rawCode))
+          ? rawCode as ApiError['error']['code']
+          : response.status === 429 ? 'rate_limited' : 'service_unavailable'
+        const retryHeader = response.headers.get('Retry-After')
+        const retrySeconds = retryHeader && /^\d{1,4}$/.test(retryHeader)
+          ? Math.min(300, Math.max(1, Number(retryHeader)))
+          : undefined
+        throw new CloudApiError(
+          body?.error?.message || 'Speech transcription failed.',
+          response.status,
+          code,
+          body?.error?.requestId,
+          true,
+          retrySeconds === undefined ? undefined : retrySeconds * 1000,
+        )
       }
       if (!payload || typeof payload !== 'object' || typeof (payload as { text?: unknown }).text !== 'string') throw new CloudApiError('Speech service returned an invalid transcript.', response.status, 'invalid_response')
       return (payload as { text: string }).text.trim()
+    },
+    synthesizeSpeech: async (text: string): Promise<Blob> => {
+      const spokenText = requireText(text, 'speech text', 2_000)
+      const token = await options.getAccessToken()
+      if (!token?.trim()) throw new CloudApiError('Sign-in is required.', 401, 'unauthenticated')
+      let response: Response
+      try {
+        response = await fetcher(`${baseUrl}/v1/tts`, {
+          method: 'POST',
+          headers: { apikey: options.publishableKey, Authorization: `Bearer ${token}`, 'Content-Type': 'application/json', Accept: 'audio/wav', 'X-Jarvis-Api-Version': String(CLOUD_API_VERSION) },
+          body: JSON.stringify({ version: CLOUD_API_VERSION, text: spokenText }),
+          credentials: 'omit', redirect: 'error',
+        })
+      } catch { throw new CloudApiError('Speech service could not be reached.', 0, 'network_error', undefined, true) }
+      if (!response.ok) {
+        const payload: unknown = await response.json().catch(() => null)
+        const body = payload as ApiError | null
+        throw new CloudApiError(body?.error?.message || 'Speech synthesis failed.', response.status, body?.error?.code || 'service_unavailable', body?.error?.requestId, true)
+      }
+      const contentType = response.headers.get('content-type') || ''
+      if (!contentType.toLowerCase().includes('audio/wav')) throw new CloudApiError('Speech service returned an invalid audio format.', response.status, 'invalid_response')
+      const audio = await response.blob()
+      if (audio.size < 44 || audio.size > 4 * 1024 * 1024) throw new CloudApiError('Speech service returned an invalid audio payload.', response.status, 'invalid_response')
+      return audio
     },
     health: async () => {
       const result = await request<CloudHealth>('/v1/health', {}, false)
@@ -183,6 +227,21 @@ export function createCloudApiClient(options: CloudApiOptions) {
         body: JSON.stringify({ version: CLOUD_API_VERSION, contextEnabled }),
       }),
     listMemories: () => request<ListMemoriesResponse>('/v1/memories'),
+    listSemanticMemoryCandidates: () =>
+      request<SemanticMemoryCandidateListResponse>('/v1/semantic-memory/candidates'),
+    decideSemanticMemoryCandidate: (candidateId: string, decision: 'approved' | 'rejected') => {
+      const id = requireText(candidateId, 'memory candidate ID', 64)
+      if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id)) {
+        throw new CloudApiError('Invalid memory candidate ID.', 400, 'invalid_request')
+      }
+      if (decision !== 'approved' && decision !== 'rejected') {
+        throw new CloudApiError('Invalid memory decision.', 400, 'invalid_request')
+      }
+      return request<SemanticMemoryCandidateDecisionResponse>(
+        `/v1/semantic-memory/candidates/${encodeURIComponent(id)}`,
+        { method: 'PUT', body: JSON.stringify({ version: CLOUD_API_VERSION, decision }) },
+      )
+    },
     createMemory: (input: { category: MemoryCategory; content: string; expiresAt?: string | null }) => {
       const content = requireText(input.content, 'memory content', 2_000)
       if (!['preference', 'project', 'workflow', 'fact'].includes(input.category)) {

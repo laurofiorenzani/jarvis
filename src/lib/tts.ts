@@ -45,6 +45,14 @@ type Speaker = {
 // What he is saying right now
 // ---------------------------------------------------------------------------
 
+export type CloudSpeechProvider = (text: string) => Promise<Blob>
+let cloudSpeechProvider: CloudSpeechProvider | null = null
+
+/** Install or clear the authenticated cloud speech provider with the cloud session. */
+export function setCloudSpeechProvider(provider: CloudSpeechProvider | null): void {
+  cloudSpeechProvider = provider
+}
+
 let speaking = ''
 let recent = ''
 let recentUntil = 0
@@ -62,7 +70,7 @@ const ECHO_TAIL_MS = 1800
  * indistinguishable. This tells them apart at a glance.
  */
 export const diag = {
-  engine: 'system' as 'system' | 'kokoro' | 'elevenlabs',
+  engine: 'system' as 'system' | 'kokoro' | 'elevenlabs' | 'cloud',
   /** Utterances handed to an engine — the OS voice or an audio element. */
   spoken: 0,
   /**
@@ -102,6 +110,30 @@ if (typeof window !== 'undefined') {
  * the bridge's speech proxy instead, which holds an ElevenLabs key already.
  */
 let nativeBroken = false
+
+/**
+ * Unlock the browser speech engine from the same trusted tap that powers on
+ * JARVIS. iOS Safari can reject later speechSynthesis calls unless the engine
+ * has first been exercised during a user activation. This silent utterance
+ * primes the engine without playing a greeting or changing the visible phase.
+ */
+export function unlockSpeech(): void {
+  if (typeof window === 'undefined' || !('speechSynthesis' in window)) return
+  try {
+    const engine = window.speechSynthesis
+    engine.getVoices()
+    engine.cancel()
+    engine.resume()
+    const primer = new SpeechSynthesisUtterance(' ')
+    primer.volume = 0
+    primer.rate = 1
+    primer.lang = 'pt-BR'
+    engine.speak(primer)
+    primer.onend = () => engine.resume()
+  } catch (error) {
+    console.warn('[jarvis] speech engine could not be unlocked:', error)
+  }
+}
 
 let speakingAt = 0
 
@@ -255,6 +287,7 @@ function pickVoice(): SpeechSynthesisVoice | null {
  *  always naming a speechSynthesis voice that a cloud or neural engine has
  *  quietly replaced. */
 export function currentVoiceName(): string {
+  if (cloudSpeechProvider && nativeBroken) return 'Gemini Cloud'
   if (USE_ELEVENLABS || caps().tts) return 'ElevenLabs'
   if (TTS_ENGINE === 'kokoro' && !kokoro.isUnavailable()) {
     return KOKORO_VOICE.replace(/^bm_/, '')
@@ -395,7 +428,7 @@ export function createSpeaker(): Speaker {
       // for a session that had spoken every one of its sentences through
       // ElevenLabs, which makes the one field naming the engine useless
       // exactly when you are trying to work out which engine is at fault.
-      diag.engine = 'elevenlabs'
+      diag.engine = cloudSpeechProvider && nativeBroken ? 'cloud' : 'elevenlabs'
       return fetchCloudAudio(text).catch(() => null)
     }
     if (TTS_ENGINE === 'kokoro' && !kokoro.isUnavailable()) {
@@ -457,7 +490,7 @@ export function createSpeaker(): Speaker {
       if (!nativeBroken) {
         nativeBroken = true
         diag.nativeBroken = true
-        diag.engine = 'elevenlabs'
+        diag.engine = cloudSpeechProvider ? 'cloud' : 'elevenlabs'
         console.warn('[jarvis] system voice is not producing sound — using the bridge speech proxy from here on')
       }
       const rescue = await fetchCloudAudio(item.text).catch(() => null)
@@ -602,7 +635,7 @@ export function createSpeaker(): Speaker {
       // see the onplaying handler below.
       diag.spoken++
       diag.lastText = text.slice(0, 60)
-      diag.voice = diag.engine === 'kokoro' ? KOKORO_VOICE : 'ElevenLabs'
+      diag.voice = diag.engine === 'kokoro' ? KOKORO_VOICE : diag.engine === 'cloud' ? 'Gemini Cloud' : 'ElevenLabs'
 
       let read: (() => number) | null = null
       const ctx = outputContext()
@@ -750,6 +783,15 @@ export function createSpeaker(): Speaker {
 /** Only used when USE_ELEVENLABS is on. Bridge proxy first (it already holds
  *  the key), then a direct key, then null to fall back to the native voice. */
 async function fetchCloudAudio(text: string): Promise<string | null> {
+  if (cloudSpeechProvider) {
+    try {
+      const audio = await cloudSpeechProvider(text)
+      if (audio.size > 0 && audio.type.startsWith('audio/')) return URL.createObjectURL(audio)
+    } catch (error) {
+      console.warn('[jarvis] authenticated cloud speech generation failed:', error)
+    }
+  }
+
   if (BACKEND === 'bridge') {
     try {
       const res = await fetch(`${BRIDGE_HTTP_URL}/tts`, {

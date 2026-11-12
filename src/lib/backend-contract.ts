@@ -62,6 +62,27 @@ export type MemoryPreferenceResponse = {
   contextEnabled: boolean
 }
 
+
+export type SemanticMemoryCandidate = {
+  id: string
+  fact_type: 'preference' | 'fact' | 'decision' | 'goal' | 'workflow' | 'constraint'
+  content: string
+  status: 'pending'
+  source_conversation_id: string | null
+  source_message_ids: string[]
+  created_at: string
+}
+
+export type SemanticMemoryCandidateListResponse = {
+  version: typeof CLOUD_API_VERSION
+  candidates: SemanticMemoryCandidate[]
+}
+
+export type SemanticMemoryCandidateDecisionResponse = {
+  version: typeof CLOUD_API_VERSION
+  candidate: Omit<SemanticMemoryCandidate, 'status'> & { status: 'approved' | 'rejected'; approved_at?: string | null }
+}
+
 export type ConversationRole = 'user' | 'assistant'
 
 export type ConversationMessage = {

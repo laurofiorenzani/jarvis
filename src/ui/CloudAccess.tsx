@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
-import type { CloudMemory, MemoryCategory, ConversationSummary, ConversationMessage } from '../lib/backend-contract'
+import type { CloudMemory, MemoryCategory, ConversationSummary, ConversationMessage, SemanticMemoryCandidate } from '../lib/backend-contract'
 import { env } from '../config'
 import { createCloudRuntime } from '../lib/cloud-runtime'
 import type { CloudRuntimeOptions } from '../lib/cloud-runtime'
@@ -44,7 +44,7 @@ function hasRestorableTabSession() {
   }
 }
 
-export function CloudAccess({ onConnected, onDisconnected, onResumeConversation, onSpeechApiReady }: { onConnected?: () => void; onDisconnected?: () => void; onResumeConversation?: (messages: ConversationMessage[]) => void; onSpeechApiReady?: (transcribe: ((audio: Blob) => Promise<string>) | null) => void }) {
+export function CloudAccess({ onConnected, onDisconnected, onResumeConversation, onSpeechApiReady, onTtsApiReady }: { onConnected?: () => void; onDisconnected?: () => void; onResumeConversation?: (messages: ConversationMessage[]) => void; onSpeechApiReady?: (transcribe: ((audio: Blob) => Promise<string>) | null) => void; onTtsApiReady?: (synthesize: ((text: string) => Promise<Blob>) | null) => void }) {
   const [expanded, setExpanded] = useState(() => !hasRestorableTabSession())
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -59,6 +59,9 @@ export function CloudAccess({ onConnected, onDisconnected, onResumeConversation,
   const [connected, setConnected] = useState(false)
   const [message, setMessage] = useState('')
   const [memories, setMemories] = useState<CloudMemory[]>([])
+  const [memoryCandidates, setMemoryCandidates] = useState<SemanticMemoryCandidate[]>([])
+  const [memoryReviewAvailable, setMemoryReviewAvailable] = useState(false)
+  const [memoryReviewBusy, setMemoryReviewBusy] = useState(false)
   const [conversations, setConversations] = useState<ConversationSummary[]>([])
   const [conversationBusy, setConversationBusy] = useState(false)
   const [memoryContextEnabled, setMemoryContextEnabled] = useState(false)
@@ -82,6 +85,15 @@ export function CloudAccess({ onConnected, onDisconnected, onResumeConversation,
     setMemoryContextEnabled(preference.contextEnabled)
     setConversations(recentConversations.conversations)
     try {
+      const recentCandidates = await runtime.api.listSemanticMemoryCandidates()
+      setMemoryCandidates(recentCandidates.candidates)
+      setMemoryReviewAvailable(true)
+    } catch {
+      // The feature-branch UI may be previewed before the matching Edge Function is deployed.
+      setMemoryCandidates([])
+      setMemoryReviewAvailable(false)
+    }
+    try {
       const providers = await runtime.api.getProviderStatus()
       setProviderStatus(providers.configured
         ? 'FREE-QUOTA CONFIG DECLARED · ' + providers.providers.map((item) => item.model).join(', ')
@@ -91,6 +103,7 @@ export function CloudAccess({ onConnected, onDisconnected, onResumeConversation,
     }
     selectCloudBrain(runtime.brain)
     onSpeechApiReady?.(runtime.api.transcribeAudio)
+    onTtsApiReady?.(runtime.api.synthesizeSpeech)
     setConnected(true)
     onConnected?.()
   }
@@ -101,6 +114,7 @@ export function CloudAccess({ onConnected, onDisconnected, onResumeConversation,
     setMessage('')
     const runtime = createCloudRuntime({
       supabaseUrl: env.supabaseUrl,
+      functionName: env.supabaseFunctionName,
       supabasePublishableKey: env.supabasePublishableKey,
       tokenStore: createTabTokenStore(),
     })
@@ -115,6 +129,7 @@ export function CloudAccess({ onConnected, onDisconnected, onResumeConversation,
       await runtime.auth.signOut().catch(() => {})
       runtimeRef.current = null
       onSpeechApiReady?.(null)
+      onTtsApiReady?.(null)
       setConnected(false)
       setCanRestoreTabSession(false)
       setMessage(error instanceof Error ? error.message : 'Cloud session could not be restored.')
@@ -144,6 +159,7 @@ export function CloudAccess({ onConnected, onDisconnected, onResumeConversation,
     setMessage('')
     const options: CloudRuntimeOptions = {
       supabaseUrl: env.supabaseUrl,
+      functionName: env.supabaseFunctionName,
       supabasePublishableKey: env.supabasePublishableKey,
       tokenStore: keepSessionInTab ? createTabTokenStore() : createVolatileTokenStore(),
     }
@@ -188,6 +204,7 @@ export function CloudAccess({ onConnected, onDisconnected, onResumeConversation,
     setMessage('')
     const runtime = createCloudRuntime({
       supabaseUrl: env.supabaseUrl,
+      functionName: env.supabaseFunctionName,
       supabasePublishableKey: env.supabasePublishableKey,
       tokenStore: keepSessionInTab ? createTabTokenStore() : createVolatileTokenStore(),
     })
@@ -220,6 +237,7 @@ export function CloudAccess({ onConnected, onDisconnected, onResumeConversation,
     setMessage('')
     const runtime = createCloudRuntime({
       supabaseUrl: env.supabaseUrl,
+      functionName: env.supabaseFunctionName,
       supabasePublishableKey: env.supabasePublishableKey,
       tokenStore: createVolatileTokenStore(),
     })
@@ -239,6 +257,7 @@ export function CloudAccess({ onConnected, onDisconnected, onResumeConversation,
     setMessage('')
     const runtime = createCloudRuntime({
       supabaseUrl: env.supabaseUrl,
+      functionName: env.supabaseFunctionName,
       supabasePublishableKey: env.supabasePublishableKey,
       tokenStore: createVolatileTokenStore(),
     })
@@ -268,6 +287,7 @@ export function CloudAccess({ onConnected, onDisconnected, onResumeConversation,
     setMessage('')
     const runtime = createCloudRuntime({
       supabaseUrl: env.supabaseUrl,
+      functionName: env.supabaseFunctionName,
       supabasePublishableKey: env.supabasePublishableKey,
       tokenStore: createVolatileTokenStore(),
     })
@@ -324,6 +344,21 @@ export function CloudAccess({ onConnected, onDisconnected, onResumeConversation,
     setMessage('NEW CLOUD CONVERSATION READY')
   }
 
+  const refreshMemoryCandidates = async () => {
+    const runtime = runtimeRef.current
+    if (!runtime || memoryReviewBusy || !memoryReviewAvailable) return
+    setMemoryReviewBusy(true)
+    try {
+      const result = await runtime.api.listSemanticMemoryCandidates()
+      setMemoryCandidates(result.candidates)
+      setMessage('MEMORY REVIEW QUEUE REFRESHED · ' + result.candidates.length + ' PENDING')
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : 'Memory review queue could not be refreshed.')
+    } finally {
+      setMemoryReviewBusy(false)
+    }
+  }
+
   const toggleMemoryContext = async (enabled: boolean) => {
     const runtime = runtimeRef.current
     if (!runtime || memoryBusy) return
@@ -338,6 +373,23 @@ export function CloudAccess({ onConnected, onDisconnected, onResumeConversation,
     } catch (error) {
       setMemoryContextEnabled(previous)
       setMessage(error instanceof Error ? error.message : 'Memory preference could not be saved.')
+    } finally {
+      setMemoryBusy(false)
+    }
+  }
+
+  const decideMemoryCandidate = async (id: string, decision: 'approved' | 'rejected') => {
+    const runtime = runtimeRef.current
+    if (!runtime || memoryBusy) return
+    setMemoryBusy(true)
+    try {
+      await runtime.api.decideSemanticMemoryCandidate(id, decision)
+      setMemoryCandidates((items) => items.filter((item) => item.id !== id))
+      setMessage(decision === 'approved'
+        ? 'MEMORY CANDIDATE APPROVED · AVAILABLE TO PERSONAL MEMORY SEARCH'
+        : 'MEMORY CANDIDATE REJECTED')
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : 'Memory candidate decision could not be saved.')
     } finally {
       setMemoryBusy(false)
     }
@@ -386,6 +438,7 @@ export function CloudAccess({ onConnected, onDisconnected, onResumeConversation,
     } finally {
       runtimeRef.current = null
       onSpeechApiReady?.(null)
+      onTtsApiReady?.(null)
       setConnected(false)
       setCanRestoreTabSession(false)
       try { window.sessionStorage.removeItem(TAB_SESSION_CHOICE) } catch { /* Sign-out remains complete if storage is unavailable. */ }
@@ -422,8 +475,35 @@ export function CloudAccess({ onConnected, onDisconnected, onResumeConversation,
               Include approved memories in JARVIS replies
             </label>
             <div style={{ color: '#7797a2', marginBottom: 10, letterSpacing: 0 }}>
-              Off by default. When enabled, up to 20 non-expired saved memories may be sent to the configured AI provider with your message.
+              Off by default. When enabled, up to 20 non-expired saved memories and up to 8 relevant approved facts from prior conversations may be included with your message and sent to the configured AI provider. Pending candidates are never included.
             </div>
+            <section aria-label="Pending semantic memory candidates" style={{ borderTop: '1px solid #214653', borderBottom: '1px solid #214653', padding: '10px 0', marginBottom: 12 }}>
+              <strong style={{ display: 'block', color: '#83d9e8', marginBottom: 8 }}>MEMORY REVIEW QUEUE · {memoryCandidates.length}</strong>
+              {memoryReviewAvailable && <button type="button" disabled={memoryReviewBusy || memoryBusy}
+                onClick={() => void refreshMemoryCandidates()}
+                style={{ ...buttonStyle, width: '100%', marginBottom: 8 }}>
+                {memoryReviewBusy ? 'REFRESHING…' : 'REFRESH REVIEW QUEUE'}
+              </button>}
+              <div style={{ color: '#7797a2', lineHeight: 1.5, letterSpacing: 0, marginBottom: 8 }}>
+                {memoryReviewAvailable
+                  ? 'Candidates stay pending until you approve them. Approval is available only while personal memory context is enabled.'
+                  : 'The candidate review API is not available on this backend yet. Existing cloud sign-in and saved memories remain unaffected.'}
+              </div>
+              {memoryReviewAvailable && <div style={{ display: 'grid', gap: 8 }}>
+                {memoryCandidates.map((candidate) => (
+                  <article key={candidate.id} style={{ border: '1px solid #214653', borderRadius: 4, padding: 8, letterSpacing: 0 }}>
+                    <div style={{ color: '#83d9e8', marginBottom: 5 }}>{candidate.fact_type.toUpperCase()}</div>
+                    <div style={{ color: '#c1dce2', whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', lineHeight: 1.45 }}>{candidate.content}</div>
+                    <div style={{ color: '#7797a2', fontSize: 9, margin: '6px 0' }}>PENDING · {new Date(candidate.created_at).toLocaleString()}</div>
+                    <div style={{ display: 'flex', gap: 6 }}>
+                      <button type="button" disabled={memoryBusy || !memoryContextEnabled} onClick={() => void decideMemoryCandidate(candidate.id, 'approved')} style={{ ...buttonStyle, flex: 1 }}>APPROVE</button>
+                      <button type="button" disabled={memoryBusy} onClick={() => void decideMemoryCandidate(candidate.id, 'rejected')} style={{ ...buttonStyle, flex: 1 }}>REJECT</button>
+                    </div>
+                  </article>
+                ))}
+                {!memoryCandidates.length && <div style={{ color: '#7797a2', letterSpacing: 0 }}>No pending memory candidates.</div>}
+              </div>}
+            </section>
             <section aria-label="Saved cloud conversations" style={{ borderTop: '1px solid #214653', borderBottom: '1px solid #214653', padding: '10px 0', marginBottom: 12 }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 8 }}>
                 <strong style={{ color: '#83d9e8' }}>SAVED CONVERSATIONS · {conversations.length}</strong>

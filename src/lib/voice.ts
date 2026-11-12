@@ -357,8 +357,12 @@ export const diag = {
   waitedMs: 0,
   /** Barge-ins suppressed because he had only just started the sentence. */
   selfGuarded: 0,
-  /** Transcription failures (network, or the bridge speech proxy). */
+  /** Actual SpeechRecognition engine restarts after its heartbeat detects silence. */
   restarts: 0,
+  /** Cloud/bridge transcription requests that failed, independent of recogniser health. */
+  transcriptionFailures: 0,
+  /** Captured audio segments discarded because the bounded queue was full. */
+  queuedSegmentsDropped: 0,
   /** Milliseconds the last transcription round-trip took. */
   idleMs: 0,
 }
@@ -388,7 +392,7 @@ if (typeof window !== 'undefined') {
  */
 export type CloudTranscriber = (audio: Blob) => Promise<string>
 
-export async function startVoice(h: VoiceHandlers, cloudTranscribe?: CloudTranscriber): Promise<Voice> {
+export async function startVoice(h: VoiceHandlers, cloudTranscribe?: CloudTranscriber, getCloudTranscriber?: () => CloudTranscriber | null): Promise<Voice> {
   try {
     await getMic()
   } catch (err) {
@@ -400,16 +404,20 @@ export async function startVoice(h: VoiceHandlers, cloudTranscribe?: CloudTransc
     )
     return { stop: () => {}, live: () => false }
   }
-  if (BACKEND === 'cloud' && cloudTranscribe) {
+  if (BACKEND === 'cloud') {
+    // The cloud session can be established after ignition. Always start the
+    // VAD pipeline in cloud mode and resolve the authenticated transcriber for
+    // each segment, rather than falling back permanently to browser
+    // SpeechRecognition when the user signs in a moment later.
     diag.engine = 'gemini-cloud'
-    return startElevenVoice(h, cloudTranscribe)
+    return startElevenVoice(h, cloudTranscribe, getCloudTranscriber)
   }
   diag.engine = caps().stt ? 'elevenlabs' : 'browser'
   return caps().stt ? startElevenVoice(h) : startBrowserVoice(h)
 }
 
 /** VAD + ElevenLabs Scribe. */
-async function startElevenVoice(h: VoiceHandlers, cloudTranscribe?: CloudTranscriber): Promise<Voice> {
+async function startElevenVoice(h: VoiceHandlers, cloudTranscribe?: CloudTranscriber, getCloudTranscriber?: () => CloudTranscriber | null): Promise<Voice> {
   let lastWake = 0
   let vad: Vad | null = null
 
@@ -427,7 +435,12 @@ async function startElevenVoice(h: VoiceHandlers, cloudTranscribe?: CloudTranscr
    * "London" arriving before "what's the weather in" is worse than either.
    */
   const pendingAudio: Blob[] = []
+  const MAX_PENDING_AUDIO_SEGMENTS = 4
   let draining = false
+  // Provider quota/network failures must not trigger a request for every VAD segment.
+  // Back off exponentially, then resume automatically when the provider recovers.
+  let transcriptionFailures = 0
+  let transcribeBlockedUntil = 0
 
   /**
    * Transcripts become turns here rather than one-per-segment.
@@ -454,10 +467,20 @@ async function startElevenVoice(h: VoiceHandlers, cloudTranscribe?: CloudTranscr
   const transcribe = async (blob: Blob) => {
     const mode = h.mode()
     if (mode === 'deaf') return
+    if (Date.now() < transcribeBlockedUntil) {
+      drop(`speech service cooling down for ${Math.ceil((transcribeBlockedUntil - Date.now()) / 1000)}s`)
+      return
+    }
     const t0 = performance.now()
     try {
-      const said = cloudTranscribe
-        ? await cloudTranscribe(blob)
+      // Resolve the cloud transcriber for each audio segment. Auth/session
+      // refreshes can replace the function while this long-lived voice loop runs.
+      const activeCloudTranscriber = getCloudTranscriber?.() ?? cloudTranscribe
+      if (BACKEND === 'cloud' && !activeCloudTranscriber) {
+        throw new Error('Cloud speech is not connected. Sign in to the Jarvis Cloud account, then try again.')
+      }
+      const said = activeCloudTranscriber
+        ? await activeCloudTranscriber(blob)
         : await (async () => {
             const res = await fetch(`${BRIDGE_HTTP_URL}/stt`, {
               method: 'POST',
@@ -470,6 +493,8 @@ async function startElevenVoice(h: VoiceHandlers, cloudTranscribe?: CloudTranscr
           })()
       diag.idleMs = Math.round(performance.now() - t0)
       diag.lastError = ''
+      transcriptionFailures = 0
+      transcribeBlockedUntil = 0
 
       if (!said) {
         drop('nothing intelligible in the segment')
@@ -503,9 +528,16 @@ async function startElevenVoice(h: VoiceHandlers, cloudTranscribe?: CloudTranscr
       // is finished, reading the words and whether the room is still noisy.
       assemble.feed(said, vad?.meter().speaking ?? false)
     } catch (err) {
-      diag.restarts++
-      diag.lastError = String(err)
-      drop('could not reach the speech service')
+      diag.transcriptionFailures++
+      transcriptionFailures++
+      const retryAfterMs = err && typeof err === 'object' && 'retryAfterMs' in err &&
+        typeof (err as { retryAfterMs?: unknown }).retryAfterMs === 'number'
+        ? Math.min(300_000, Math.max(1_000, (err as { retryAfterMs: number }).retryAfterMs))
+        : undefined
+      const backoffMs = retryAfterMs ?? Math.min(60_000, 5_000 * (2 ** Math.min(transcriptionFailures - 1, 4)))
+      transcribeBlockedUntil = Date.now() + backoffMs
+      diag.lastError = `${String(err)} · retry in ${Math.ceil(backoffMs / 1000)}s`
+      drop('speech service failed; automatic backoff active')
     }
   }
 
@@ -544,6 +576,13 @@ async function startElevenVoice(h: VoiceHandlers, cloudTranscribe?: CloudTranscr
       }
     },
     onEnd: (blob) => {
+      // Bound memory while a provider is slow or unavailable. Prefer recent
+      // speech over stale queued audio and expose every discarded segment.
+      if (pendingAudio.length >= MAX_PENDING_AUDIO_SEGMENTS) {
+        pendingAudio.shift()
+        diag.queuedSegmentsDropped++
+        drop('oldest queued speech segment discarded to keep the audio queue bounded')
+      }
       pendingAudio.push(blob)
       void drain()
     },
