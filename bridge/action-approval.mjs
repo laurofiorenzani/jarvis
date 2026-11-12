@@ -23,6 +23,11 @@ export function canonicalizeArguments(value) {
     ancestors.add(input)
     let result
     if (Array.isArray(input)) {
+      for (let index = 0; index < input.length; index++) {
+        if (!Object.prototype.hasOwnProperty.call(input, index)) {
+          throw new TypeError('Approval arguments cannot contain sparse arrays.')
+        }
+      }
       result = '[' + input.map((item) => visit(item)).join(',') + ']'
     } else {
       const keys = Object.keys(input).sort()
