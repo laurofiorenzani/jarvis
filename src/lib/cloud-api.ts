@@ -6,7 +6,7 @@
  * Every request is scoped by the bearer token; the API resolves the user ID
  * from that token and enforces ownership in the database.
  */
-import { takeSseFrames, sseFrameData } from './sse-frames.js'
+import { consumeSseStream } from './sse-frames.js'
 
 const VERSION = 1
 
@@ -105,31 +105,12 @@ async function streamTurn(
     const payload = await response.json().catch(() => null) as { error?: { message?: string } } | null
     throw new Error(payload?.error?.message || `Cloud turn failed (${response.status}).`)
   }
-  const reader = response.body.getReader()
-  const decoder = new TextDecoder()
-  let buffer = ''
-  const dispatch = (frame: string) => {
-    const data = sseFrameData(frame)
+  await consumeSseStream(response.body, (data) => {
     if (!data) return
     const event = JSON.parse(data) as CloudTurnEvent
     onEvent(event)
     if (event.type === 'turn.failed') throw new Error(event.message || 'Cloud turn failed.')
-  }
-  try {
-    while (true) {
-      const { value, done } = await reader.read()
-      if (done) break
-      buffer += decoder.decode(value, { stream: true })
-      const parsed = takeSseFrames(buffer)
-      buffer = parsed.remainder
-      for (const frame of parsed.frames) dispatch(frame)
-    }
-    buffer += decoder.decode()
-    const final = takeSseFrames(buffer, true)
-    for (const frame of final.frames) dispatch(frame)
-  } finally {
-    reader.releaseLock()
-  }
+  }, signal)
 }
 
 export const cloudApi = {
@@ -153,7 +134,7 @@ export const cloudApi = {
   listMemoryCandidates: (token: string) => request<{ version: 1; candidates: CloudMemoryCandidate[] }>('/semantic-memory/candidates', token),
   decideMemoryCandidate: (token: string, id: string, decision: 'approved' | 'rejected') => request<{ version: 1; candidate: CloudMemoryCandidate }>(
     `/semantic-memory/candidates/${encodeURIComponent(id)}`, token,
-    { method: 'PUT', body: JSON.stringify({ version: VERSION, decision }) },
+    { method: 'PUT', body: JSON.stringify({ version: VERSION, decision }),
   ),
   searchApprovedMemory: (token: string, query: string, limit = 8) => {
     const params = new URLSearchParams({ q: query, limit: String(Math.max(1, Math.min(8, Math.floor(limit)))) })
