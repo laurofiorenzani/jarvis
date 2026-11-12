@@ -6,6 +6,7 @@ import {
   parseSemanticMemoryDecision,
   isSemanticMemoryId,
   isSafeAutoMemoryContent,
+  isSafeAutoMemorySource,
   parseAutoMemoryCandidates,
 } from './semantic-memory.ts'
 
@@ -85,4 +86,11 @@ Deno.test('automatic extraction creates only unique, bounded, provenance-linked 
   equal(candidates.length, 2, 'safe unique candidates')
   equal(candidates[0].sourceConversationId, conversationId, 'conversation provenance')
   equal(candidates[0].sourceMessageIds.length, 2, 'message provenance')
+})
+
+Deno.test('automatic extraction skips a source turn containing sensitive data', () => {
+  equal(isSafeAutoMemorySource('We are planning the JARVIS interface'), true, 'ordinary source')
+  equal(isSafeAutoMemorySource('My salary and bank account balance are private'), false, 'financial source')
+  equal(isSafeAutoMemorySource('My medical diagnosis is private'), false, 'health source')
+  equal(isSafeAutoMemorySource('Contact me at person@example.com'), false, 'contact detail')
 })
