@@ -47,6 +47,7 @@ export class CloudApiError extends Error {
   readonly code: ApiError['error']['code'] | 'network_error' | 'invalid_response'
   readonly requestId?: string
   readonly retryable: boolean
+  readonly retryAfterMs?: number
 
   constructor(
     message: string,
@@ -54,6 +55,7 @@ export class CloudApiError extends Error {
     code: ApiError['error']['code'] | 'network_error' | 'invalid_response',
     requestId?: string,
     retryable = false,
+    retryAfterMs?: number,
   ) {
     super(message)
     this.name = 'CloudApiError'
@@ -61,6 +63,7 @@ export class CloudApiError extends Error {
     this.code = code
     this.requestId = requestId
     this.retryable = retryable
+    this.retryAfterMs = retryAfterMs
   }
 }
 
@@ -153,7 +156,22 @@ export function createCloudApiClient(options: CloudApiOptions) {
       const payload: unknown = await response.json().catch(() => null)
       if (!response.ok) {
         const body = payload as ApiError | null
-        throw new CloudApiError(body?.error?.message || 'Speech transcription failed.', response.status, body?.error?.code || 'service_unavailable', body?.error?.requestId, true)
+        const rawCode = body?.error?.code
+        const code = (API_ERROR_CODES as readonly string[]).includes(String(rawCode))
+          ? rawCode as ApiError['error']['code']
+          : response.status === 429 ? 'rate_limited' : 'service_unavailable'
+        const retryHeader = response.headers.get('Retry-After')
+        const retrySeconds = retryHeader && /^\d{1,4}$/.test(retryHeader)
+          ? Math.min(300, Math.max(1, Number(retryHeader)))
+          : undefined
+        throw new CloudApiError(
+          body?.error?.message || 'Speech transcription failed.',
+          response.status,
+          code,
+          body?.error?.requestId,
+          true,
+          retrySeconds === undefined ? undefined : retrySeconds * 1000,
+        )
       }
       if (!payload || typeof payload !== 'object' || typeof (payload as { text?: unknown }).text !== 'string') throw new CloudApiError('Speech service returned an invalid transcript.', response.status, 'invalid_response')
       return (payload as { text: string }).text.trim()
