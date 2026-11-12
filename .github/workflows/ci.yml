@@ -75,6 +75,7 @@ jobs:
         run: deno check supabase/functions/jarvis-api/index.ts
 
       - name: Set up Supabase CLI
+        id: setup_supabase_cli
         uses: supabase/setup-cli@v1
         with:
           version: latest
@@ -117,7 +118,7 @@ jobs:
             node scripts/test-semantic-memory-integration.mjs
 
       - name: Stop isolated local Supabase stack
-        if: always()
+        if: always() && steps.setup_supabase_cli.outcome == 'success'
         run: supabase stop --no-backup
 
       - name: Smoke-test deployed cloud API and production CORS
