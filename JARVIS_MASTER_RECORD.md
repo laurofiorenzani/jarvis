@@ -285,3 +285,37 @@ All branch counts are a snapshot from GitHub compare, not a deletion authorizati
 - Full CI run #730 succeeded on commit `987509759f40a3619d53c1cd7b22b60f075a497c`: TypeScript/build, unit tests, lint, provider privacy routing, Edge Function typecheck, isolated Supabase migrations, SQL account-isolation tests, two-user semantic-memory API tests and production cloud API/CORS smoke test all passed.
 - Later commits added account-switch race guards, observer workflows and preview CORS validation. They are being revalidated in CI; do not treat run #730 as validation of commits after `987509...`.
 - No existing account was deleted, recreated or modified. No production database schema, production Edge Function, production domain, billing plan or main branch was changed.
+
+
+## 16. Automatic memory, direct-integration and cleanup progress — 2026-11-12 22:52 UTC
+
+### Automatic memory consent and isolation (live read-only verification)
+- Supabase Auth currently contains exactly 2 accounts (aggregate count only; no user IDs or email addresses retrieved).
+- `jarvis_memory_preferences` currently contains 1 row: retrieval enabled for 1 account and auto-capture enabled for 1 account. The other account has no preference row and therefore remains at the default-off setting. No spouse preference was changed.
+- `jarvis_memory_facts` currently contains 0 rows (0 pending, 0 approved). No personal memory content has been saved yet.
+- These were read-only aggregate queries. No account, preference or memory row was modified.
+- The integration candidate now includes the `auto_capture_enabled` migration and the foreign-key index migration from the current amber line; it includes the latest Edge Function semantic-memory/auto-capture implementation and Deno tests.
+- CloudAccess now exposes two independent controls: include approved memories in replies, and automatically suggest memories from conversations. Auto-capture is disabled unless explicitly enabled for that account and only creates filtered pending suggestions; it never approves or saves facts automatically. Turning retrieval off also disables auto-capture. Re-enabling retrieval does not silently re-enable auto-capture.
+- API types/client, UI, unit test and two-user integration test were updated for the separate auto-capture preference. The two-user integration test now verifies default-off for both fixture accounts, explicit opt-in for user A, user B remains off, and disabling retrieval disables auto-capture.
+- Highly sensitive content remains disallowed until application-level envelope encryption and key rotation/recovery are implemented.
+
+### Direct integration and approval architecture
+- Added/replaced `docs/architecture/hybrid-brain.md` with the cloud-first brain/action architecture. It explicitly removes the local Windows bridge from the production mobile path.
+- Added `docs/architecture/action-approval-lifecycle.md` defining cloud-side, one-shot, digest-bound approvals, fail-closed behaviour, account/session binding and native JARVIS notifications. It clearly states that the cloud action loop is not yet shipped.
+- Added `docs/product/JARVIS_EXPERIENCE_VISION.md` and `docs/architecture/CAMERA_LIVE_VISION.md` as target-only specs. They are not claims that camera vision or connected devices are implemented.
+- The FreeLLMAPI prototype still depends on a separate Node/MCP runtime and has not been integrated into the cloud provider router. The router supports server-configured OpenAI-compatible free-tier endpoints, but a stable HTTPS FreeLLMAPI endpoint is unavailable until Oracle/secure tunnel connectivity is verified.
+
+### CI and preview
+- Latest integration head after the current CI/workflow updates: `4362b135bc769c3923d80e89cb55182c1399cbe6`.
+- Added Deno tests for semantic-memory validation and auto-capture policy to the main CI workflow.
+- Updated the two-user semantic-memory integration script to verify per-account auto-capture consent.
+- Reduced duplicate CI runs: main CI and observer-validation now run on PRs and main pushes; the read-only production observer runs on main pushes and schedule.
+- The canonical preview origin is allowlisted in the `jarvis-preview-api` code and the Vercel branch-scoped public client variables are present. The preview function is currently v11, deployed before the latest auto-capture code was ported; deploy v12 after the new CI run passes.
+- Current CI run #791 is queued for the Deno semantic-memory tests and the updated two-account auto-capture integration tests. Do not mark the latest head validated until that run finishes.
+- Vercel cannot redeploy the latest branch while the free-tier 24-hour deployment cap is active. No paid upgrade was made.
+
+### PR and cleanup progress
+- Closed PR #10 (master record), #11 (no-Shortcuts integration spec), #5 (self-evolution prototype) and #6 (older amber command center) as superseded by PR #12; their relevant work is included or superseded in the integration candidate.
+- Closed private repo PR #3 (repository reconciliation) after moving its findings into this master record.
+- Remaining open canonical repo PRs: #1 cloud foundation, #4 semantic memory foundation, #7 amber production UI, #8 cloud brain/voice locale, #9 cloud status accuracy, #12 canonical integration candidate.
+- No repository or branch was deleted. The connected GitHub actions do not expose repository-delete or branch-delete operations. The private `jarvis-personal-cloud` repo and remaining feature branches remain retirement candidates only after final feature reconciliation.
