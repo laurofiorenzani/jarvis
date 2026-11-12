@@ -357,8 +357,10 @@ export const diag = {
   waitedMs: 0,
   /** Barge-ins suppressed because he had only just started the sentence. */
   selfGuarded: 0,
-  /** Transcription failures (network, or the bridge speech proxy). */
+  /** Actual SpeechRecognition engine restarts after its heartbeat detects silence. */
   restarts: 0,
+  /** Cloud/bridge transcription requests that failed, independent of recogniser health. */
+  transcriptionFailures: 0,
   /** Milliseconds the last transcription round-trip took. */
   idleMs: 0,
 }
@@ -523,7 +525,7 @@ async function startElevenVoice(h: VoiceHandlers, cloudTranscribe?: CloudTranscr
       // is finished, reading the words and whether the room is still noisy.
       assemble.feed(said, vad?.meter().speaking ?? false)
     } catch (err) {
-      diag.restarts++
+      diag.transcriptionFailures++
       transcriptionFailures++
       const backoffMs = Math.min(60_000, 5_000 * (2 ** Math.min(transcriptionFailures - 1, 4)))
       transcribeBlockedUntil = Date.now() + backoffMs
