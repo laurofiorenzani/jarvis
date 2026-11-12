@@ -52,12 +52,18 @@ export function CloudMemoryPanel() {
   }, [])
 
   useEffect(() => {
-    if (!session) {
-      setCandidates([])
-      setEnabled(false)
-      setProvider('NOT SIGNED IN')
-      return
-    }
+    // Clear account-scoped UI state whenever the authenticated identity changes.
+    // This prevents results from the previous household member remaining visible
+    // after sign-out or a switch between the two separate accounts.
+    abortTurn.current?.abort()
+    setCandidates([])
+    setMemoryResults([])
+    setMemoryQuery('')
+    setCloudAnswer('')
+    setCloudQuestion('')
+    setEnabled(false)
+    setProvider(session ? 'LOADING' : 'NOT SIGNED IN')
+    if (!session) return
     void load()
   }, [session?.user.id, load])
 
