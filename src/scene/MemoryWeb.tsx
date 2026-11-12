@@ -13,6 +13,9 @@ const DOMAINS = [
   'PROJECTS', 'PEOPLE', 'DECISIONS', 'RESEARCH',
   'SOURCES', 'PREFERENCES', 'DOCUMENTS', 'SYSTEMS',
   'PLANS', 'KNOWLEDGE', 'TASKS', 'HISTORY',
+  'FINANCE', 'DEVICES', 'AUTOMATIONS', 'CONVERSATIONS',
+  'GOALS', 'LEARNING', 'MEDIA', 'LOCATIONS',
+  'WORKFLOWS', 'INTEGRATIONS', 'NOTES', 'REFERENCES',
 ]
 
 export function MemoryWeb({ drive }: { drive: Drive }) {
@@ -58,12 +61,33 @@ export function MemoryWeb({ drive }: { drive: Drive }) {
     group.current.rotation.y += dt * phaseSpeed
     group.current.rotation.z += dt * phaseSpeed * 0.31
     group.current.rotation.x = Math.sin(state.clock.elapsedTime * 0.16) * 0.12
-    const scale = 0.94 + drive.open * 0.10 + Math.sin(state.clock.elapsedTime * 1.1) * 0.025
+    const scale = 0.78 + drive.open * 0.20 + Math.sin(state.clock.elapsedTime * 1.1) * 0.025
     group.current.scale.setScalar(scale)
   })
 
   return (
     <group ref={group}>
+      {/* True volumetric central intelligence body with counter-rotating gyro rings. */}
+      <mesh rotation={[0.35, 0.1, 0]}>
+        <sphereGeometry args={[0.94, 48, 40]} />
+        <meshBasicMaterial color="#a94b12" transparent opacity={0.12} />
+      </mesh>
+      <mesh>
+        <sphereGeometry args={[1.02, 48, 36]} />
+        <meshBasicMaterial color="#ffad55" wireframe transparent opacity={0.36} depthWrite={false} />
+      </mesh>
+      <mesh rotation={[0.4, 0.2, 0]}>
+        <sphereGeometry args={[1.12, 36, 28]} />
+        <meshBasicMaterial color="#ff7b22" wireframe transparent opacity={0.20} depthWrite={false} />
+      </mesh>
+      <mesh rotation={[Math.PI / 2.7, 0, 0]}>
+        <torusGeometry args={[1.28, 0.012, 8, 180]} />
+        <meshBasicMaterial color="#ffd08a" transparent opacity={0.62} />
+      </mesh>
+      <mesh rotation={[0, Math.PI / 2.5, 0]}>
+        <torusGeometry args={[1.36, 0.008, 8, 180]} />
+        <meshBasicMaterial color="#ff8b30" transparent opacity={0.48} />
+      </mesh>
       <mesh>
         <sphereGeometry args={[1.48, 48, 32]} />
         <meshBasicMaterial color="#ff9b43" wireframe transparent opacity={0.30} depthWrite={false} />
