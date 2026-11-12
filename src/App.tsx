@@ -36,7 +36,7 @@ import {
   usingDirect,
   type Msg,
 } from './lib/brain'
-import { startAnalyser, micLevel } from './lib/audio'
+import { startAnalyser, stopAnalyser, micLevel } from './lib/audio'
 import { probeCapabilities } from './lib/capabilities'
 import { env } from './config'
 
@@ -752,11 +752,18 @@ export default function App() {
           // A household account switch is a hard UI boundary: clear every
           // account-scoped surface before another identity can connect.
           history.current = []
+          voice.current?.stop()
+          voice.current = null
+          speaker.current?.cancel()
+          void stopAnalyser()
           cloudTranscriber.current = null
           cloudTtsProvider.current = null
           setCloudSpeechProvider(null)
           setMemoryConfirmations([])
           useStore.setState({ turns: [] })
+          store.getState().setPhase('offline')
+          store.getState().setLevel(0)
+          store.getState().setVoice(currentVoiceName())
           store.getState().clearPanels()
           store.getState().clearBlades()
           store.getState().setActiveTool(null)
