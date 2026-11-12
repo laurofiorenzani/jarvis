@@ -107,3 +107,9 @@ Continue autonomously across independent workstreams wherever safe. User explici
 - GitHub Actions run #208 (`43286388314`) passed on code head `6071775245c8629e2204f71a4b98982dc8e504bc`: dependency installation, high-severity npm audit, TypeScript/Vite production build, Node regression tests, lint, production and preview Deno typechecks, and both Deno semantic-memory test suites.
 - A Vercel preview deployment was attempted for that validated head but the account still returns `api-deployments-free-per-day` (HTTP 402, retry after 24 hours). No billing or plan changes were made. The latest READY preview remains behind this code head; do not claim the persona changes are live until a deployment and browser test succeed.
 - The new one-click critical-action approval lifecycle is still not implemented. Current bridge policy is primarily a global read-only / `--writes` gate; do not describe it as the intended per-action approval UX. This is a major V1 gap and must be designed/tested before enabling autonomous effectful actions.
+
+
+## Action approval design contract — 2026-11-12
+- Added `docs/architecture/action-approval-lifecycle.md` as the normative design for per-action approvals.
+- It defines risk classes, a nonce/session/toolUseId/argument-digest-bound approval envelope, fail-closed behavior, account isolation, accessible desktop/iPhone UI requirements, audit redaction, and unit/integration/E2E release gates.
+- This is a design document only. The current bridge still uses the global `JARVIS_ALLOW_WRITES=1` / `--writes` gate. Do not claim per-action approvals are implemented or enable broad writes before the full lifecycle is tested.
