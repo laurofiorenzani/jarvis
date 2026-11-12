@@ -5,6 +5,8 @@ import {
   parseSemanticMemoryCandidate,
   parseSemanticMemoryDecision,
   isSemanticMemoryId,
+  isSafeAutoMemoryContent,
+  parseAutoMemoryCandidates,
 } from './semantic-memory.ts'
 
 function equal(actual: unknown, expected: unknown, message: string) {
@@ -55,4 +57,32 @@ Deno.test('parses only explicit approve or reject decisions and validates IDs', 
   equal(parseSemanticMemoryDecision({ decision: 'pending' }), null, 'invalid decision')
   equal(isSemanticMemoryId('123e4567-e89b-42d3-a456-426614174000'), true, 'valid UUID')
   equal(isSemanticMemoryId('not-a-uuid'), false, 'invalid UUID')
+})
+
+Deno.test('automatic memory filter allows stable preferences but blocks sensitive data', () => {
+  equal(isSafeAutoMemoryContent('Prefers concise project status updates'), true, 'stable preference')
+  equal(isSafeAutoMemoryContent('My password is hunter2'), false, 'password')
+  equal(isSafeAutoMemoryContent('My bank account balance is 5000'), false, 'financial data')
+  equal(isSafeAutoMemoryContent('Contact me at person@example.com'), false, 'email')
+  equal(isSafeAutoMemoryContent('Call me at +353 87 123 4567'), false, 'phone')
+})
+
+Deno.test('automatic extraction creates only unique, bounded, provenance-linked candidates', () => {
+  const conversationId = '123e4567-e89b-42d3-a456-426614174000'
+  const messageIds = [
+    '123e4567-e89b-42d3-a456-426614174001',
+    '123e4567-e89b-42d3-a456-426614174002',
+  ]
+  const candidates = parseAutoMemoryCandidates({
+    candidates: [
+      { factType: 'preference', content: 'Prefers concise project status updates' },
+      { factType: 'preference', content: 'Prefers concise project status updates' },
+      { factType: 'fact', content: 'My bank account balance is 5000' },
+      { factType: 'credential', content: 'This should never be saved' },
+      { factType: 'goal', content: 'Wants to finish the Jarvis integration project' },
+    ],
+  }, conversationId, messageIds)
+  equal(candidates.length, 2, 'safe unique candidates')
+  equal(candidates[0].sourceConversationId, conversationId, 'conversation provenance')
+  equal(candidates[0].sourceMessageIds.length, 2, 'message provenance')
 })
