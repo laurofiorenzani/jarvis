@@ -1,4 +1,5 @@
-import { useMemo, useRef } from 'react'
+import { useMemo, useRef, useState } from 'react'
+import { Html } from '@react-three/drei'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 import type { Drive } from './Scene'
@@ -19,6 +20,7 @@ const DOMAINS = [
 ]
 
 export function MemoryWeb({ drive }: { drive: Drive }) {
+  const [selected, setSelected] = useState<string | null>(null)
   const group = useRef<THREE.Group>(null)
   const nodes = useMemo(() => {
     const result: THREE.Vector3[] = []
@@ -57,7 +59,7 @@ export function MemoryWeb({ drive }: { drive: Drive }) {
   useFrame((state, dt) => {
     if (!group.current) return
     const phaseSpeed =
-      drive.spin * (drive.level > 0.18 ? 0.72 + drive.level * 0.85 : 0.42)
+      0.48 + drive.spin * (drive.level > 0.18 ? 0.85 + drive.level * 0.9 : 0.62)
     group.current.rotation.y += dt * phaseSpeed
     group.current.rotation.z += dt * phaseSpeed * 0.31
     group.current.rotation.x = Math.sin(state.clock.elapsedTime * 0.16) * 0.12
@@ -100,7 +102,13 @@ export function MemoryWeb({ drive }: { drive: Drive }) {
         <lineBasicMaterial color="#ff9b43" transparent opacity={0.52} depthWrite={false} />
       </lineSegments>
       {nodes.map((point, index) => (
-        <group key={DOMAINS[index]} position={point}>
+        <group
+          key={DOMAINS[index]}
+          position={point}
+          onClick={(event) => { event.stopPropagation(); setSelected(selected === DOMAINS[index] ? null : DOMAINS[index]) }}
+          onPointerOver={() => { document.body.style.cursor = 'pointer' }}
+          onPointerOut={() => { document.body.style.cursor = 'auto' }}
+        >
           <mesh>
             <sphereGeometry args={[index % 4 === 0 ? 0.075 : 0.045, 12, 12]} />
             <meshBasicMaterial
@@ -113,6 +121,14 @@ export function MemoryWeb({ drive }: { drive: Drive }) {
             <sphereGeometry args={[index % 4 === 0 ? 0.14 : 0.095, 10, 10]} />
             <meshBasicMaterial color="#ff8b2c" transparent opacity={0.10} />
           </mesh>
+          {selected === DOMAINS[index] && (
+            <Html distanceFactor={8} center>
+              <div style={{ minWidth: 150, padding: '9px 11px', border: '1px solid rgba(255,174,83,.65)', borderRadius: 7, background: 'rgba(8,6,4,.88)', color: '#ffe0b8', font: '10px ui-monospace,monospace', letterSpacing: '.08em', boxShadow: '0 0 24px rgba(255,139,43,.24)', pointerEvents: 'none' }}>
+                <b>{DOMAINS[index]}</b>
+                <div style={{ marginTop: 5, color: 'rgba(255,211,167,.7)', fontSize: 9, letterSpacing: 0 }}>KNOWLEDGE DOMAIN · RECORDS NOT YET LINKED</div>
+              </div>
+            </Html>
+          )}
         </group>
       ))}
     </group>
