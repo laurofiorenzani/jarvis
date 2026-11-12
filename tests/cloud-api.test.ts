@@ -460,13 +460,14 @@ test('memory context preference is explicitly loaded and persisted', async () =>
     getAccessToken: async () => 'token',
     fetchImpl: async (input, init) => {
       requests.push({ url: String(input), init })
-      return new Response(JSON.stringify({ version: 1, contextEnabled: init?.method === 'PUT' }), {
+      return new Response(JSON.stringify({ version: 1, contextEnabled: init?.method === 'PUT', autoCaptureEnabled: false }), {
         status: 200, headers: { 'Content-Type': 'application/json' },
       })
     },
   })
   assert.equal((await client.getMemoryPreference()).contextEnabled, false)
   assert.equal((await client.setMemoryContextEnabled(true)).contextEnabled, true)
+  assert.equal((await client.setMemoryPreferences({ autoCaptureEnabled: true })).autoCaptureEnabled, false)
   assert.equal(requests[0].url.endsWith('/v1/memory-preferences'), true)
   assert.equal(requests[1].init?.method, 'PUT')
   assert.equal(JSON.parse(String(requests[1].init?.body)).contextEnabled, true)
