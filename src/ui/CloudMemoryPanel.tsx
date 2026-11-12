@@ -240,7 +240,7 @@ export function CloudMemoryPanel() {
           </div>
           <div style={{ border: '1px solid rgba(255,157,73,.28)', padding: 10, display: 'grid', gap: 8 }}>
             <b>AUTOMATIC MEMORY SUGGESTIONS</b>
-            <span style={muted}>Cloud conversations only for now. JARVIS may extract stable, non-sensitive facts as pending suggestions. Nothing enters approved memory until you review and approve it. Health, financial, legal, identity, contact details, and secrets are excluded. Local bridge voice conversations are not included yet.</span>
+            <span style={muted}>Cloud conversations only for now. When enabled, JARVIS sends the current exchange to the configured free-tier model to extract stable, non-sensitive suggestions. A server-side filter blocks sensitive source turns and candidate content. Nothing enters approved memory until you review and approve it. Health, financial, legal, identity, contact details, and secrets are excluded. Local bridge voice conversations are not included yet.</span>
             <button style={action} type="button" disabled={busy || !enabled} onClick={() => void toggleAutoCapture()}>{autoCaptureEnabled ? 'DISABLE AUTOMATIC CAPTURE' : 'ENABLE AUTOMATIC CAPTURE'}</button>
             <strong style={{ color: autoCaptureEnabled ? '#a7d8a1' : '#e6a36b' }}>{autoCaptureEnabled ? 'ENABLED · PENDING REVIEW ONLY' : enabled ? 'DISABLED' : 'ENABLE MEMORY CONTEXT FIRST'}</strong>
           </div>
