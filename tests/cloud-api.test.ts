@@ -546,3 +546,31 @@ test('semantic memory review rejects malformed IDs and decisions before network 
   assert.throws(() => client.decideSemanticMemoryCandidate('10000000-0000-4000-8000-000000000001', 'pending' as 'approved'), /Invalid memory decision/)
   assert.equal(called, false)
 })
+
+test('speech client honours provider Retry-After on transcription throttling', async () => {
+  const client = createCloudApiClient({
+    baseUrl: 'https://api.example.test',
+    publishableKey: 'test-publishable-key',
+    getAccessToken: async () => 'token',
+    fetchImpl: async () => new Response(JSON.stringify({
+      version: 1,
+      error: {
+        code: 'rate_limited',
+        message: 'Speech transcription quota is temporarily unavailable.',
+        requestId: 'speech-429',
+        retryable: true,
+      },
+    }), {
+      status: 429,
+      headers: { 'Content-Type': 'application/json', 'Retry-After': '60' },
+    }),
+  })
+
+  await assert.rejects(
+    client.transcribeAudio(new Blob(['audio'], { type: 'audio/webm' })),
+    (error: unknown) => error instanceof CloudApiError &&
+      error.code === 'rate_limited' &&
+      error.retryable &&
+      error.retryAfterMs === 60_000,
+  )
+})
