@@ -608,13 +608,12 @@ export function CloudAccess({ onConnected, onDisconnected, onResumeConversation,
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
               {authMode !== 'signin' && authMode !== 'set-password' && <button type="button" onClick={() => setAuthMode('signin')} style={buttonStyle}>BACK TO SIGN IN</button>}
               {authMode === 'signin' && <>
-                <button type="button" onClick={() => setAuthMode('signup')} style={buttonStyle}>CREATE ACCOUNT</button>
                 <button type="button" onClick={() => setAuthMode('reset')} style={buttonStyle}>FORGOT PASSWORD?</button>
               </>}
             </div>
             {message && <div role="status" style={{ color: '#ffbd91', lineHeight: 1.5 }}>{message}</div>}
             <div style={{ color: '#7797a2', lineHeight: 1.5, letterSpacing: 0 }}>
-              {authMode === 'set-password' ? 'Your secure invitation or recovery link is ready. Choose a password to activate this account.' : 'Each family member signs in with a separate email and password. Conversations and personal memories remain private to that account.'}
+              {authMode === 'set-password' ? 'Your secure invitation or recovery link is ready. Choose a password to activate this account.' : 'Use the existing JARVIS account for this person. Each family member has a separate sign-in; conversations and personal memories remain private to that account. Account creation is disabled here to avoid duplicate registrations.'}
             </div>
           </form>
         )
