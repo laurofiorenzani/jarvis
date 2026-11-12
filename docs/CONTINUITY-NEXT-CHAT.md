@@ -157,3 +157,12 @@ Continue autonomously across independent workstreams wherever safe. User explici
 - Security advisor findings: leaked-password protection remains disabled (owner action in Supabase Auth settings); one informational RLS/no-policy finding for the service-only rate-limit table. Performance advisor reports 18 unused indexes; leave them in place until real workload data justifies removal.
 - The account's current memory preference row has context and automatic candidate capture enabled. Automatic extraction still creates pending candidates, not approved memory; keep approval and user isolation requirements.
 - Current Actions run #253 is validating the latest head after the classifier and canonicalization fixes. Vercel preview deployments remain blocked by the free daily deployment quota.
+
+
+## Browser speech locale correction — 2026-11-12
+- User confirmed the hosted 3D interface loads and voice transcription captures speech on iPhone, but the assistant turn fails and recognition is English-only.
+- Inspected `src/lib/voice.ts`: browser SpeechRecognition was hard-coded to `en-GB`.
+- Created isolated branch `work/jarvis-voice-locale` from the validated mainline head; changed the recognizer to use `SPEECH_LOCALE` from config, default `pt-BR`, with `en-GB` and `en-US` alternatives. Added `VITE_SPEECH_LOCALE` documentation to `.env.example`.
+- This fixes the default browser recognizer locale in source; it does not provide simultaneous language auto-detection, nor does it fix the hosted cloud-brain routing failure. Browser SpeechRecognition accepts one locale per recognizer.
+- The branch is isolated from PR #7. CI/build validation and a draft PR are still pending.
+- User's iPhone visual smoke test passed for page load and 3D interaction. The user observed transcript capture but no spoken/text model answer; this is consistent with hosted deployment still using the bridge backend without a reachable local bridge. Do not call E2E voice/cloud integration passed.
