@@ -1,6 +1,6 @@
 # JARVIS semantic memory v1 — implementation contract
 
-Status: engineering design for the cloud-first memory workstream. This document does not claim that semantic retrieval is implemented or deployed.
+Status: engineering design plus implementation notes for the cloud-first memory workstream. The feature branch implements opt-in lexical retrieval of approved facts and candidate review; this is not embedding-based semantic similarity and is not deployed to production.
 
 ## Goal
 
