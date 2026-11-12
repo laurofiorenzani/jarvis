@@ -185,3 +185,15 @@ At the start of each JARVIS work session:
 8. Never ask the owner to repeat product decisions already recorded here. Ask only for a genuinely unavailable permission or physical-device action.
 9. Never say a task is complete unless the evidence in this file supports it.
 10. **No Shortcut workarounds. JARVIS itself is the assistant and the user-facing control surface.**
+
+
+## 12. Live infrastructure and PR refresh — 2026-11-12 22:01 UTC
+
+- Current open PR inventory in canonical repo: #1 cloud-first foundation (open, non-draft, base main, head work/memory-integration-ready); #4 semantic memory (draft); #5 self-evolution foundation (draft); #6 older amber command-center branch (draft); #7 amber production UI (draft, base main); #8 cloud brain/pt-BR voice (draft, base amber production); #9 cloud connectivity accuracy (draft, base voice locale); #10 this master record (draft, base amber production). Do not treat PRs as one linear stack; several bases diverge.
+- Current branch inventory includes the above and additional feature/fix branches. No branch has been deleted.
+- PR #10 opened at https://github.com/laurofiorenzani/jarvis/pull/10, head `af95a1ad81ae0f3aebdf2522f409d3fc19fc732f`, 2 files changed (master record and README link). It is documentation-only and is not merged. Vercel generated preview deployment; one deployment for this branch was READY and the newest one was still BUILDING at the time checked.
+- Supabase live project still reports ACTIVE_HEALTHY. `jarvis-api` v32 and `jarvis-preview-api` v10 are ACTIVE. Their deployed source includes free-provider router and semantic-memory code. `verify_jwt=false` is configured at the gateway, so the handler's own bearer-token validation must be maintained and re-tested; this is not evidence of anonymous access being safe by itself.
+- Vercel recent deployments show READY previews for the amber production UI commit `ae4e9d3...` and voice-locale commit `0fd9f36...`; the latest cloud-status commit preview is READY. The master-record documentation branch has a READY deployment for its first commit and a newer deployment still BUILDING. One earlier amber deployment is ERROR. These are previews, not proof of production release.
+- Cloudflare account has no active Cloudflare Tunnel returned by the read-only account query. Therefore a Cloudflare Tunnel is **not configured/verified in the connected account** at this time. No tunnel or DNS was created.
+- Oracle Cloud remains unverified because no OCI connector is available in this session.
+- No resources were deleted, no PR was merged, and no production settings were modified.
