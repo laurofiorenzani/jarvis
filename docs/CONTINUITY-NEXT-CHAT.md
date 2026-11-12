@@ -10,7 +10,7 @@ Continue autonomously across independent workstreams wherever safe. User explici
 
 ## Current verified state
 - Latest UI PR #7 remains OPEN and DRAFT; base `main`. Do not merge automatically.
-- Active branch head at this update: `3be0eba8b6e25b06411b2301a61a397989d67b00` (recheck before continuing).
+- Active branch head verified 2026-11-12: `56d8c1ea620624e565744aab3f8375c43048fc82` (PR #7; recheck before any write).
 - GitHub Actions run `43278833174` completed SUCCESS for commit `fdf65c7e24399868a629a603a3daa326af1b7a91`: npm ci, TypeScript/Vite production build, tests, and lint all passed. This includes the SSE stream cancellation implementation and PR-triggered CI workflow.
 - GitHub Actions run `43278949364` completed SUCCESS for commit `beab81377c6c34f1acfe94691f67402f9364b7bd`: npm ci, TypeScript/Vite production build, tests, and lint all passed.
 - GitHub Actions run `43280101199` (run #61) completed SUCCESS for commit `c03a8ee148d455f6511442b1cc4bd3fef51d8b5c`: Node tests, lint, Deno typecheck, and Deno semantic-memory tests all passed.
@@ -62,3 +62,39 @@ Continue autonomously across independent workstreams wherever safe. User explici
 - Automatic memory may only create pending, provenance-linked, non-sensitive candidates after the relevant account explicitly opts in. Never auto-approve.
 - Never merge draft PRs or alter production auth settings, provider secrets, or irreversible personal data without explicit approval.
 - Label simulated, visual-only, unverified, and connected states accurately.
+
+
+## Verified continuation update — 2026-11-12 19:05 UTC
+- Rechecked PR #7: OPEN, DRAFT, mergeable, 177 commits, 39 changed files; head is `56d8c1ea620624e565744aab3f8375c43048fc82`. Keep draft; do not merge without explicit approval.
+- GitHub Actions run #198 (`43284312357`) on that exact head completed SUCCESS. Confirmed all steps passed: npm install/audit, TypeScript + Vite production build, Node regression tests, lint, production and preview Deno typechecks, and both Deno semantic-memory test suites.
+- Supabase project `undmhmdwhxvjgvezvucy` is still ACTIVE_HEALTHY. `jarvis-api` is ACTIVE v32 and `jarvis-preview-api` ACTIVE v10.
+- Live schema inspection confirms RLS enabled on all listed JARVIS tables. Cloud data currently exists (13 conversations, 42 messages, 33 turns); the memory preference table has one row; semantic memories/facts/summaries/topics/links remain empty. Do not assume that memory retrieval being enabled means facts have already been saved.
+- Latest security advisor: leaked-password protection remains WARN and needs owner action in Supabase Auth settings. `jarvis_rate_limits` has RLS enabled with no client policy; this is intentional service-role-only access, not a missing public policy.
+- Performance advisor currently reports 18 unused indexes. Do not drop them while tables are new/low-volume; reassess after representative traffic.
+- Vercel daily deployment quota remains a blocker. Do not repeatedly retry deployments or change billing. Keep using GitHub Actions for build/test validation until quota resets.
+- No live browser/iPhone end-to-end test has been completed by this check. Passing CI is not proof that camera, voice, sign-in, memory UI, or device actions work end-to-end.
+
+## Product contract — preserve across sessions
+- JARVIS is an autonomous personal agent, not merely a chatbot, UI demo, or collection of disconnected integrations.
+- No Shortcuts dependency or Shortcut-based activation requirement. The target is direct, consistent access from computer, phone, browser, and supported in-car surfaces, with shared cloud identity/context and local capability adapters where required.
+- Persona must feel natural and consistent: varied contextual greetings, humour, familiar forms of address chosen from user-approved style (e.g. “mestre”, “chefão”, “meu chapa”, “El Chapo Fiorenzani”), and conversational continuity. Avoid repeating one fixed greeting on every turn.
+- The agent should understand outcomes, plan the steps, choose tools, and execute routine/pre-authorized reversible actions without asking at every step. Ask for one-click approval only for critical/high-impact actions (financial transactions, sending externally, destructive changes, security/account changes, production releases, or other configured sensitive actions).
+- Multimodal vision: camera/image understanding, object/product identification with uncertainty and research when needed, scene interpretation, and context-aware follow-up.
+- Personal communications: summarize incoming WhatsApp/email/notifications, prioritize people and urgency, draft contextual replies in the user's style, and request approval before sending unless a narrowly scoped sending rule has been explicitly configured.
+- Family CFO must be able to reconcile financial data, spot spending changes, propose cash allocation (emergency reserve, credit cards, mortgage overpayments, investments), prepare transactions, and request explicit approval before moving money or placing trades. IBKR execution must use supported authenticated integrations and a clear approval record; never automate around provider security controls.
+- Smart-home/car/device integrations must expose real provider-backed status and actions, not visual placeholders. Examples include Wi-Fi lights, Blink cameras, Dreame, BMW/My BMW, navigation context, and supported CarPlay capabilities.
+- Self-evolution is a core requirement: system observer, proactive improvement planner, development agent, isolated branches/sandbox, tests/security checks, guarded release and post-deploy monitoring. JARVIS may autonomously investigate and prepare reversible changes; production promotion, credential changes, destructive operations, and other critical actions remain gated by explicit approval.
+- The first release goal is a genuinely usable daily V1, not completion of every future integration. After V1 is in real use, continue improvements with JARVIS participating in its own development. Do not hold V1 hostage to the entire long-term roadmap.
+- Keep household accounts strictly isolated. The wife's account must not inherit the user's memories or preferences; her own opt-in and consent are required.
+
+## Next execution priorities after the successful run #198
+1. Inspect exact branch-head CI status and keep a green baseline before code changes.
+2. Continue the hybrid brain implementation plan without replacing the existing local bridge/MCP/camera/UI event plane; implement only behind tests and a rollback path.
+3. Build the missing one-click approval/action-intent lifecycle as a typed, auditable contract; no arbitrary model-authored code or raw shell execution.
+4. Add and test natural persona/greeting policy with contextual variation, without hardcoding repetitive salutations into every turn.
+5. Continue cross-account and stale-request tests for auth, memory UI, conversations, and turn cancellation.
+6. Prioritize V1 daily-use end-to-end validation (desktop + iPhone browser/PWA, voice, sign-in, conversation persistence, camera permissions, cloud/bridge fallback).
+7. Build provider-backed device and communication adapters only when the connector/API/auth path is verified; show unavailable rather than simulate connected.
+8. Implement Family CFO read/analysis first, then draft allocations and one-click approved execution via supported financial provider APIs.
+9. Design and implement self-evolution in isolated development environments with tests, reviewable diffs, approval-gated production release, and rollback.
+10. Keep PR #7 draft and do not merge or promote production without explicit user approval.
