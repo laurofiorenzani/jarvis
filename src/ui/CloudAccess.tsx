@@ -65,6 +65,7 @@ export function CloudAccess({ onConnected, onDisconnected, onResumeConversation,
   const [conversations, setConversations] = useState<ConversationSummary[]>([])
   const [conversationBusy, setConversationBusy] = useState(false)
   const [memoryContextEnabled, setMemoryContextEnabled] = useState(false)
+  const [memoryAutoCaptureEnabled, setMemoryAutoCaptureEnabled] = useState(false)
   const [providerStatus, setProviderStatus] = useState('MODEL STATUS NOT CHECKED')
   const [memoryContent, setMemoryContent] = useState('')
   const [memoryCategory, setMemoryCategory] = useState<MemoryCategory>('preference')
@@ -89,6 +90,7 @@ export function CloudAccess({ onConnected, onDisconnected, onResumeConversation,
     if (!isCurrentRuntime(runtime, generation)) return
     setMemories(saved.memories)
     setMemoryContextEnabled(preference.contextEnabled)
+    setMemoryAutoCaptureEnabled(preference.autoCaptureEnabled === true)
     setConversations(recentConversations.conversations)
     try {
       const recentCandidates = await runtime.api.listSemanticMemoryCandidates()
@@ -390,15 +392,42 @@ export function CloudAccess({ onConnected, onDisconnected, onResumeConversation,
     setMemoryContextEnabled(enabled)
     setMemoryBusy(true)
     try {
-      await runtime.api.setMemoryContextEnabled(enabled)
+      const updated = await runtime.api.setMemoryPreferences({ contextEnabled: enabled })
       if (!isCurrentRuntime(runtime, generation)) return
+      setMemoryContextEnabled(updated.contextEnabled)
+      setMemoryAutoCaptureEnabled(updated.autoCaptureEnabled)
       setMessage(enabled
         ? 'APPROVED MEMORY CONTEXT ENABLED · UP TO 20 RECORDS'
-        : 'APPROVED MEMORY CONTEXT DISABLED')
+        : 'APPROVED MEMORY CONTEXT AND AUTO-CAPTURE DISABLED')
     } catch (error) {
       if (isCurrentRuntime(runtime, generation)) {
         setMemoryContextEnabled(previous)
         setMessage(error instanceof Error ? error.message : 'Memory preference could not be saved.')
+      }
+    } finally {
+      if (runtimeGeneration.current === generation) setMemoryBusy(false)
+    }
+  }
+
+  const toggleMemoryAutoCapture = async (enabled: boolean) => {
+    const runtime = runtimeRef.current
+    const generation = runtimeGeneration.current
+    if (!runtime || memoryBusy || !memoryContextEnabled) return
+    const previous = memoryAutoCaptureEnabled
+    setMemoryAutoCaptureEnabled(enabled)
+    setMemoryBusy(true)
+    try {
+      const updated = await runtime.api.setMemoryPreferences({ autoCaptureEnabled: enabled })
+      if (!isCurrentRuntime(runtime, generation)) return
+      setMemoryContextEnabled(updated.contextEnabled)
+      setMemoryAutoCaptureEnabled(updated.autoCaptureEnabled)
+      setMessage(enabled
+        ? 'AUTOMATIC MEMORY SUGGESTIONS ENABLED · PENDING APPROVAL ONLY'
+        : 'AUTOMATIC MEMORY SUGGESTIONS DISABLED')
+    } catch (error) {
+      if (isCurrentRuntime(runtime, generation)) {
+        setMemoryAutoCaptureEnabled(previous)
+        setMessage(error instanceof Error ? error.message : 'Automatic memory preference could not be saved.')
       }
     } finally {
       if (runtimeGeneration.current === generation) setMemoryBusy(false)
@@ -479,6 +508,7 @@ export function CloudAccess({ onConnected, onDisconnected, onResumeConversation,
     setConversations([])
     setConversationBusy(false)
     setMemoryContextEnabled(false)
+    setMemoryAutoCaptureEnabled(false)
     setMemoryContent('')
     setMemoryCategory('preference')
     setMemoryBusy(false)
@@ -522,8 +552,13 @@ export function CloudAccess({ onConnected, onDisconnected, onResumeConversation,
                 onChange={(event) => void toggleMemoryContext(event.target.checked)} />
               Include approved memories in JARVIS replies
             </label>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8, letterSpacing: 0, opacity: memoryContextEnabled ? 1 : 0.55 }}>
+              <input type="checkbox" checked={memoryAutoCaptureEnabled} disabled={memoryBusy || !memoryContextEnabled}
+                onChange={(event) => void toggleMemoryAutoCapture(event.target.checked)} />
+              Automatically suggest memories from cloud conversations
+            </label>
             <div style={{ color: '#7797a2', marginBottom: 10, letterSpacing: 0 }}>
-              Off by default. When enabled, up to 20 non-expired saved memories and up to 8 relevant approved facts from prior conversations may be included with your message and sent to the configured AI provider. Pending candidates are never included.
+              Retrieval and automatic capture are separate account-level controls. Auto-capture is available only while memory context is enabled. It creates filtered, provenance-linked pending suggestions only — it never approves or saves a fact automatically. Sensitive content is excluded. Each household account controls its own setting.
             </div>
             <section aria-label="Pending semantic memory candidates" style={{ borderTop: '1px solid #214653', borderBottom: '1px solid #214653', padding: '10px 0', marginBottom: 12 }}>
               <strong style={{ display: 'block', color: '#83d9e8', marginBottom: 8 }}>MEMORY REVIEW QUEUE · {memoryCandidates.length}</strong>
