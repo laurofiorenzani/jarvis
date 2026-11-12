@@ -527,7 +527,11 @@ async function startElevenVoice(h: VoiceHandlers, cloudTranscribe?: CloudTranscr
     } catch (err) {
       diag.transcriptionFailures++
       transcriptionFailures++
-      const backoffMs = Math.min(60_000, 5_000 * (2 ** Math.min(transcriptionFailures - 1, 4)))
+      const retryAfterMs = err && typeof err === 'object' && 'retryAfterMs' in err &&
+        typeof (err as { retryAfterMs?: unknown }).retryAfterMs === 'number'
+        ? Math.min(300_000, Math.max(1_000, (err as { retryAfterMs: number }).retryAfterMs))
+        : undefined
+      const backoffMs = retryAfterMs ?? Math.min(60_000, 5_000 * (2 ** Math.min(transcriptionFailures - 1, 4)))
       transcribeBlockedUntil = Date.now() + backoffMs
       diag.lastError = `${String(err)} · retry in ${Math.ceil(backoffMs / 1000)}s`
       drop('speech service failed; automatic backoff active')
