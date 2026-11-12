@@ -3,6 +3,8 @@ import { digestArguments } from './action-approval.mjs'
 
 const DEFAULT_TTL_MS = 60_000
 const MAX_TTL_MS = 120_000
+const MAX_PENDING = 32
+const MAX_IDENTIFIER_LENGTH = 200
 
 /**
  * In-memory, single-use approval registry for one bridge process.
@@ -26,8 +28,16 @@ export class PendingApprovalRegistry {
 
   create({ sessionId, toolUseId, toolName, arguments: args, title, target, impact }) {
     if (this.#closed) throw new Error('Approval registry is closed.')
-    if (![sessionId, toolUseId, toolName].every((v) => typeof v === 'string' && v.length > 0)) {
-      throw new TypeError('Approval requires session, tool-use and tool identifiers.')
+    if (![sessionId, toolUseId, toolName].every((v) =>
+      typeof v === 'string' && v.length > 0 && v.length <= MAX_IDENTIFIER_LENGTH
+    )) {
+      throw new TypeError('Approval requires bounded session, tool-use and tool identifiers.')
+    }
+    if (this.#pending.size >= MAX_PENDING) throw new Error('Too many pending approvals.')
+    for (const entry of this.#pending.values()) {
+      if (entry.sessionId === sessionId && entry.toolUseId === toolUseId) {
+        throw new Error('An approval already exists for this tool invocation.')
+      }
     }
     const argumentsDigest = digestArguments(args)
     const id = randomUUID()
@@ -54,7 +64,10 @@ export class PendingApprovalRegistry {
   }
 
   resolve(decision) {
-    if (!decision || typeof decision !== 'object' || typeof decision.id !== 'string') return false
+    if (!decision || typeof decision !== 'object' || Array.isArray(decision)) return false
+    const allowedKeys = new Set(['version', 'id', 'sessionId', 'toolUseId', 'argumentsDigest', 'approve'])
+    if (Object.keys(decision).some((key) => !allowedKeys.has(key))) return false
+    if (typeof decision.id !== 'string') return false
     const entry = this.#pending.get(decision.id)
     if (!entry) return false
     if (this.now() >= entry.expiresAt) {
