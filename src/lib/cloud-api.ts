@@ -16,6 +16,7 @@ export type CloudMemoryPreference = { version: 1; contextEnabled: boolean }
 export type CloudConversation = { id: string; title: string | null; createdAt: string; updatedAt: string }
 export type CloudMessage = { id: string; role: 'user' | 'assistant'; content: string; createdAt: string }
 export type CloudTurnEvent =
+  | { type: 'turn.started'; conversationId: string; turnId: string }
   | { type: 'text.delta'; delta: string; conversationId: string; turnId: string }
   | { type: 'turn.completed'; assistantMessage: CloudMessage; conversationId: string; turnId: string }
   | { type: 'turn.cancelled'; conversationId: string; turnId: string }
