@@ -391,7 +391,7 @@ export function createSpeaker(): Speaker {
     // premium path automatic with no flag to set. It falls back to the browser
     // voice on any failure, so a student without a key still hears him speak.
     // `nativeBroken` latches on once the system voice has proved unusable.
-    if (USE_ELEVENLABS || caps().tts || nativeBroken) {
+    if (BACKEND === 'cloud' || USE_ELEVENLABS || caps().tts || nativeBroken) {
       // Recorded at the moment the tier is chosen rather than only when the
       // native voice latches over. Without this the panel reported 'system'
       // for a session that had spoken every one of its sentences through
