@@ -16,7 +16,7 @@ import { useStore, phaseColor, accentFor, type Phase } from '../store'
 
 /** Rings spin harder while JARVIS is working — reads as effort. */
 const spinFor: Record<Phase, number> = {
-  offline: 0.08, // barely turning — the machine is off
+  offline: 0.32, // the globe keeps a slow continuous 360-degree idle rotation
   boot: 3.2,
   dormant: 0.25,
   waking: 4.5,
