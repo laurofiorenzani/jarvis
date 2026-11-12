@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useStore } from '../store'
+import { CloudMemoryPanel } from './CloudMemoryPanel'
 
 type Area = 'core' | 'memory' | 'devices' | 'vision'
 const areas: { id: Area; label: string; code: string }[] = [
@@ -58,29 +59,8 @@ export function CommandCenter({ connected }: { connected: string[] }) {
 
         {area === 'memory' && (
           <div className="memory-constellation">
-            <div className="memory-graph" aria-label="Memory network concept">
-              <svg viewBox="0 0 520 250" role="img" aria-label="Conceptual network of memory domains">
-                <g className="memory-links">
-                  <path d="M260 125 L112 52 M260 125 L408 52 M260 125 L112 198 M260 125 L408 198 M260 125 L260 22 M260 125 L260 228 M112 52 L260 22 M408 52 L260 22 M112 198 L260 228 M408 198 L260 228" />
-                </g>
-                <g className="memory-nodes">
-                  <circle cx="260" cy="125" r="30" className="memory-hub" />
-                  <circle cx="112" cy="52" r="17" /><circle cx="408" cy="52" r="17" />
-                  <circle cx="112" cy="198" r="17" /><circle cx="408" cy="198" r="17" />
-                  <circle cx="260" cy="22" r="12" /><circle cx="260" cy="228" r="12" />
-                </g>
-                <g className="memory-labels">
-                  <text x="260" y="130" textAnchor="middle">CORE</text>
-                  <text x="112" y="28" textAnchor="middle">PROJECTS</text>
-                  <text x="408" y="28" textAnchor="middle">PEOPLE</text>
-                  <text x="112" y="232" textAnchor="middle">DECISIONS</text>
-                  <text x="408" y="232" textAnchor="middle">PREFERENCES</text>
-                  <text x="260" y="9" textAnchor="middle">KNOWLEDGE</text>
-                  <text x="260" y="249" textAnchor="middle">SOURCES</text>
-                </g>
-              </svg>
-            </div>
-            <div className="command-note"><b>3D KNOWLEDGE CONSTELLATION · 24 DOMAINS</b><span>PROJECTS · PEOPLE · DECISIONS · RESEARCH · SOURCES · PREFERENCES · DOCUMENTS · SYSTEMS · FINANCE · DEVICES · AUTOMATIONS · CONVERSATIONS · GOALS · LEARNING · MEDIA · LOCATIONS · WORKFLOWS · INTEGRATIONS · NOTES · REFERENCES · PLANS · KNOWLEDGE · TASKS · HISTORY. Personal records appear only after account opt-in and approval.</span></div>
+            <div className="command-note"><b>ACCOUNT-SCOPED MEMORY</b><span>Sign in to view this account's pending facts, manage explicit memory consent, and review approved-memory settings. The 3D constellation remains a visual map of knowledge domains, not a claim that records are already connected.</span></div>
+            <CloudMemoryPanel />
           </div>
         )}
 
