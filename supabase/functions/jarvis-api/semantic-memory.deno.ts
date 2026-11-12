@@ -8,6 +8,7 @@ import {
   isSafeAutoMemoryContent,
   isSafeAutoMemorySource,
   parseAutoMemoryCandidates,
+  mergeSemanticMemoryPreferences,
 } from './semantic-memory.ts'
 
 function equal(actual: unknown, expected: unknown, message: string) {
@@ -93,4 +94,22 @@ Deno.test('automatic extraction skips a source turn containing sensitive data', 
   equal(isSafeAutoMemorySource('My salary and bank account balance are private'), false, 'financial source')
   equal(isSafeAutoMemorySource('My medical diagnosis is private'), false, 'health source')
   equal(isSafeAutoMemorySource('Contact me at person@example.com'), false, 'contact detail')
+})
+
+Deno.test('automatic capture consent is subordinate to memory retrieval consent', () => {
+  const current = { contextEnabled: true, autoCaptureEnabled: true }
+  const disabled = mergeSemanticMemoryPreferences(current, { contextEnabled: false })
+  equal(disabled.contextEnabled, false, 'retrieval disabled')
+  equal(disabled.autoCaptureEnabled, false, 'auto-capture disabled with retrieval')
+  const enabled = mergeSemanticMemoryPreferences(
+    { contextEnabled: true, autoCaptureEnabled: false },
+    { autoCaptureEnabled: true },
+  )
+  equal(enabled.contextEnabled, true, 'retrieval preserved')
+  equal(enabled.autoCaptureEnabled, true, 'auto-capture enabled')
+  const blocked = mergeSemanticMemoryPreferences(
+    { contextEnabled: false, autoCaptureEnabled: false },
+    { autoCaptureEnabled: true },
+  )
+  equal(blocked.autoCaptureEnabled, false, 'auto-capture cannot bypass retrieval consent')
 })
