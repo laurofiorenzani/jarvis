@@ -6,6 +6,8 @@
  * Every request is scoped by the bearer token; the API resolves the user ID
  * from that token and enforces ownership in the database.
  */
+import { takeSseFrames, sseFrameData } from './sse-frames.js'
+
 const VERSION = 1
 
 const SUPABASE_URL = (import.meta.env.VITE_SUPABASE_URL as string | undefined)?.trim().replace(/\/$/, '')
@@ -49,11 +51,7 @@ function endpoint(path: string): string {
   return `${SUPABASE_URL}/functions/v1/${FUNCTION_NAME}${path.startsWith('/') ? path : `/${path}`}`
 }
 
-async function request<T>(
-  path: string,
-  accessToken: string,
-  init: RequestInit = {},
-): Promise<T> {
+async function request<T>(path: string, accessToken: string, init: RequestInit = {}): Promise<T> {
   if (!cloudApiConfigured()) throw new Error('Cloud API is not configured for this deployment.')
   if (!accessToken.trim()) throw new Error('Sign in to use JARVIS Cloud.')
   const response = await fetch(endpoint(path), {
@@ -72,16 +70,14 @@ async function request<T>(
     const envelope = payload && typeof payload === 'object' && 'error' in payload
       ? (payload as { error?: { code?: string; message?: string; retryable?: boolean } }).error
       : undefined
-    const details = envelope
-    const error = new Error(details?.message || `Cloud request failed (${response.status}).`) as CloudApiError
+    const error = new Error(envelope?.message || `Cloud request failed (${response.status}).`) as CloudApiError
     error.status = response.status
-    error.code = details?.code
-    error.retryable = details?.retryable
+    error.code = envelope?.code
+    error.retryable = envelope?.retryable
     throw error
   }
   return payload as T
 }
-
 
 async function streamTurn(
   token: string,
@@ -112,92 +108,61 @@ async function streamTurn(
   const reader = response.body.getReader()
   const decoder = new TextDecoder()
   let buffer = ''
+  const dispatch = (frame: string) => {
+    const data = sseFrameData(frame)
+    if (!data) return
+    const event = JSON.parse(data) as CloudTurnEvent
+    onEvent(event)
+    if (event.type === 'turn.failed') throw new Error(event.message || 'Cloud turn failed.')
+  }
   try {
     while (true) {
       const { value, done } = await reader.read()
       if (done) break
       buffer += decoder.decode(value, { stream: true })
-      let boundary = buffer.indexOf('\n\n')
-      while (boundary >= 0) {
-        const frame = buffer.slice(0, boundary)
-        buffer = buffer.slice(boundary + 2)
-        const data = frame.split('\n').filter((line) => line.startsWith('data:')).map((line) => line.slice(5).trim()).join('\n')
-        if (data) {
-          const event = JSON.parse(data) as CloudTurnEvent
-          onEvent(event)
-          if (event.type === 'turn.failed') throw new Error(event.message || 'Cloud turn failed.')
-        }
-        boundary = buffer.indexOf('\n\n')
-      }
+      const parsed = takeSseFrames(buffer)
+      buffer = parsed.remainder
+      for (const frame of parsed.frames) dispatch(frame)
     }
+    buffer += decoder.decode()
+    const final = takeSseFrames(buffer, true)
+    for (const frame of final.frames) dispatch(frame)
   } finally {
     reader.releaseLock()
   }
 }
 
 export const cloudApi = {
-  createConversation: (token: string) =>
-    request<{ version: 1; conversation: CloudConversation }>('/conversations', token, { method: 'POST' }),
-
-  listConversations: (token: string) =>
-    request<{ version: 1; conversations: CloudConversation[] }>('/conversations', token),
-
-  getConversation: (token: string, id: string) =>
-    request<{ version: 1; conversation: CloudConversation; messages: CloudMessage[] }>(
-      `/conversations/${encodeURIComponent(id)}`, token,
-    ),
-
-  deleteConversation: (token: string, id: string) =>
-    request<{ version: 1; deleted: boolean }>(
-      `/conversations/${encodeURIComponent(id)}`, token, { method: 'DELETE' },
-    ),
-
+  createConversation: (token: string) => request<{ version: 1; conversation: CloudConversation }>('/conversations', token, { method: 'POST' }),
+  listConversations: (token: string) => request<{ version: 1; conversations: CloudConversation[] }>('/conversations', token),
+  getConversation: (token: string, id: string) => request<{ version: 1; conversation: CloudConversation; messages: CloudMessage[] }>(
+    `/conversations/${encodeURIComponent(id)}`, token,
+  ),
+  deleteConversation: (token: string, id: string) => request<{ version: 1; deleted: boolean }>(
+    `/conversations/${encodeURIComponent(id)}`, token, { method: 'DELETE' },
+  ),
   streamTurn,
-
-  cancelTurn: (token: string, conversationId: string, turnId: string) =>
-    request<{ version: 1; cancelled: boolean }>('/turns/cancel', token, {
-      method: 'POST',
-      body: JSON.stringify({ version: VERSION, conversationId, turnId }),
-    }),
-  providerStatus: (token: string) =>
-    request<{ version: 1; configured: boolean; providers: { name: string; model: string }[] }>('/provider-status', token),
-
-  getMemoryPreference: (token: string) =>
-    request<CloudMemoryPreference>('/memory-preferences', token),
-
-  setMemoryPreference: (token: string, contextEnabled: boolean) =>
-    request<CloudMemoryPreference>('/memory-preferences', token, {
-      method: 'PUT',
-      body: JSON.stringify({ version: VERSION, contextEnabled }),
-    }),
-
-  listMemoryCandidates: (token: string) =>
-    request<{ version: 1; candidates: CloudMemoryCandidate[] }>('/semantic-memory/candidates', token),
-
-  decideMemoryCandidate: (token: string, id: string, decision: 'approved' | 'rejected') =>
-    request<{ version: 1; candidate: CloudMemoryCandidate }>(
-      `/semantic-memory/candidates/${encodeURIComponent(id)}`,
-      token,
-      { method: 'PUT', body: JSON.stringify({ version: VERSION, decision }) },
-    ),
-
+  cancelTurn: (token: string, conversationId: string, turnId: string) => request<{ version: 1; cancelled: boolean }>('/turns/cancel', token, {
+    method: 'POST', body: JSON.stringify({ version: VERSION, conversationId, turnId }),
+  }),
+  providerStatus: (token: string) => request<{ version: 1; configured: boolean; providers: { name: string; model: string }[] }>('/provider-status', token),
+  getMemoryPreference: (token: string) => request<CloudMemoryPreference>('/memory-preferences', token),
+  setMemoryPreference: (token: string, contextEnabled: boolean) => request<CloudMemoryPreference>('/memory-preferences', token, {
+    method: 'PUT', body: JSON.stringify({ version: VERSION, contextEnabled }),
+  }),
+  listMemoryCandidates: (token: string) => request<{ version: 1; candidates: CloudMemoryCandidate[] }>('/semantic-memory/candidates', token),
+  decideMemoryCandidate: (token: string, id: string, decision: 'approved' | 'rejected') => request<{ version: 1; candidate: CloudMemoryCandidate }>(
+    `/semantic-memory/candidates/${encodeURIComponent(id)}`, token,
+    { method: 'PUT', body: JSON.stringify({ version: VERSION, decision }) },
+  ),
   searchApprovedMemory: (token: string, query: string, limit = 8) => {
     const params = new URLSearchParams({ q: query, limit: String(Math.max(1, Math.min(8, Math.floor(limit)))) })
     return request<{ version: 1; contextEnabled: boolean; results: CloudMemorySearchResult[] }>(
-      `/semantic-memory/search?${params.toString()}`,
-      token,
+      `/semantic-memory/search?${params.toString()}`, token,
     )
   },
-
-  createMemoryCandidate: (token: string, candidate: {
-    factType: string
-    content: string
-    sourceConversationId?: string
-    sourceMessageIds?: string[]
-  }) =>
-    request<{ version: 1; candidate: CloudMemoryCandidate }>(
-      '/semantic-memory/candidates',
-      token,
-      { method: 'POST', body: JSON.stringify({ version: VERSION, ...candidate }) },
-    ),
+  createMemoryCandidate: (token: string, candidate: { factType: string; content: string; sourceConversationId?: string; sourceMessageIds?: string[] }) => request<{ version: 1; candidate: CloudMemoryCandidate }>(
+    '/semantic-memory/candidates', token,
+    { method: 'POST', body: JSON.stringify({ version: VERSION, ...candidate }) },
+  ),
 }
