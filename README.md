@@ -1,3 +1,5 @@
+> **Project authority / continuity:** The authoritative decisions, current architecture, verified status, branch inventory, risks and handoff instructions are in [JARVIS_MASTER_RECORD.md](./JARVIS_MASTER_RECORD.md). Read it before making changes. This repository is the canonical JARVIS application project. The legacy setup notes below describe the upstream prototype and are not the current product contract: cloud-first, existing-account preserving, multilingual, no user-facing Shortcuts, and current amber HUD are mandatory.
+
 # J.A.R.V.I.S.
 
 A browser voice assistant with an Iron Man holographic interface. Say
