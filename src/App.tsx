@@ -747,7 +747,20 @@ export default function App() {
         <Hud />
       <CloudAccess
         onConnected={() => store.getState().setConnected(connectedLabels())}
-        onDisconnected={() => { cloudTranscriber.current = null; store.getState().setConnected(connectedLabels()) }}
+        onDisconnected={() => {
+          // A household account switch is a hard UI boundary: clear every
+          // account-scoped surface before another identity can connect.
+          history.current = []
+          cloudTranscriber.current = null
+          setCloudSpeechProvider(null)
+          setMemoryConfirmations([])
+          useStore.setState({ turns: [] })
+          store.getState().clearPanels()
+          store.getState().clearBlades()
+          store.getState().setActiveTool(null)
+          store.getState().setCaption('')
+          store.getState().setConnected(connectedLabels())
+        }}
         onSpeechApiReady={(transcribe) => { cloudTranscriber.current = transcribe }}
         onTtsApiReady={(synthesize) => { setCloudSpeechProvider(synthesize) }}
         onResumeConversation={(messages) => {
