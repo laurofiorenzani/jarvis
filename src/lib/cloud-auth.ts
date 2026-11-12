@@ -33,6 +33,9 @@ type AuthPayload = {
 
 const listeners = new Set<(session: CloudSession | null) => void>()
 let refreshInFlight: Promise<CloudSession | null> | null = null
+// Invalidates in-flight sign-in/refresh/sign-out completions after an identity
+// transition. A late response must never overwrite a newer household session.
+let authRevision = 0
 
 function readSession(): CloudSession | null {
   if (typeof localStorage === 'undefined') return null
@@ -98,7 +101,9 @@ export const cloudAuth = {
   async signIn(email: string, password: string): Promise<CloudSession> {
     const cleanEmail = email.trim().toLowerCase()
     if (!cleanEmail || !password) throw new Error('Enter your email and password.')
+    const revision = ++authRevision
     const payload = await authRequest('token?grant_type=password', { email: cleanEmail, password })
+    if (revision !== authRevision) throw new Error('Sign-in was superseded by a newer account action.')
     return saveSession(payload)
   },
 
@@ -107,16 +112,25 @@ export const cloudAuth = {
     refreshInFlight = (async () => {
       const current = readSession()
       if (!current?.refresh_token) return null
+      const revision = authRevision
       try {
         const payload = await authRequest('token?grant_type=refresh_token', { refresh_token: current.refresh_token })
+        const latest = readSession()
+        if (revision !== authRevision || latest?.user.id !== current.user.id ||
+            latest.refresh_token !== current.refresh_token) return null
         return saveSession(payload)
       } catch (error) {
         // A transient network/provider error must not destroy a still-useful
         // refresh token. Only clear on explicit invalid/expired credentials.
-        const message = error instanceof Error ? error.message : ''
-        if (/refresh token|invalid grant|session.*not found/i.test(message)) {
-          localStorage.removeItem(storageKey)
-          emit(null)
+        // Also never clear a newer session created while this refresh was pending.
+        const latest = readSession()
+        if (revision === authRevision && latest?.user.id === current.user.id &&
+            latest.refresh_token === current.refresh_token) {
+          const message = error instanceof Error ? error.message : ''
+          if (/refresh token|invalid grant|session.*not found/i.test(message)) {
+            localStorage.removeItem(storageKey)
+            emit(null)
+          }
         }
         throw error
       } finally {
@@ -136,6 +150,13 @@ export const cloudAuth = {
 
   async signOut(): Promise<void> {
     const session = readSession()
+    const revision = ++authRevision
+    // Clear local identity immediately; a delayed network logout must not leave
+    // the old account visible or delete a newly signed-in account's session.
+    if (session) {
+      localStorage.removeItem(storageKey)
+      emit(null)
+    }
     try {
       if (session?.access_token && projectUrl && publicKey) {
         await fetch(`${projectUrl}/auth/v1/logout`, {
@@ -145,8 +166,12 @@ export const cloudAuth = {
         })
       }
     } finally {
-      localStorage.removeItem(storageKey)
-      emit(null)
+      const latest = readSession()
+      if (revision === authRevision && latest?.user.id === session?.user.id &&
+          latest.refresh_token === session?.refresh_token) {
+        localStorage.removeItem(storageKey)
+        emit(null)
+      }
     }
   },
 }
