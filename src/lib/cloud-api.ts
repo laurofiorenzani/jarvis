@@ -14,7 +14,7 @@ const SUPABASE_URL = (import.meta.env.VITE_SUPABASE_URL as string | undefined)?.
 const SUPABASE_PUBLIC_KEY = (import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined)?.trim()
 const FUNCTION_NAME = ((import.meta.env.VITE_SUPABASE_FUNCTION_NAME as string | undefined)?.trim() || 'jarvis-api')
 
-export type CloudMemoryPreference = { version: 1; contextEnabled: boolean }
+export type CloudMemoryPreference = { version: 1; contextEnabled: boolean; autoCaptureEnabled: boolean }
 export type CloudConversation = { id: string; title: string | null; createdAt: string; updatedAt: string }
 export type CloudMessage = { id: string; role: 'user' | 'assistant'; content: string; createdAt: string }
 export type CloudTurnEvent =
@@ -128,8 +128,11 @@ export const cloudApi = {
   }),
   providerStatus: (token: string) => request<{ version: 1; configured: boolean; providers: { name: string; model: string }[] }>('/provider-status', token),
   getMemoryPreference: (token: string) => request<CloudMemoryPreference>('/memory-preferences', token),
-  setMemoryPreference: (token: string, contextEnabled: boolean) => request<CloudMemoryPreference>('/memory-preferences', token, {
-    method: 'PUT', body: JSON.stringify({ version: VERSION, contextEnabled }),
+  setMemoryPreference: (
+    token: string,
+    preference: Partial<Pick<CloudMemoryPreference, 'contextEnabled' | 'autoCaptureEnabled'>>,
+  ) => request<CloudMemoryPreference>('/memory-preferences', token, {
+    method: 'PUT', body: JSON.stringify({ version: VERSION, ...preference }),
   }),
   listMemoryCandidates: (token: string) => request<{ version: 1; candidates: CloudMemoryCandidate[] }>('/semantic-memory/candidates', token),
   decideMemoryCandidate: (token: string, id: string, decision: 'approved' | 'rejected') => request<{ version: 1; candidate: CloudMemoryCandidate }>(
