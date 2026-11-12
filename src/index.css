@@ -3,7 +3,7 @@
 :root {
   /* The interface cyan. `--accent` is re-declared per phase and per panel;
      this one stays put and is what anything neutral pins itself to. */
-  --interface: #a78bfa;
+  --interface: #ff9b3d;
   --accent: var(--interface);
   --bg: #01060c;
   font-family: 'Chakra Petch', system-ui, sans-serif;
@@ -34,8 +34,8 @@ body::after {
     radial-gradient(ellipse at center, transparent 30%, rgba(0, 0, 0, 0.55) 100%),
     repeating-linear-gradient(
       0deg,
-      rgba(167, 139, 250, 0.028) 0px,
-      rgba(0, 229, 255, 0.028) 1px,
+      rgba(255, 155, 61, 0.028) 0px,
+      rgba(255, 190, 120, 0.028) 1px,
       transparent 1px,
       transparent 3px
     );
@@ -1944,4 +1944,180 @@ kbd {
 .text-composer button:active { background: color-mix(in srgb, var(--accent) 24%, transparent) }
 @media (max-height: 620px) {
   .text-composer { bottom: max(3.6rem, calc(env(safe-area-inset-bottom) + 2.8rem)) }
+}
+
+
+/* ---------------------------------------------------------------- JARVIS command center */
+.command-center {
+  position: absolute;
+  z-index: 8;
+  top: 112px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(920px, calc(100vw - 36px));
+  max-height: min(62vh, 620px);
+  color: #ffc477;
+  text-transform: none;
+  letter-spacing: .04em;
+  pointer-events: auto;
+  font-family: 'JetBrains Mono', monospace;
+}
+.command-nav { display:flex; justify-content:center; flex-wrap:wrap; gap:6px; margin-bottom:8px; }
+.command-tab {
+  border:1px solid rgba(255,166,73,.24); background:rgba(15,10,7,.76);
+  color:rgba(255,195,130,.66); padding:9px 12px; font:inherit; font-size:9px;
+  letter-spacing:.1em; cursor:pointer; backdrop-filter:blur(12px);
+}
+.command-tab span { color:#ff9e3d; margin-right:8px; }
+.command-tab.active { border-color:rgba(255,166,73,.8); color:#fff0d7; background:rgba(105,48,10,.36); box-shadow:0 0 22px rgba(255,132,35,.13), inset 0 0 18px rgba(255,132,35,.08); }
+.command-panel {
+  border:1px solid rgba(255,166,73,.32); background:linear-gradient(135deg,rgba(18,12,8,.92),rgba(5,8,10,.91));
+  box-shadow:0 12px 50px rgba(0,0,0,.48),0 0 34px rgba(255,130,35,.08);
+  backdrop-filter:blur(18px); padding:16px; overflow:auto; max-height:calc(min(62vh, 620px) - 42px);
+}
+.command-panel-head { display:flex; justify-content:space-between; align-items:center; gap:12px; border-bottom:1px solid rgba(255,166,73,.18); padding-bottom:11px; font-size:9px; letter-spacing:.16em; color:#ffbd72; }
+.command-live { color:#ffd5a1; white-space:nowrap; }
+.command-live i { display:inline-block; width:6px; height:6px; border-radius:50%; background:#ff9d3e; box-shadow:0 0 10px #ff9d3e; margin-right:6px; }
+.core-overview,.vision-overview { display:grid; grid-template-columns:minmax(170px,1fr) minmax(200px,1fr); align-items:center; gap:20px; padding:12px 0 4px; }
+.core-orbit { position:relative; width:190px; height:190px; margin:auto; display:grid; place-items:center; }
+.core-orbit-ring { position:absolute; inset:12px; border:1px solid rgba(255,155,65,.62); border-radius:50%; box-shadow:0 0 16px rgba(255,133,43,.18),inset 0 0 16px rgba(255,133,43,.08); }
+.ring-a { transform:rotateX(68deg) rotateZ(20deg); animation:jarvis-orbit 16s linear infinite; }
+.ring-b { inset:27px; transform:rotateY(68deg) rotateZ(-28deg); border-style:dashed; animation:jarvis-orbit 22s linear infinite reverse; }
+.ring-c { inset:43px; border-style:dotted; animation:jarvis-orbit 30s linear infinite; }
+.core-nucleus { width:58px;height:58px;border:1px solid #ffb15c;border-radius:50%;display:grid;place-items:center;font:28px 'Chakra Petch',sans-serif;color:#fff0d8;text-shadow:0 0 18px #ff9a3c;box-shadow:0 0 34px rgba(255,142,55,.35),inset 0 0 24px rgba(255,142,55,.22);background:radial-gradient(circle,rgba(255,174,85,.24),rgba(30,14,5,.85));}
+.core-node { position:absolute;width:7px;height:7px;border-radius:50%;background:#ffd09a;box-shadow:0 0 13px #ff9b43; }
+.node-a{top:8px;left:90px}.node-b{right:8px;top:91px}.node-c{bottom:8px;left:90px}.node-d{left:8px;top:91px}
+@keyframes jarvis-orbit { to { transform:rotate(360deg) rotateX(68deg); } }
+.core-readouts { display:grid; gap:12px; }
+.core-readouts div { border-left:1px solid rgba(255,160,74,.48); padding:4px 0 4px 12px; min-width:0; }
+.core-readouts small,.device-state { display:block; color:rgba(255,185,117,.58); font-size:8px; letter-spacing:.14em; margin-bottom:5px; }
+.core-readouts strong { display:block; color:#ffe0bb; font-size:11px; font-weight:400; overflow-wrap:anywhere; }
+.memory-constellation { display:grid; grid-template-columns:1.4fr 1fr; gap:16px; align-items:center; padding-top:10px; }
+.memory-graph svg { width:100%; height:auto; overflow:visible; }
+.memory-links path { stroke:rgba(255,159,75,.38); stroke-width:1; stroke-dasharray:4 5; fill:none; }
+.memory-nodes circle { fill:#281609; stroke:#ffab55; stroke-width:1.5; filter:drop-shadow(0 0 5px rgba(255,143,55,.5)); }
+.memory-nodes .memory-hub { fill:#7b390e; stroke:#ffd09a; stroke-width:2; }
+.memory-labels { fill:#ffc78e; font:9px 'JetBrains Mono',monospace; letter-spacing:1px; }
+.command-note { display:grid; gap:9px; border-left:1px solid rgba(255,159,75,.5); padding:8px 12px; font-size:10px; line-height:1.6; color:rgba(255,211,167,.72); }
+.command-note b { color:#ffc078; font-size:9px; letter-spacing:.12em; }
+.device-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:9px; padding-top:14px; }
+.device-card { min-width:0; display:grid; gap:7px; padding:12px; border:1px solid rgba(255,160,74,.2); background:rgba(255,147,48,.035); }
+.device-glyph { font-size:22px; color:#ffad59; text-shadow:0 0 12px rgba(255,146,54,.6); }
+.device-card b { font-size:10px; color:#ffe0bb; letter-spacing:.1em; }
+.device-state { margin:0; font-size:8px; }
+.device-state.is-connected { color:#b7dba5; }
+.device-detail { color:rgba(255,199,147,.56); font-size:8px; overflow-wrap:anywhere; }
+.vision-reticle { width:170px;height:170px;border:1px solid rgba(255,158,65,.65);border-radius:50%;margin:auto;display:grid;place-items:center;position:relative;box-shadow:0 0 30px rgba(255,137,45,.12),inset 0 0 30px rgba(255,137,45,.08); }
+.vision-reticle:before,.vision-reticle:after { content:'';position:absolute;border:1px dashed rgba(255,158,65,.42);border-radius:50%;inset:15px; }
+.vision-reticle:after { inset:34px; }
+.vision-reticle span { width:42px;height:42px;border:1px solid #ffbd77;border-radius:50%;box-shadow:0 0 20px rgba(255,145,51,.4); }
+.vision-reticle i { position:absolute;width:100%;height:1px;background:linear-gradient(90deg,transparent,#ffae5d,transparent); }
+.vision-reticle b { position:absolute;bottom:-22px;font-size:8px;font-weight:400;letter-spacing:.18em; }
+@media(max-width:680px) {
+ .command-center { top:86px; width:calc(100vw - 20px); max-height:58vh; }
+ .command-nav { justify-content:stretch; display:grid; grid-template-columns:1fr 1fr; }
+ .command-tab { padding:8px 6px; font-size:8px; }
+ .command-panel { padding:11px; max-height:calc(58vh - 70px); }
+ .core-overview,.vision-overview,.memory-constellation { grid-template-columns:1fr; gap:12px; }
+ .core-orbit { width:145px;height:145px; }
+ .device-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
+ .memory-graph svg { max-height:180px; }
+ .command-note { font-size:9px; }
+}
+
+
+/* Reference-led presentation: the reactor remains the hero, not a dashboard card. */
+.command-center {
+  top: 76px;
+  left: 0;
+  transform: none;
+  width: 100%;
+  max-height: none;
+  padding: 0 clamp(14px, 3vw, 42px);
+  pointer-events: none;
+}
+.command-nav {
+  position: absolute;
+  top: 0;
+  right: clamp(14px, 3vw, 42px);
+  display: flex;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 5px;
+  max-width: min(520px, 72vw);
+  margin: 0;
+  pointer-events: auto;
+}
+.command-tab {
+  padding: 7px 9px;
+  border-color: rgba(255,174,83,.24);
+  background: rgba(8,7,5,.28);
+  backdrop-filter: blur(5px);
+  font-size: 8px;
+}
+.command-tab.active {
+  background: rgba(255,145,45,.09);
+  box-shadow: 0 0 18px rgba(255,132,35,.12);
+}
+.command-panel {
+  position: absolute;
+  top: 42px;
+  right: clamp(14px, 3vw, 42px);
+  width: min(310px, 35vw);
+  max-height: min(48vh, 460px);
+  padding: 10px 12px;
+  overflow: auto;
+  border: 1px solid rgba(255,166,73,.18);
+  background: linear-gradient(135deg,rgba(13,9,5,.48),rgba(5,8,10,.32));
+  box-shadow: 0 0 28px rgba(255,130,35,.06);
+  backdrop-filter: blur(7px);
+}
+.command-panel-head {
+  padding-bottom: 7px;
+  font-size: 8px;
+}
+.core-overview,.vision-overview {
+  display: block;
+  padding: 8px 0 0;
+}
+.core-orbit { display: none; }
+.core-readouts { grid-template-columns: 1fr 1fr; gap: 8px 10px; }
+.core-readouts div { padding-left: 8px; }
+.core-readouts small,.device-state { font-size: 7px; }
+.core-readouts strong { font-size: 9px; line-height: 1.35; }
+.memory-constellation { display: block; padding-top: 6px; }
+.memory-graph svg { max-height: 160px; }
+.command-note { font-size: 8px; line-height: 1.45; }
+.device-grid { grid-template-columns: 1fr 1fr; gap: 6px; padding-top: 8px; }
+.device-card { padding: 8px; gap: 5px; background: rgba(255,147,48,.025); }
+.device-glyph { font-size: 16px; }
+.device-card b { font-size: 8px; }
+.device-detail { font-size: 7px; }
+.vision-reticle { width: 100px; height: 100px; margin: 8px auto 24px; }
+.vision-reticle b { font-size: 7px; bottom: -17px; }
+.vision-overview .core-readouts { margin-top: 8px; }
+@media(max-width:680px) {
+ .command-center { top: 72px; padding: 0 10px; }
+ .command-nav {
+   top: 0; left: 10px; right: 10px; max-width: none;
+   display: flex; justify-content: center; gap: 4px;
+ }
+ .command-tab { padding: 7px 6px; font-size: 7px; letter-spacing: .04em; }
+ .command-tab span { margin-right: 4px; }
+ .command-panel {
+   top: auto; right: 10px; bottom: 78px;
+   width: min(220px, 62vw); max-height: 34vh;
+   padding: 8px; background: rgba(7,6,4,.36);
+ }
+ .command-panel-head { font-size: 7px; }
+ .core-readouts { grid-template-columns: 1fr 1fr; gap: 6px; }
+ .core-readouts small { font-size: 6px; }
+ .core-readouts strong { font-size: 8px; }
+ .memory-graph svg { max-height: 112px; }
+ .command-note { padding: 5px 8px; font-size: 7px; }
+ .device-grid { grid-template-columns: 1fr 1fr; }
+ .device-card { padding: 6px; }
+ .device-card b { font-size: 7px; }
+ .device-state,.device-detail { font-size: 6px; }
+ .vision-reticle { width: 74px; height: 74px; }
 }
