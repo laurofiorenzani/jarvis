@@ -80,7 +80,7 @@ export function CommandCenter({ connected }: { connected: string[] }) {
                 </g>
               </svg>
             </div>
-            <div className="command-note"><b>MEMORY GRAPH — VISUAL FOUNDATION</b><span>Real memory records will populate this network only after account opt-in and retrieval integration. No sample nodes are being represented as stored personal memories.</span></div>
+            <div className="command-note"><b>3D KNOWLEDGE CONSTELLATION · 24 DOMAINS</b><span>PROJECTS · PEOPLE · DECISIONS · RESEARCH · SOURCES · PREFERENCES · DOCUMENTS · SYSTEMS · FINANCE · DEVICES · AUTOMATIONS · CONVERSATIONS · GOALS · LEARNING · MEDIA · LOCATIONS · WORKFLOWS · INTEGRATIONS · NOTES · REFERENCES · PLANS · KNOWLEDGE · TASKS · HISTORY. Personal records appear only after account opt-in and approval.</span></div>
           </div>
         )}
 
