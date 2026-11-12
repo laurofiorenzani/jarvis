@@ -102,7 +102,7 @@ select throws_ok(
   '42501', null,
   'authenticated user cannot bypass the review API with a direct memory insert'
 );
-do $
+do $$
 declare affected integer;
 begin
   update public.jarvis_memory_facts set content = 'Cross-account mutation'
@@ -110,7 +110,7 @@ begin
   get diagnostics affected = row_count;
   if affected <> 0 then raise exception 'user A modified user B memory rows'; end if;
 end;
-$;
+$$;
 select pass('user A cannot update user B memory rows');
 
 select set_config('request.jwt.claim.sub', '00000000-0000-4000-8000-000000000002', true);
@@ -134,7 +134,7 @@ select throws_ok(
   '42501', null,
   'second authenticated user also cannot bypass the review API with a direct memory insert'
 );
-do $
+do $$
 declare affected integer;
 begin
   update public.jarvis_memory_facts set content = 'Cross-account mutation'
@@ -142,7 +142,7 @@ begin
   get diagnostics affected = row_count;
   if affected <> 0 then raise exception 'user B modified user A memory rows'; end if;
 end;
-$;
+$$;
 select pass('user B cannot update user A memory rows');
 
 reset role;
