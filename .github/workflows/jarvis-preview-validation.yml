@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - work/jarvis-amber-production-track
+      - work/jarvis-voice-locale
   pull_request:
     branches:
       - main

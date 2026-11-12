@@ -79,6 +79,57 @@ async function request<T>(path: string, accessToken: string, init: RequestInit =
   return payload as T
 }
 
+async function transcribeAudio(token: string, audio: Blob, signal?: AbortSignal): Promise<string> {
+  if (!cloudApiConfigured()) throw new Error('Cloud API is not configured for this deployment.')
+  if (!token.trim()) throw new Error('Sign in to use JARVIS Cloud speech.')
+  const mimeType = (audio.type || 'audio/webm').split(';')[0].trim().toLowerCase()
+  const response = await fetch(endpoint('/stt'), {
+    method: 'POST',
+    headers: {
+      apikey: SUPABASE_PUBLIC_KEY!,
+      Authorization: `Bearer ${token}`,
+      'x-jarvis-api-version': String(VERSION),
+      'Content-Type': mimeType,
+    },
+    body: audio,
+    cache: 'no-store',
+    signal,
+  })
+  const payload = await response.json().catch(() => null) as { text?: string; error?: { message?: string } } | null
+  if (!response.ok) {
+    const error = new Error(payload?.error?.message || `Cloud transcription failed (${response.status}).`) as CloudApiError
+    error.status = response.status
+    throw error
+  }
+  return (payload?.text || '').trim()
+}
+
+async function synthesizeAudio(token: string, text: string, signal?: AbortSignal): Promise<Blob> {
+  if (!cloudApiConfigured()) throw new Error('Cloud API is not configured for this deployment.')
+  if (!token.trim()) throw new Error('Sign in to use JARVIS Cloud speech.')
+  const response = await fetch(endpoint('/tts'), {
+    method: 'POST',
+    headers: {
+      apikey: SUPABASE_PUBLIC_KEY!,
+      Authorization: `Bearer ${token}`,
+      'x-jarvis-api-version': String(VERSION),
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ version: VERSION, text }),
+    cache: 'no-store',
+    signal,
+  })
+  if (!response.ok) {
+    const payload = await response.json().catch(() => null) as { error?: { message?: string } } | null
+    const error = new Error(payload?.error?.message || `Cloud speech synthesis failed (${response.status}).`) as CloudApiError
+    error.status = response.status
+    throw error
+  }
+  const audio = await response.blob()
+  if (!audio.type.startsWith('audio/') || audio.size < 44) throw new Error('Cloud speech synthesis returned invalid audio.')
+  return audio
+}
+
 async function streamTurn(
   token: string,
   conversationId: string,
@@ -123,6 +174,8 @@ export const cloudApi = {
     `/conversations/${encodeURIComponent(id)}`, token, { method: 'DELETE' },
   ),
   streamTurn,
+  transcribeAudio,
+  synthesizeAudio,
   cancelTurn: (token: string, conversationId: string, turnId: string) => request<{ version: 1; cancelled: boolean }>('/turns/cancel', token, {
     method: 'POST', body: JSON.stringify({ version: VERSION, conversationId, turnId }),
   }),

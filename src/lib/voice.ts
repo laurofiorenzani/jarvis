@@ -1,4 +1,6 @@
-import { BRIDGE_HTTP_URL } from '../config'
+import { BACKEND, BRIDGE_HTTP_URL, SPEECH_LOCALE } from '../config'
+import { cloudAuth } from './cloud-auth'
+import { cloudApi } from './cloud-api'
 import { getMic } from './audio'
 import { speakingNow, speakingSince } from './tts'
 import { startVad, type Vad } from './vad'
@@ -398,12 +400,21 @@ export async function startVoice(h: VoiceHandlers): Promise<Voice> {
     )
     return { stop: () => {}, live: () => false }
   }
+  if (BACKEND === 'cloud') {
+    const token = await cloudAuth.getValidAccessToken().catch(() => null)
+    if (!token) {
+      h.onError('Sign in to JARVIS Cloud before using cloud voice.')
+      return { stop: () => {}, live: () => false }
+    }
+    diag.engine = 'cloud'
+    return startCloudVoice(h, 'cloud')
+  }
   diag.engine = caps().stt ? 'cloud' : 'browser'
-  return caps().stt ? startCloudVoice(h) : startBrowserVoice(h)
+  return caps().stt ? startCloudVoice(h, 'bridge') : startBrowserVoice(h)
 }
 
 /** VAD + hosted cloud speech transcription. */
-async function startCloudVoice(h: VoiceHandlers): Promise<Voice> {
+async function startCloudVoice(h: VoiceHandlers, transport: 'cloud' | 'bridge'): Promise<Voice> {
   let lastWake = 0
   let vad: Vad | null = null
 
@@ -424,6 +435,8 @@ async function startCloudVoice(h: VoiceHandlers): Promise<Voice> {
   let draining = false
   let browserFallback: Voice | null = null
   let guardPoll: ReturnType<typeof setInterval> | null = null
+  let identityRevision = 0
+  let activeUserId = transport === 'cloud' ? cloudAuth.getSession()?.user.id ?? null : null
 
   /**
    * Transcripts become turns here rather than one-per-segment.
@@ -438,6 +451,20 @@ async function startCloudVoice(h: VoiceHandlers): Promise<Voice> {
     },
     partial: (text) => h.onPartial(text),
   })
+
+  // A speech segment belongs to the account that captured it. If the
+  // household account changes while STT is in flight, discard that result
+  // rather than feeding one person's words into the next account's turn.
+  const unsubscribeAuth = transport === 'cloud'
+    ? cloudAuth.subscribe((session) => {
+        const nextUserId = session?.user.id ?? null
+        if (nextUserId === activeUserId) return
+        activeUserId = nextUserId
+        identityRevision++
+        pendingAudio.length = 0
+        assemble.cancel()
+      })
+    : () => {}
 
   const fallbackToBrowser = (reason: string) => {
     if (browserFallback) return
@@ -462,17 +489,28 @@ async function startCloudVoice(h: VoiceHandlers): Promise<Voice> {
    */
   const transcribe = async (blob: Blob) => {
     if (browserFallback) return
+    const requestIdentityRevision = identityRevision
+    const requestUserId = activeUserId
     const mode = h.mode()
     if (mode === 'deaf') return
     const t0 = performance.now()
     try {
-      const res = await fetch(`${BRIDGE_HTTP_URL}/stt`, {
-        method: 'POST',
-        headers: { 'content-type': blob.type || 'audio/webm' },
-        body: blob,
-      })
-      diag.idleMs = Math.round(performance.now() - t0)
-      if (!res.ok) {
+      let said = ''
+      if (transport === 'cloud') {
+        const token = await cloudAuth.getValidAccessToken()
+        if (!token) throw new Error('Cloud session expired. Sign in again.')
+        if (requestIdentityRevision !== identityRevision ||
+            cloudAuth.getSession()?.user.id !== requestUserId) return
+        said = await cloudApi.transcribeAudio(token, blob)
+        if (requestIdentityRevision !== identityRevision ||
+            cloudAuth.getSession()?.user.id !== requestUserId) return
+      } else {
+        const res = await fetch(`${BRIDGE_HTTP_URL}/stt`, {
+          method: 'POST',
+          headers: { 'content-type': blob.type || 'audio/webm' },
+          body: blob,
+        })
+        if (!res.ok) {
         diag.restarts++
         if (res.status === 429 || res.status === 503) {
           // Quota exhaustion and provider outages should not leave voice deaf.
@@ -482,9 +520,11 @@ async function startCloudVoice(h: VoiceHandlers): Promise<Voice> {
         diag.lastError = `stt ${res.status}`
         drop(`transcription failed (${res.status})`)
         return
+        }
+        const payload = await res.json() as { text?: string }
+        said = (payload.text || '').trim()
       }
-      const { text } = (await res.json()) as { text?: string }
-      const said = (text ?? '').trim()
+      diag.idleMs = Math.round(performance.now() - t0)
       diag.lastError = ''
 
       if (!said) {
@@ -519,13 +559,20 @@ async function startCloudVoice(h: VoiceHandlers): Promise<Voice> {
       // is finished, reading the words and whether the room is still noisy.
       assemble.feed(said, vad?.meter().speaking ?? false)
     } catch (err) {
+      if (requestIdentityRevision !== identityRevision ||
+          (transport === 'cloud' && cloudAuth.getSession()?.user.id !== requestUserId)) return
       diag.restarts++
-      if (err instanceof TypeError) {
-        fallbackToBrowser('cloud speech service unreachable')
+      const status = err && typeof err === 'object' && 'status' in err
+        ? Number((err as { status?: unknown }).status)
+        : 0
+      if (err instanceof TypeError || status === 429 || status >= 500) {
+        fallbackToBrowser(status ? `cloud speech unavailable (${status})` : 'cloud speech service unreachable')
         return
       }
       diag.lastError = String(err)
-      drop('could not reach the speech service')
+      drop(status === 401 || status === 403
+        ? 'cloud session needs attention — sign in again'
+        : 'could not reach the speech service')
     }
   }
 
@@ -602,6 +649,8 @@ async function startCloudVoice(h: VoiceHandlers): Promise<Voice> {
   return {
     stop: () => {
       if (guardPoll !== null) clearInterval(guardPoll)
+      unsubscribeAuth()
+      pendingAudio.length = 0
       browserFallback?.stop()
       assemble.cancel()
       vad?.stop()
@@ -786,7 +835,7 @@ function startBrowserVoice(h: VoiceHandlers): Voice {
     rec = new Ctor()
     rec.continuous = true
     rec.interimResults = true
-    rec.lang = 'en-GB'
+    rec.lang = SPEECH_LOCALE
     rec.onstart = () => {
       running = true
       diag.running = true

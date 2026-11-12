@@ -1,6 +1,8 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useStore } from '../store'
 import { CloudMemoryPanel } from './CloudMemoryPanel'
+import { cloudAuth, type CloudSession } from '../lib/cloud-auth'
+import { BACKEND } from '../config'
 
 type Area = 'core' | 'memory' | 'devices' | 'vision'
 const areas: { id: Area; label: string; code: string }[] = [
@@ -12,6 +14,8 @@ const areas: { id: Area; label: string; code: string }[] = [
 
 export function CommandCenter({ connected }: { connected: string[] }) {
   const [area, setArea] = useState<Area>('core')
+  const [session, setSession] = useState<CloudSession | null>(() => cloudAuth.getSession())
+  useEffect(() => cloudAuth.subscribe(setSession), [])
   const phase = useStore((s) => s.phase)
   const looking = useStore((s) => s.looking)
   const turns = useStore((s) => s.turns)
@@ -39,6 +43,17 @@ export function CommandCenter({ connected }: { connected: string[] }) {
         </div>
 
         {area === 'core' && (
+          <>
+          {BACKEND === 'cloud' && (
+            <div className="command-note" role="status" aria-live="polite">
+              <b>{session ? 'CLOUD ACCOUNT AUTHENTICATED' : 'CLOUD ACCOUNT REQUIRED'}</b>
+              <span>{session
+                ? `Signed in as ${session.user.email || 'your household account'}. Cloud conversations and approved memory are scoped to this account.`
+                : 'Sign in to activate the cloud brain. Each household member must use their own JARVIS account; conversations and memory remain separate.'}</span>
+              {!session && <button className="command-tab active" type="button" onClick={() => setArea('memory')}>CONNECT YOUR ACCOUNT</button>}
+              {session && <button className="command-tab" type="button" onClick={() => setArea('memory')}>MANAGE ACCOUNT & MEMORY</button>}
+            </div>
+          )}
           <div className="core-overview">
             <div className="core-orbit" aria-hidden="true">
               <div className="core-orbit-ring ring-a" />
@@ -55,6 +70,7 @@ export function CommandCenter({ connected }: { connected: string[] }) {
               <div><small>CONNECTED SYSTEMS</small><strong>{connected.length} REPORTED CONNECTIONS</strong></div>
             </div>
           </div>
+          </>
         )}
 
         {area === 'memory' && (

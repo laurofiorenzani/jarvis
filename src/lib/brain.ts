@@ -3,6 +3,8 @@ import * as direct from './anthropic'
 import * as bridge from './bridge'
 import type { AskHandlers, Msg } from './anthropic'
 import type { Blade, Panel } from '../store'
+import { cloudApi } from './cloud-api'
+import { cloudAuth } from './cloud-auth'
 
 export type { AskHandlers, Msg }
 export type { ConnectionState } from './bridge'
@@ -21,6 +23,69 @@ export type { ConnectionState } from './bridge'
  */
 
 export const usingBridge = BACKEND === 'bridge'
+export const usingCloud = BACKEND === 'cloud'
+
+let cloudConversationId: string | null = null
+let cloudUserId: string | null = null
+let cloudAbort: AbortController | null = null
+
+cloudAuth.subscribe((session) => {
+  const nextUserId = session?.user.id ?? null
+  if (nextUserId !== cloudUserId) {
+    cloudAbort?.abort()
+    cloudAbort = null
+    cloudConversationId = null
+    cloudUserId = nextUserId
+  }
+})
+
+async function askCloud(prompt: string, handlers: AskHandlers): Promise<{ text: string; tools: string[] }> {
+  const session = cloudAuth.getSession()
+  if (!session) throw new Error('Entre na sua conta: abra MEMORY no Command Center e faça login para conversar com o Jarvis.')
+  const token = await cloudAuth.getValidAccessToken()
+  if (!token || cloudAuth.getSession()?.user.id !== session.user.id) {
+    throw new Error('Sua sessão do Jarvis expirou. Entre novamente na aba MEMORY.')
+  }
+  if (!cloudConversationId) {
+    const created = await cloudApi.createConversation(token)
+    if (cloudAuth.getSession()?.user.id !== session.user.id) throw new Error('A conta mudou durante a inicialização da conversa.')
+    cloudConversationId = created.conversation.id
+  }
+  const controller = new AbortController()
+  cloudAbort?.abort()
+  cloudAbort = controller
+  let text = ''
+  let activeTurnId: string | null = null
+  const cancelServerTurn = () => {
+    const current = cloudAuth.getSession()
+    if (!activeTurnId || !current || current.user.id !== session.user.id) return
+    // Abort the browser stream immediately, then ask the authenticated cloud
+    // API to cancel the durable turn so the provider stream is stopped server-side.
+    void cloudApi.cancelTurn(token, cloudConversationId!, activeTurnId).catch((error) => {
+      console.warn('[jarvis] cloud turn cancellation could not be confirmed', error)
+    })
+  }
+  controller.signal.addEventListener('abort', cancelServerTurn, { once: true })
+  try {
+    await cloudApi.streamTurn(token, cloudConversationId, prompt, (event) => {
+      if (cloudAuth.getSession()?.user.id !== session.user.id) return
+      if (event.type === 'turn.started') activeTurnId = event.turnId
+      if (event.type === 'text.delta') {
+        text += event.delta
+        handlers.onText(event.delta)
+      }
+    }, controller.signal)
+    return { text: text.trim(), tools: [] }
+  } catch (error) {
+    if (controller.signal.aborted || (error instanceof DOMException && error.name === 'AbortError')) {
+      return { text: text.trim(), tools: [] }
+    }
+    throw error
+  } finally {
+    controller.signal.removeEventListener('abort', cancelServerTurn)
+    if (cloudAbort === controller) cloudAbort = null
+  }
+}
 
 /** Conversation state lives in the bridge session, so history is only threaded
  *  through on the direct path. */
@@ -29,9 +94,9 @@ export async function ask(
   history: Msg[],
   handlers: AskHandlers,
 ): Promise<{ text: string; tools: string[] }> {
-  return usingBridge
-    ? bridge.ask(prompt, handlers)
-    : direct.ask([...history, { role: 'user', content: prompt }], handlers)
+  if (usingBridge) return bridge.ask(prompt, handlers)
+  if (usingCloud) return askCloud(prompt, handlers)
+  return direct.ask([...history, { role: 'user', content: prompt }], handlers)
 }
 
 export async function warm(): Promise<void> {
@@ -92,6 +157,7 @@ export function watchCapture(
  */
 export function cancel(): void {
   if (usingBridge) bridge.cancel()
+  else if (usingCloud) cloudAbort?.abort()
   else direct.cancel()
 }
 
@@ -108,7 +174,7 @@ export function interrupt(): void {
  * so there is nothing that can be down until you try it.
  */
 export function isConnected(): boolean {
-  return usingBridge ? bridge.isConnected() : true
+  return usingBridge ? bridge.isConnected() : usingCloud ? Boolean(cloudAuth.getSession()) : true
 }
 
 /**
@@ -127,5 +193,5 @@ export function watchConnection(
 
 /** Labels for the HUD's SYSTEMS rail. */
 export function connectedLabels(): string[] {
-  return usingBridge ? bridge.bridgeServers() : direct.connectedLabels()
+  return usingBridge ? bridge.bridgeServers() : usingCloud ? ['JARVIS CLOUD'] : direct.connectedLabels()
 }

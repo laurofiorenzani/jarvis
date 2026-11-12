@@ -7,6 +7,8 @@ import {
   BRIDGE_HTTP_URL,
 } from '../config'
 import { caps } from './capabilities'
+import { cloudAuth } from './cloud-auth'
+import { cloudApi } from './cloud-api'
 
 /**
  * Speech output.
@@ -389,7 +391,7 @@ export function createSpeaker(): Speaker {
     // premium path automatic with no flag to set. It falls back to the browser
     // voice on any failure, so a student without a key still hears him speak.
     // `nativeBroken` latches on once the system voice has proved unusable.
-    if (USE_ELEVENLABS || caps().tts || nativeBroken) {
+    if (BACKEND === 'cloud' || USE_ELEVENLABS || caps().tts || nativeBroken) {
       // Recorded at the moment the tier is chosen rather than only when the
       // native voice latches over. Without this the panel reported 'system'
       // for a session that had spoken every one of its sentences through
@@ -443,7 +445,12 @@ export function createSpeaker(): Speaker {
     setSpeaking(item.text)
     try {
       const url = item.audio ? await item.audio : null
-      if (cancelled) return
+      // Cancellation can win while cloud synthesis is in flight. In that case
+      // this URL never reaches playUrl(), so release the object URL here.
+      if (cancelled) {
+        if (url) URL.revokeObjectURL(url)
+        return
+      }
       // A failed generation is not a failed turn — drop to the system voice.
       if (url) {
         await playUrl(url, item.text)
@@ -725,7 +732,17 @@ export function createSpeaker(): Speaker {
       if (cancelled) return
       cancelled = true
       buffer = ''
-      queue.length = 0
+      // Some queued sentences are already being synthesised one sentence ahead.
+      // Their object URLs must be released when those promises settle, even
+      // though cancellation means they will never be handed to playUrl().
+      const abandoned = queue.splice(0)
+      for (const item of abandoned) {
+        if (item.audio) {
+          void Promise.resolve(item.audio).then((url) => {
+            if (url) URL.revokeObjectURL(url)
+          }).catch(() => undefined)
+        }
+      }
       // Keep the echo tail: the words already in the air still have to be
       // recognised and discarded, even though he has stopped adding to them.
       setSpeaking('')
@@ -754,6 +771,17 @@ export function createSpeaker(): Speaker {
 /** Only used when USE_ELEVENLABS is on. Bridge proxy first (it already holds
  *  the key), then a direct key, then null to fall back to the native voice. */
 async function fetchCloudAudio(text: string): Promise<string | null> {
+  if (BACKEND === 'cloud') {
+    try {
+      const token = await cloudAuth.getValidAccessToken()
+      if (!token) return null
+      const blob = await cloudApi.synthesizeAudio(token, text)
+      return URL.createObjectURL(blob)
+    } catch {
+      return null
+    }
+  }
+
   if (BACKEND === 'bridge') {
     try {
       const res = await fetch(`${BRIDGE_HTTP_URL}/tts`, {

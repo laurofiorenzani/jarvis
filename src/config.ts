@@ -54,14 +54,16 @@ function flag(name: string, raw: unknown, fallback: boolean): boolean {
  *              your Claude Code config is available to JARVIS, including local
  *              ones like higgsfield, elevenlabs, android and playwright.
  *
- *   'direct' — the browser calls the Claude API itself. Nothing to run and it
- *              deploys as a static site, but it needs VITE_ANTHROPIC_API_KEY in
- *              the bundle and only reaches remote HTTP MCP servers.
+ *   'direct' — the browser calls the Claude API itself. Not recommended for
+ *              hosted use because the provider key would be exposed in the bundle.
+ *
+ *   'cloud' — authenticated Supabase session + server-side FreeLLMAPI route.
+ *             No provider key is exposed to the browser; requires sign-in.
  */
-export const BACKEND: 'bridge' | 'direct' = choice(
+export const BACKEND: 'bridge' | 'direct' | 'cloud' = choice(
   'VITE_BACKEND',
   import.meta.env.VITE_BACKEND,
-  ['bridge', 'direct'] as const,
+  ['bridge', 'direct', 'cloud'] as const,
   'bridge',
 )
 
@@ -73,6 +75,20 @@ export const BACKEND: 'bridge' | 'direct' = choice(
  */
 export const BRIDGE_WS_URL = str(import.meta.env.VITE_BRIDGE_URL) ?? 'ws://localhost:8787'
 export const BRIDGE_HTTP_URL = BRIDGE_WS_URL.replace(/^ws/, 'http')
+
+/**
+ * Browser speech-recognition locale. Web Speech recognition accepts one
+ * locale per recognizer, so this is an explicit user-facing default rather
+ * than pretending that one recognizer can reliably auto-detect languages.
+ * Brazilian Portuguese is the primary product language; English remains
+ * selectable for deployments that need it.
+ */
+export const SPEECH_LOCALE = choice(
+  'VITE_SPEECH_LOCALE',
+  import.meta.env.VITE_SPEECH_LOCALE,
+  ['pt-BR', 'en-GB', 'en-US'] as const,
+  'pt-BR',
+)
 
 /**
  * Speech output engine.
