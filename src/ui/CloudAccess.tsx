@@ -70,37 +70,48 @@ export function CloudAccess({ onConnected, onDisconnected, onResumeConversation,
   const [memoryCategory, setMemoryCategory] = useState<MemoryCategory>('preference')
   const [memoryBusy, setMemoryBusy] = useState(false)
   const runtimeRef = useRef<ReturnType<typeof createCloudRuntime> | null>(null)
+  const runtimeGeneration = useRef(0)
+  const isCurrentRuntime = (runtime: ReturnType<typeof createCloudRuntime>, generation: number) =>
+    runtimeRef.current === runtime && runtimeGeneration.current === generation
   const autoRestorePending = useRef(hasRestorableTabSession())
   const autoRestoreStarted = useRef(false)
   const restoreSessionRef = useRef<(() => Promise<void>) | null>(null)
 
   const activateRuntime = async (runtime: ReturnType<typeof createCloudRuntime>) => {
+    const generation = runtimeGeneration.current
     await runtime.brain.warm()
+    if (!isCurrentRuntime(runtime, generation)) return
     const [saved, preference, recentConversations] = await Promise.all([
       runtime.api.listMemories(),
       runtime.api.getMemoryPreference(),
       runtime.api.listConversations(),
     ])
+    if (!isCurrentRuntime(runtime, generation)) return
     setMemories(saved.memories)
     setMemoryContextEnabled(preference.contextEnabled)
     setConversations(recentConversations.conversations)
     try {
       const recentCandidates = await runtime.api.listSemanticMemoryCandidates()
+      if (!isCurrentRuntime(runtime, generation)) return
       setMemoryCandidates(recentCandidates.candidates)
       setMemoryReviewAvailable(true)
     } catch {
+      if (!isCurrentRuntime(runtime, generation)) return
       // The feature-branch UI may be previewed before the matching Edge Function is deployed.
       setMemoryCandidates([])
       setMemoryReviewAvailable(false)
     }
     try {
       const providers = await runtime.api.getProviderStatus()
+      if (!isCurrentRuntime(runtime, generation)) return
       setProviderStatus(providers.configured
         ? 'FREE-QUOTA CONFIG DECLARED · ' + providers.providers.map((item) => item.model).join(', ')
         : 'NO FREE-ONLY MODEL PROVIDER CONFIGURED')
     } catch {
+      if (!isCurrentRuntime(runtime, generation)) return
       setProviderStatus('MODEL PROVIDER CONFIGURATION INVALID OR UNAVAILABLE')
     }
+    if (!isCurrentRuntime(runtime, generation)) return
     selectCloudBrain(runtime.brain)
     onSpeechApiReady?.(runtime.api.transcribeAudio)
     onTtsApiReady?.(runtime.api.synthesizeSpeech)
@@ -118,13 +129,16 @@ export function CloudAccess({ onConnected, onDisconnected, onResumeConversation,
       supabasePublishableKey: env.supabasePublishableKey,
       tokenStore: createTabTokenStore(),
     })
+    runtimeGeneration.current += 1
     runtimeRef.current = runtime
     try {
       const restored = await runtime.auth.restoreSession()
+      if (!isCurrentRuntime(runtime, runtimeGeneration.current)) return
       if (!restored) throw new Error('The saved tab session has expired. Sign in again.')
       await activateRuntime(runtime)
       setMessage('TAB SESSION RESTORED · CLOUD API HEALTHY')
     } catch (error) {
+      if (!isCurrentRuntime(runtime, runtimeGeneration.current)) return
       selectConfiguredBrain()
       await runtime.auth.signOut().catch(() => {})
       runtimeRef.current = null
@@ -177,9 +191,11 @@ export function CloudAccess({ onConnected, onDisconnected, onResumeConversation,
       } catch { /* Volatile sign-in remains available when storage is blocked. */ }
     }
     const runtime = createCloudRuntime(options)
+    runtimeGeneration.current += 1
     runtimeRef.current = runtime
     try {
       await runtime.auth.signInWithPassword(email, password)
+      if (!isCurrentRuntime(runtime, runtimeGeneration.current)) return
       await activateRuntime(runtime)
       setPassword('')
       setCanRestoreTabSession(hasRestorableTabSession())
@@ -187,6 +203,7 @@ export function CloudAccess({ onConnected, onDisconnected, onResumeConversation,
         ? 'AUTHENTICATED · TAB SESSION RESTORE ENABLED · CLEARED WHEN TAB CLOSES'
         : 'AUTHENTICATED · VOLATILE TOKENS · SIGN IN AGAIN AFTER PAGE RELOAD')
     } catch (error) {
+      if (!isCurrentRuntime(runtime, runtimeGeneration.current)) return
       selectConfiguredBrain()
       await runtime.auth.signOut().catch(() => {})
       runtimeRef.current = null
@@ -308,31 +325,35 @@ export function CloudAccess({ onConnected, onDisconnected, onResumeConversation,
 
   const refreshConversations = async () => {
     const runtime = runtimeRef.current
+    const generation = runtimeGeneration.current
     if (!runtime || conversationBusy) return
     setConversationBusy(true)
     try {
       const result = await runtime.api.listConversations()
+      if (!isCurrentRuntime(runtime, generation)) return
       setConversations(result.conversations)
       setMessage(`CONVERSATIONS LOADED · ${result.conversations.length} AVAILABLE`)
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : 'Conversation history could not be loaded.')
+      if (isCurrentRuntime(runtime, generation)) setMessage(error instanceof Error ? error.message : 'Conversation history could not be loaded.')
     } finally {
-      setConversationBusy(false)
+      if (runtimeGeneration.current === generation) setConversationBusy(false)
     }
   }
 
   const resumeConversation = async (id: string) => {
     const runtime = runtimeRef.current
+    const generation = runtimeGeneration.current
     if (!runtime || conversationBusy) return
     setConversationBusy(true)
     try {
       const result = await runtime.brain.resumeConversation(id)
+      if (!isCurrentRuntime(runtime, generation)) return
       onResumeConversation?.(result.messages)
       setMessage(`CONVERSATION RESTORED · ${result.messages.length} MESSAGES`)
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : 'Conversation could not be restored.')
+      if (isCurrentRuntime(runtime, generation)) setMessage(error instanceof Error ? error.message : 'Conversation could not be restored.')
     } finally {
-      setConversationBusy(false)
+      if (runtimeGeneration.current === generation) setConversationBusy(false)
     }
   }
 
@@ -346,97 +367,111 @@ export function CloudAccess({ onConnected, onDisconnected, onResumeConversation,
 
   const refreshMemoryCandidates = async () => {
     const runtime = runtimeRef.current
+    const generation = runtimeGeneration.current
     if (!runtime || memoryReviewBusy || !memoryReviewAvailable) return
     setMemoryReviewBusy(true)
     try {
       const result = await runtime.api.listSemanticMemoryCandidates()
+      if (!isCurrentRuntime(runtime, generation)) return
       setMemoryCandidates(result.candidates)
       setMessage('MEMORY REVIEW QUEUE REFRESHED · ' + result.candidates.length + ' PENDING')
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : 'Memory review queue could not be refreshed.')
+      if (isCurrentRuntime(runtime, generation)) setMessage(error instanceof Error ? error.message : 'Memory review queue could not be refreshed.')
     } finally {
-      setMemoryReviewBusy(false)
+      if (runtimeGeneration.current === generation) setMemoryReviewBusy(false)
     }
   }
 
   const toggleMemoryContext = async (enabled: boolean) => {
     const runtime = runtimeRef.current
+    const generation = runtimeGeneration.current
     if (!runtime || memoryBusy) return
     const previous = memoryContextEnabled
     setMemoryContextEnabled(enabled)
     setMemoryBusy(true)
     try {
       await runtime.api.setMemoryContextEnabled(enabled)
+      if (!isCurrentRuntime(runtime, generation)) return
       setMessage(enabled
         ? 'APPROVED MEMORY CONTEXT ENABLED · UP TO 20 RECORDS'
         : 'APPROVED MEMORY CONTEXT DISABLED')
     } catch (error) {
-      setMemoryContextEnabled(previous)
-      setMessage(error instanceof Error ? error.message : 'Memory preference could not be saved.')
+      if (isCurrentRuntime(runtime, generation)) {
+        setMemoryContextEnabled(previous)
+        setMessage(error instanceof Error ? error.message : 'Memory preference could not be saved.')
+      }
     } finally {
-      setMemoryBusy(false)
+      if (runtimeGeneration.current === generation) setMemoryBusy(false)
     }
   }
 
   const decideMemoryCandidate = async (id: string, decision: 'approved' | 'rejected') => {
     const runtime = runtimeRef.current
+    const generation = runtimeGeneration.current
     if (!runtime || memoryBusy) return
     setMemoryBusy(true)
     try {
       await runtime.api.decideSemanticMemoryCandidate(id, decision)
+      if (!isCurrentRuntime(runtime, generation)) return
       setMemoryCandidates((items) => items.filter((item) => item.id !== id))
       setMessage(decision === 'approved'
         ? 'MEMORY CANDIDATE APPROVED · AVAILABLE TO PERSONAL MEMORY SEARCH'
         : 'MEMORY CANDIDATE REJECTED')
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : 'Memory candidate decision could not be saved.')
+      if (isCurrentRuntime(runtime, generation)) setMessage(error instanceof Error ? error.message : 'Memory candidate decision could not be saved.')
     } finally {
-      setMemoryBusy(false)
+      if (runtimeGeneration.current === generation) setMemoryBusy(false)
     }
   }
 
   const saveMemory = async (event: FormEvent) => {
     event.preventDefault()
     const runtime = runtimeRef.current
+    const generation = runtimeGeneration.current
     if (!runtime || memoryBusy || !memoryContent.trim()) return
     setMemoryBusy(true)
     try {
       const result = await runtime.api.createMemory({ category: memoryCategory, content: memoryContent })
+      if (!isCurrentRuntime(runtime, generation)) return
       setMemories((items) => [result.memory, ...items])
       setMemoryContent('')
       setMessage('MEMORY SAVED · EXPLICIT USER APPROVAL')
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : 'Memory could not be saved.')
+      if (isCurrentRuntime(runtime, generation)) setMessage(error instanceof Error ? error.message : 'Memory could not be saved.')
     } finally {
-      setMemoryBusy(false)
+      if (runtimeGeneration.current === generation) setMemoryBusy(false)
     }
   }
 
   const deleteMemory = async (id: string) => {
     const runtime = runtimeRef.current
+    const generation = runtimeGeneration.current
     if (!runtime || memoryBusy) return
     setMemoryBusy(true)
     try {
       await runtime.api.deleteMemory(id)
+      if (!isCurrentRuntime(runtime, generation)) return
       setMemories((items) => items.filter((item) => item.id !== id))
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : 'Memory could not be deleted.')
+      if (isCurrentRuntime(runtime, generation)) setMessage(error instanceof Error ? error.message : 'Memory could not be deleted.')
     } finally {
-      setMemoryBusy(false)
+      if (runtimeGeneration.current === generation) setMemoryBusy(false)
     }
   }
 
   const signOut = async () => {
     if (busy) return
     setBusy(true)
+    const runtime = runtimeRef.current
+    runtimeGeneration.current += 1
+    runtimeRef.current = null
     selectConfiguredBrain()
     try {
-      await runtimeRef.current?.auth.signOut()
+      await runtime?.auth.signOut()
       setMessage('CLOUD SIGNED OUT · SIGN IN AGAIN TO CONTINUE')
     } catch {
       setMessage('CLOUD SIGNED OUT · LOCAL TOKENS CLEARED')
     } finally {
-      runtimeRef.current = null
       onSpeechApiReady?.(null)
       onTtsApiReady?.(null)
       setConnected(false)
