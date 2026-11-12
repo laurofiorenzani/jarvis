@@ -2024,3 +2024,100 @@ kbd {
  .memory-graph svg { max-height:180px; }
  .command-note { font-size:9px; }
 }
+
+
+/* Reference-led presentation: the reactor remains the hero, not a dashboard card. */
+.command-center {
+  top: 76px;
+  left: 0;
+  transform: none;
+  width: 100%;
+  max-height: none;
+  padding: 0 clamp(14px, 3vw, 42px);
+  pointer-events: none;
+}
+.command-nav {
+  position: absolute;
+  top: 0;
+  right: clamp(14px, 3vw, 42px);
+  display: flex;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 5px;
+  max-width: min(520px, 72vw);
+  margin: 0;
+  pointer-events: auto;
+}
+.command-tab {
+  padding: 7px 9px;
+  border-color: rgba(255,174,83,.24);
+  background: rgba(8,7,5,.28);
+  backdrop-filter: blur(5px);
+  font-size: 8px;
+}
+.command-tab.active {
+  background: rgba(255,145,45,.09);
+  box-shadow: 0 0 18px rgba(255,132,35,.12);
+}
+.command-panel {
+  position: absolute;
+  top: 42px;
+  right: clamp(14px, 3vw, 42px);
+  width: min(310px, 35vw);
+  max-height: min(48vh, 460px);
+  padding: 10px 12px;
+  overflow: auto;
+  border: 1px solid rgba(255,166,73,.18);
+  background: linear-gradient(135deg,rgba(13,9,5,.48),rgba(5,8,10,.32));
+  box-shadow: 0 0 28px rgba(255,130,35,.06);
+  backdrop-filter: blur(7px);
+}
+.command-panel-head {
+  padding-bottom: 7px;
+  font-size: 8px;
+}
+.core-overview,.vision-overview {
+  display: block;
+  padding: 8px 0 0;
+}
+.core-orbit { display: none; }
+.core-readouts { grid-template-columns: 1fr 1fr; gap: 8px 10px; }
+.core-readouts div { padding-left: 8px; }
+.core-readouts small,.device-state { font-size: 7px; }
+.core-readouts strong { font-size: 9px; line-height: 1.35; }
+.memory-constellation { display: block; padding-top: 6px; }
+.memory-graph svg { max-height: 160px; }
+.command-note { font-size: 8px; line-height: 1.45; }
+.device-grid { grid-template-columns: 1fr 1fr; gap: 6px; padding-top: 8px; }
+.device-card { padding: 8px; gap: 5px; background: rgba(255,147,48,.025); }
+.device-glyph { font-size: 16px; }
+.device-card b { font-size: 8px; }
+.device-detail { font-size: 7px; }
+.vision-reticle { width: 100px; height: 100px; margin: 8px auto 24px; }
+.vision-reticle b { font-size: 7px; bottom: -17px; }
+.vision-overview .core-readouts { margin-top: 8px; }
+@media(max-width:680px) {
+ .command-center { top: 72px; padding: 0 10px; }
+ .command-nav {
+   top: 0; left: 10px; right: 10px; max-width: none;
+   display: flex; justify-content: center; gap: 4px;
+ }
+ .command-tab { padding: 7px 6px; font-size: 7px; letter-spacing: .04em; }
+ .command-tab span { margin-right: 4px; }
+ .command-panel {
+   top: auto; right: 10px; bottom: 78px;
+   width: min(220px, 62vw); max-height: 34vh;
+   padding: 8px; background: rgba(7,6,4,.36);
+ }
+ .command-panel-head { font-size: 7px; }
+ .core-readouts { grid-template-columns: 1fr 1fr; gap: 6px; }
+ .core-readouts small { font-size: 6px; }
+ .core-readouts strong { font-size: 8px; }
+ .memory-graph svg { max-height: 112px; }
+ .command-note { padding: 5px 8px; font-size: 7px; }
+ .device-grid { grid-template-columns: 1fr 1fr; }
+ .device-card { padding: 6px; }
+ .device-card b { font-size: 7px; }
+ .device-state,.device-detail { font-size: 6px; }
+ .vision-reticle { width: 74px; height: 74px; }
+}
