@@ -36,20 +36,19 @@ Continue autonomously across independent workstreams wherever safe. User explici
 - Static review of `CloudMemoryPanel.tsx` and `cloud-auth.ts` found identity-generation guards around account-scoped async UI updates and revision checks around delayed sign-in/refresh/sign-out. Sign-out now catches remote revocation failures and reports that local sign-out has completed rather than producing an unhandled rejection. This is not a substitute for two-account browser E2E.
 - Copied the currently deployed production Edge Function v31 source into `supabase/functions/jarvis-api/` (`index.ts`, `model-router.ts`, `semantic-memory.ts`, `deno.json`) so backend changes are version-controlled. The new auto-capture changes are branch-only and have not been deployed.
 - Static review of the branch Edge Function confirmed that conversation lookup, message history, cancellation, candidate listing/decisions, and approved-memory retrieval filter by the authenticated `userId`; candidate inserts derive `user_id` from the validated bearer token, never from browser input. Production Edge Function remains version 31 and has NOT been replaced with the branch version.
-- Branch Edge Function CORS explicitly allows the branch preview alias and local development; allow headers match the frontend client (`apikey`, `authorization`, `content-type`, `x-jarvis-api-version`). Still verify an actual browser preflight from a READY deployment containing the current branch head.
+- Edge Function CORS explicitly allows the branch preview alias and local development; allow headers match the frontend client (`apikey`, `authorization`, `content-type`, `x-jarvis-api-version`). A fresh Vercel deployment for the latest tested branch commit could not be created because the Vercel API reached its free-tier daily limit (`api-deployments-free-per-day`, retry after 24 hours). The latest Vercel build error seen belongs to older commit `892fe2c`, before the passing CI/lockfile fixes; it is not evidence that the newest commit fails to build.
 - Local git clone could not run because this execution environment cannot resolve github.com. Use GitHub Actions as the authoritative build/test environment.
 
 ## Next work — prioritize parallel, low-risk tasks
 1. Confirm GitHub Actions run for the newest branch head; run #61 passed for `c03a8ee`, but the later UI-copy/workflow-only commits need a fresh validation run.
 2. Confirm `JARVIS CI` status on the newest branch head, including Deno check/test results; fix any failures before deployment.
-3. Review automatic-memory extraction and UI preference changes; keep auto-capture disabled until validated and the preview API version is deployed.
 4. Continue account-switch tests for overlapping refresh/sign-in/sign-out, and add tests for CloudMemoryPanel stale async responses.
 5. Verify Edge Function CORS/preflight and route contracts from the exact READY preview origin once Vercel quota permits.
 6. Add authenticated integration tests for two distinct users: account A cannot read, approve, reject, search, or delete account B data.
-7. Deploy the tested auto-capture code to a preview function first; only after live validation, enable `auto_capture_enabled` for the user's account (not the wife's) and deploy production with the explicit user authorization already provided.
+7. Once Vercel's daily deployment quota resets, deploy the latest passing branch commit and verify the browser preflight, auth, account-specific memory settings and iPhone UI. Do not confuse a successful Supabase function deployment with a successful Vercel frontend deployment.
 8. Design (do not blindly switch) a hybrid main-brain adapter preserving bridge MCP tools, camera capture, UI push events, panels/blades, cancellation, and error recovery.
 9. Continue BMW, Blink, Dreame, lighting, communications, and Family CFO adapters only after secure foundations and real credentials/consent are available.
-10. Retry Vercel preview deployment only when the rate limit window has elapsed; verify the exact deployed commit and test iPhone rendering before claiming success.
+10. Keep the PR draft; do not merge it until all release gates are met and the user explicitly asks to merge.
 
 ## Safety / release rules
 - Never put secrets, access tokens, passwords, or personal records in GitHub issues, commits, or ChatGPT messages.
