@@ -400,7 +400,11 @@ export async function startVoice(h: VoiceHandlers, cloudTranscribe?: CloudTransc
     )
     return { stop: () => {}, live: () => false }
   }
-  if (BACKEND === 'cloud' && cloudTranscribe) {
+  if (BACKEND === 'cloud') {
+    // The cloud session can be established after ignition. Always start the
+    // VAD pipeline in cloud mode and resolve the authenticated transcriber for
+    // each segment, rather than falling back permanently to browser
+    // SpeechRecognition when the user signs in a moment later.
     diag.engine = 'gemini-cloud'
     return startElevenVoice(h, cloudTranscribe, getCloudTranscriber)
   }
@@ -459,6 +463,9 @@ async function startElevenVoice(h: VoiceHandlers, cloudTranscribe?: CloudTranscr
       // Resolve the cloud transcriber for each audio segment. Auth/session
       // refreshes can replace the function while this long-lived voice loop runs.
       const activeCloudTranscriber = getCloudTranscriber?.() ?? cloudTranscribe
+      if (BACKEND === 'cloud' && !activeCloudTranscriber) {
+        throw new Error('Cloud speech is not connected. Sign in to the Jarvis Cloud account, then try again.')
+      }
       const said = activeCloudTranscriber
         ? await activeCloudTranscriber(blob)
         : await (async () => {
