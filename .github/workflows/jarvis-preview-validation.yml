@@ -47,4 +47,4 @@ jobs:
       - name: Edge Function typecheck
         run: deno check --config supabase/functions/jarvis-api/deno.json supabase/functions/jarvis-api/index.ts
       - name: Edge Function tests
-        run: deno test --config supabase/functions/jarvis-api/deno.json supabase/functions/jarvis-api/semantic-memory.test.ts
+        run: deno test --config supabase/functions/jarvis-api/deno.json supabase/functions/jarvis-api/semantic-memory.deno.ts
