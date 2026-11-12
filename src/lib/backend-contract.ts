@@ -60,6 +60,7 @@ export type CreateMemoryResponse = {
 export type MemoryPreferenceResponse = {
   version: typeof CLOUD_API_VERSION
   contextEnabled: boolean
+  autoCaptureEnabled: boolean
 }
 
 
