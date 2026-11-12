@@ -59,12 +59,12 @@ async function request<T>(
     },
     cache: 'no-store',
   })
-  const payload = await response.json().catch(() => null) as
-    | { error?: { code?: string; message?: string; retryable?: boolean } }
-    | T
-    | null
+  const payload: unknown = await response.json().catch(() => null)
   if (!response.ok) {
-    const details = payload && 'error' in payload ? payload.error : undefined
+    const envelope = payload && typeof payload === 'object' && 'error' in payload
+      ? (payload as { error?: { code?: string; message?: string; retryable?: boolean } }).error
+      : undefined
+    const details = envelope
     const error = new Error(details?.message || `Cloud request failed (${response.status}).`) as CloudApiError
     error.status = response.status
     error.code = details?.code
@@ -74,9 +74,6 @@ async function request<T>(
   return payload as T
 }
 
-function json(body: unknown): RequestInit {
-  return { method: 'POST', body: JSON.stringify(body) }
-}
 
 export const cloudApi = {
   providerStatus: (token: string) =>
