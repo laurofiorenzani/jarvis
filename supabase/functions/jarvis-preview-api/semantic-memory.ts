@@ -67,7 +67,7 @@ export function isSemanticMemoryId(value: string): boolean {
 }
 
 
-const AUTO_MEMORY_SENSITIVE = /\b(?:password|passphrase|passcode|pin code|api[\s_-]?key|access token|refresh token|credential|secret|private key|health|medical|diagnos|medication|prescription|hormone|therapy|sexual|intimate|religion|politic|ethnic|race|bank|iban|swift|credit card|debit card|account number|salary|income|mortgage|loan|investment|portfolio|financial|finance|tax return|tax id|passport|national id|social security|criminal|lawsuit|home address|street address|postal code|postcode|eircode|gps|coordinates|date of birth|birthdate|dob|nationality|immigration|visa|work permit|identity|contact details|phone number|email address)\b/i
+const AUTO_MEMORY_SENSITIVE = /\b(?:password|passphrase|passcode|pin code|api[\s_-]?key|access token|refresh token|credential|secret|private key|health|medical|diagnos|medication|prescription|hormone|therapy|sexual|intimate|religion|politic|ethnic|race|bank|iban|swift|credit card|debit card|account number|salary|income|mortgage|loan|investment|portfolio|financial|finance|tax return|tax id|passport|national id|social security|criminal|lawsuit|home address|street address|postal code|postcode|eircode|gps|coordinates|date of birth|birthdate|dob|nationality|immigration|visa|work permit|identity|contact details|phone number|email address|spouse|wife|husband|partner|child|children|daughter|son|mother|father|brother|sister|family member)\b/i
 const AUTO_MEMORY_EMAIL = /\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/i
 const AUTO_MEMORY_PHONE = /(?:\+?\d[\d\s().-]{7,}\d)/
 const AUTO_MEMORY_ADDRESS = /\b\d{1,5}\s+(?:[A-Z0-9.'-]+\s+){0,4}(?:street|st|road|rd|avenue|ave|lane|ln|drive|dr|court|ct|close|crescent|terrace|way|place|pl|square|sq)\b/i
