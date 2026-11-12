@@ -137,3 +137,17 @@ jobs:
             --header "Access-Control-Request-Headers: apikey,authorization,x-jarvis-api-version")"
           grep -Fqi "access-control-allow-origin: https://jarvis-lauro-fiorenzani.vercel.app" <<< "$headers"
           grep -Eqi "access-control-allow-headers:.*apikey" <<< "$headers"
+
+      - name: Smoke-test canonical integration preview CORS
+        shell: bash
+        run: |
+          set -euo pipefail
+          endpoint="https://undmhmdwhxvjgvezvucy.supabase.co/functions/v1/jarvis-preview-api"
+          apikey="$(sed -nE "s/.*supabasePublishableKey:.*'([^']+)'.*/\\1/p" src/config.ts | head -n 1)"
+          test -n "$apikey"
+          headers="$(curl --silent --show-error --dump-header - --output /dev/null --request OPTIONS "$endpoint/provider-status" \
+            --header "apikey: $apikey" \
+            --header "Origin: https://jarvis-git-work-jarvis-canonical-integration-lauro-fiorenzani.vercel.app" \
+            --header "Access-Control-Request-Method: GET" \
+            --header "Access-Control-Request-Headers: apikey,authorization,x-jarvis-api-version")"
+          grep -Fqi "access-control-allow-origin: https://jarvis-git-work-jarvis-canonical-integration-lauro-fiorenzani.vercel.app" <<< "$headers"
