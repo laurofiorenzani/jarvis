@@ -36,6 +36,7 @@ async function createUser(label) {
     method: 'POST',
     token: serviceKey,
     body: { email, password, email_confirm: true },
+    headers: { apikey: serviceKey },
   })
   assert.equal(created.response.status, 200, `create ${label} fixture user: ${JSON.stringify(created.payload)}`)
   const userId = created.payload?.id
@@ -56,7 +57,7 @@ async function setPreference(userId, enabled) {
     method: 'POST',
     token: serviceKey,
     body: { user_id: userId, context_enabled: enabled },
-    headers: { Prefer: 'resolution=merge-duplicates,return=minimal' },
+    headers: { apikey: serviceKey, Prefer: 'resolution=merge-duplicates,return=minimal' },
   })
   assert.ok(result.response.ok, `set memory preference: ${JSON.stringify(result.payload)}`)
 }
@@ -74,7 +75,7 @@ async function insertFact(userId, fields) {
       approved_at: new Date().toISOString(),
       ...fields,
     },
-    headers: { Prefer: 'return=representation' },
+    headers: { apikey: serviceKey, Prefer: 'return=representation' },
   })
   assert.ok(result.response.ok, `insert retrieval fixture: ${JSON.stringify(result.payload)}`)
 }
@@ -84,6 +85,7 @@ async function cleanup() {
     await request(`${baseUrl}/auth/v1/admin/users/${userId}`, {
       method: 'DELETE',
       token: serviceKey,
+      headers: { apikey: serviceKey },
     }).catch(() => undefined)
   }
 }
@@ -103,6 +105,12 @@ try {
     body: { version: 1, factType: 'fact', content: 'Should not be saved while memory is disabled' },
   })
   assert.equal(disabledCreate.response.status, 403, 'disabled memory must block candidate creation')
+
+  const disabledSearch = await request(`${api}/semantic-memory/search?q=${encodeURIComponent('Family CFO integration')}`, { token: userB.token })
+  assert.equal(disabledSearch.response.status, 200)
+  assert.equal(disabledSearch.payload.contextEnabled, false, 'disabled preference must prevent semantic retrieval')
+
+  await setPreference(userB.id, true)
 
   const createdA = await request(`${api}/semantic-memory/candidates`, {
     method: 'POST',
@@ -137,7 +145,6 @@ try {
   assert.equal(approved.response.status, 200, `user A approval: ${JSON.stringify(approved.payload)}`)
   assert.equal(approved.payload.candidate.status, 'approved')
 
-  await setPreference(userB.id, true)
   const createdB = await request(`${api}/semantic-memory/candidates`, {
     method: 'POST',
     token: userB.token,
@@ -172,10 +179,12 @@ try {
     'retrieval must exclude sensitive, future-dated and expired facts',
   )
 
-  const disabledSearch = await request(`${api}/semantic-memory/search?q=${query}`, { token: userB.token })
-  assert.equal(disabledSearch.response.status, 200)
-  assert.equal(disabledSearch.payload.contextEnabled, true, 'user B preference is enabled after explicit opt-in')
-  assert.equal(disabledSearch.payload.results.length, 0, 'user B must not retrieve user A facts')
+  assert.equal(filteredSearch.payload.results.length, 1, 'user A retrieval should return only the approved in-validity-window normal fact')
+
+  const isolatedSearch = await request(`${api}/semantic-memory/search?q=${query}`, { token: userB.token })
+  assert.equal(isolatedSearch.response.status, 200)
+  assert.equal(isolatedSearch.payload.contextEnabled, true, 'user B preference is enabled after explicit opt-in')
+  assert.equal(isolatedSearch.payload.results.length, 0, 'user B must not retrieve user A facts')
 
   console.log('Semantic-memory authenticated integration tests passed for two isolated users.')
 } finally {
