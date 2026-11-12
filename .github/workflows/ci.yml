@@ -88,6 +88,34 @@ jobs:
       - name: Run SQL isolation regression tests
         run: supabase test db
 
+      - name: Test authenticated semantic memory API with two isolated users
+        shell: bash
+        run: |
+          set -euo pipefail
+          supabase functions serve jarvis-api --no-verify-jwt > /tmp/jarvis-functions.log 2>&1 &
+          functions_pid=$!
+          trap 'kill "$functions_pid" 2>/dev/null || true' EXIT
+          ready=0
+          for attempt in $(seq 1 45); do
+            if curl --fail --silent --show-error http://127.0.0.1:54321/functions/v1/jarvis-api/health >/dev/null 2>&1; then
+              ready=1
+              break
+            fi
+            sleep 2
+          done
+          if [ "$ready" -ne 1 ]; then
+            cat /tmp/jarvis-functions.log
+            exit 1
+          fi
+          supabase status --env --output-format text > /tmp/jarvis-supabase.env
+          set -a
+          source /tmp/jarvis-supabase.env
+          set +a
+          JARVIS_TEST_SUPABASE_URL="$API_URL" \
+          JARVIS_TEST_ANON_KEY="$ANON_KEY" \
+          JARVIS_TEST_SERVICE_ROLE_KEY="$SERVICE_ROLE_KEY" \
+            node scripts/test-semantic-memory-integration.mjs
+
       - name: Stop isolated local Supabase stack
         if: always()
         run: supabase stop --no-backup
