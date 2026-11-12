@@ -441,18 +441,6 @@ async function startElevenVoice(h: VoiceHandlers, cloudTranscribe?: CloudTranscr
   // Back off exponentially, then resume automatically when the provider recovers.
   let transcriptionFailures = 0
   let transcribeBlockedUntil = 0
-  let browserFallback: Voice | null = null
-
-  const fallbackToBrowser = (reason: string) => {
-    if (browserFallback) return
-    assemble.cancel()
-    pendingAudio.length = 0
-    void vad?.stop()
-    diag.engine = 'browser'
-    diag.lastError = reason
-    browserFallback = startBrowserVoice(h)
-    diag.running = browserFallback.live()
-  }
 
   /**
    * Transcripts become turns here rather than one-per-segment.
@@ -478,7 +466,7 @@ async function startElevenVoice(h: VoiceHandlers, cloudTranscribe?: CloudTranscr
    */
   const transcribe = async (blob: Blob) => {
     const mode = h.mode()
-    if (mode === 'deaf' || browserFallback) return
+    if (mode === 'deaf') return
     if (Date.now() < transcribeBlockedUntil) {
       drop(`speech service cooling down for ${Math.ceil((transcribeBlockedUntil - Date.now()) / 1000)}s`)
       return
@@ -542,19 +530,9 @@ async function startElevenVoice(h: VoiceHandlers, cloudTranscribe?: CloudTranscr
     } catch (err) {
       diag.transcriptionFailures++
       transcriptionFailures++
-      const status = err && typeof err === 'object' && 'status' in err
-        ? Number((err as { status?: unknown }).status)
-        : undefined
-      const retryable = err && typeof err === 'object' && 'retryable' in err
-        ? Boolean((err as { retryable?: unknown }).retryable)
-        : false
-      // A cloud STT outage/quota response may fall back to the browser's
-      // native recognizer. Authentication failures never fall back: signing
-      // in to JARVIS remains required before any cloud conversation can run.
-      if (BACKEND === 'cloud' && (status === 0 || status === 429 || status === 503 || retryable)) {
-        fallbackToBrowser(`cloud speech unavailable${status ? ` (${status})` : ''}; using browser recognition`)
-        return
-      }
+      // Do not silently fall back to Web Speech: browser speech services may
+      // send microphone audio to an OS/browser vendor. Keep cloud-only STT and
+      // surface the failure rather than changing the privacy boundary.
       const retryAfterMs = err && typeof err === 'object' && 'retryAfterMs' in err &&
         typeof (err as { retryAfterMs?: unknown }).retryAfterMs === 'number'
         ? Math.min(300_000, Math.max(1_000, (err as { retryAfterMs: number }).retryAfterMs))
@@ -562,7 +540,7 @@ async function startElevenVoice(h: VoiceHandlers, cloudTranscribe?: CloudTranscr
       const backoffMs = retryAfterMs ?? Math.min(60_000, 5_000 * (2 ** Math.min(transcriptionFailures - 1, 4)))
       transcribeBlockedUntil = Date.now() + backoffMs
       diag.lastError = `${String(err)} · retry in ${Math.ceil(backoffMs / 1000)}s`
-      drop('speech service failed; automatic backoff active')
+      drop('cloud speech service failed; automatic backoff active')
     }
   }
 
