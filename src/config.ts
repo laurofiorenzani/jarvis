@@ -75,6 +75,20 @@ export const BRIDGE_WS_URL = str(import.meta.env.VITE_BRIDGE_URL) ?? 'ws://local
 export const BRIDGE_HTTP_URL = BRIDGE_WS_URL.replace(/^ws/, 'http')
 
 /**
+ * Browser speech-recognition locale. Web Speech recognition accepts one
+ * locale per recognizer, so this is an explicit user-facing default rather
+ * than pretending that one recognizer can reliably auto-detect languages.
+ * Brazilian Portuguese is the primary product language; English remains
+ * selectable for deployments that need it.
+ */
+export const SPEECH_LOCALE = choice(
+  'VITE_SPEECH_LOCALE',
+  import.meta.env.VITE_SPEECH_LOCALE,
+  ['pt-BR', 'en-GB', 'en-US'] as const,
+  'pt-BR',
+)
+
+/**
  * Speech output engine.
  *
  * false (default) — the browser's own speechSynthesis. Runs on-device, so
