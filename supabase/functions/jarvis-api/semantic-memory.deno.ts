@@ -75,6 +75,7 @@ Deno.test('automatic memory filter allows stable preferences but blocks sensitiv
   equal(isSafeAutoMemoryContent('A65 F4E2'), false, 'bare Eircode')
   equal(isSafeAutoMemoryContent('21/08/1992'), false, 'numeric date')
   equal(isSafeAutoMemoryContent('21 August 1992'), false, 'written date')
+  equal(isSafeAutoMemoryContent('My wife prefers a different account'), false, 'third-party family detail')
 })
 
 Deno.test('automatic extraction creates only unique, bounded, provenance-linked candidates', () => {
@@ -108,6 +109,7 @@ Deno.test('automatic extraction skips a source turn containing sensitive data', 
   equal(isSafeAutoMemorySource('12 Main Street'), false, 'bare street address')
   equal(isSafeAutoMemorySource('A65 F4E2'), false, 'bare Eircode')
   equal(isSafeAutoMemorySource('21 August 1992'), false, 'written date')
+  equal(isSafeAutoMemorySource('My wife prefers a different account'), false, 'third-party family detail')
 })
 
 Deno.test('automatic capture consent is subordinate to memory retrieval consent', () => {
