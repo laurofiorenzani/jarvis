@@ -167,14 +167,15 @@ export function interrupt(): void {
 }
 
 /**
- * Whether the brain is reachable right now.
+ * Whether the brain has a live, verified connection right now.
  *
- * Only meaningful on the bridge, where a live socket is the session. The direct
- * path holds no connection between turns — each one is its own HTTPS request —
- * so there is nothing that can be down until you try it.
+ * The bridge exposes a live socket. Cloud mode is request/response over HTTPS,
+ * so an authenticated session proves identity, not provider or network health.
+ * Direct mode also has no persistent connection between turns. Do not report
+ * either stateless backend as connected before a request succeeds.
  */
 export function isConnected(): boolean {
-  return usingBridge ? bridge.isConnected() : usingCloud ? Boolean(cloudAuth.getSession()) : true
+  return usingBridge ? bridge.isConnected() : false
 }
 
 /**
@@ -193,5 +194,7 @@ export function watchConnection(
 
 /** Labels for the HUD's SYSTEMS rail. */
 export function connectedLabels(): string[] {
-  return usingBridge ? bridge.bridgeServers() : usingCloud ? ['JARVIS CLOUD'] : direct.connectedLabels()
+  // Cloud authentication is surfaced separately in Command Center. A signed-in
+  // account is not proof that the API/provider is currently reachable.
+  return usingBridge ? bridge.bridgeServers() : usingCloud ? [] : direct.connectedLabels()
 }

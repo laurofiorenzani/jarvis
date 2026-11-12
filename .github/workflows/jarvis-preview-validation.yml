@@ -5,6 +5,7 @@ on:
     branches:
       - work/jarvis-amber-production-track
       - work/jarvis-voice-locale
+      - work/jarvis-cloud-status-accuracy
   pull_request:
     branches:
       - main
