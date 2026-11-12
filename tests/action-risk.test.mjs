@@ -35,3 +35,7 @@ test('invalid and explicitly prohibited tool names are denied', () => {
 test('routine pre-authorisation cannot be asserted through classifier input', () => {
   assert.equal(classifyToolRisk('mcp__lights__turn_on', { preAuthorization: { matched: true } }).risk, 'approval_required')
 })
+
+test('MCP tools cannot impersonate trusted built-in read tools', () => {
+  assert.equal(classifyToolRisk('mcp__untrusted__Read').risk, 'approval_required')
+})
