@@ -40,6 +40,24 @@ jobs:
         run: |
           npm audit --json > npm-audit.json || true
           node -e "const r=require('./npm-audit.json'); console.log('npm audit summary:', JSON.stringify(r.metadata?.vulnerabilities ?? {})); for (const [name, item] of Object.entries(r.vulnerabilities ?? {})) console.log(name, JSON.stringify({severity:item.severity,isDirect:item.isDirect,range:item.range,fixAvailable:item.fixAvailable}))"
+      - name: Resolve compatible npm security fixes
+        run: npm audit fix --package-lock-only --ignore-scripts || true
+      - name: Install patched dependency tree
+        run: npm ci
+      - name: Report remaining npm advisories
+        continue-on-error: true
+        run: |
+          npm audit --json > npm-audit-after.json || true
+          node -e "const r=require('./npm-audit-after.json'); console.log('patched npm audit summary:', JSON.stringify(r.metadata?.vulnerabilities ?? {})); for (const [name, item] of Object.entries(r.vulnerabilities ?? {})) console.log(name, JSON.stringify({severity:item.severity,isDirect:item.isDirect,range:item.range,fixAvailable:item.fixAvailable}))"
+      - name: Upload dependency refresh candidate
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: jarvis-dependency-refresh-candidate
+          path: |
+            package-lock.json
+            npm-audit-after.json
+          if-no-files-found: warn
       - name: TypeScript and production build
         run: npm run build
       - name: Unit and regression tests
