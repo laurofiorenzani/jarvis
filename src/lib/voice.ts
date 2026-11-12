@@ -361,6 +361,8 @@ export const diag = {
   restarts: 0,
   /** Cloud/bridge transcription requests that failed, independent of recogniser health. */
   transcriptionFailures: 0,
+  /** Captured audio segments discarded because the bounded queue was full. */
+  queuedSegmentsDropped: 0,
   /** Milliseconds the last transcription round-trip took. */
   idleMs: 0,
 }
@@ -433,6 +435,7 @@ async function startElevenVoice(h: VoiceHandlers, cloudTranscribe?: CloudTranscr
    * "London" arriving before "what's the weather in" is worse than either.
    */
   const pendingAudio: Blob[] = []
+  const MAX_PENDING_AUDIO_SEGMENTS = 4
   let draining = false
   // Provider quota/network failures must not trigger a request for every VAD segment.
   // Back off exponentially, then resume automatically when the provider recovers.
@@ -573,6 +576,13 @@ async function startElevenVoice(h: VoiceHandlers, cloudTranscribe?: CloudTranscr
       }
     },
     onEnd: (blob) => {
+      // Bound memory while a provider is slow or unavailable. Prefer recent
+      // speech over stale queued audio and expose every discarded segment.
+      if (pendingAudio.length >= MAX_PENDING_AUDIO_SEGMENTS) {
+        pendingAudio.shift()
+        diag.queuedSegmentsDropped++
+        drop('oldest queued speech segment discarded to keep the audio queue bounded')
+      }
       pendingAudio.push(blob)
       void drain()
     },
