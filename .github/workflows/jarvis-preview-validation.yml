@@ -33,13 +33,12 @@ jobs:
         with:
           node-version: 22
           cache: npm
+      - name: Resolve patched transitive dependencies
+        run: npm install --package-lock-only --ignore-scripts
       - name: Install dependencies
         run: npm ci
-      - name: Report remaining npm advisories
-        continue-on-error: true
-        run: |
-          npm audit --json > npm-audit-after.json || true
-          node -e "const r=require('./npm-audit-after.json'); console.log('patched npm audit summary:', JSON.stringify(r.metadata?.vulnerabilities ?? {})); for (const [name, item] of Object.entries(r.vulnerabilities ?? {})) console.log(name, JSON.stringify({severity:item.severity,isDirect:item.isDirect,range:item.range,fixAvailable:item.fixAvailable}))"
+      - name: Enforce high-severity dependency audit
+        run: npm audit --audit-level=high
       - name: TypeScript and production build
         run: npm run build
       - name: Unit and regression tests
@@ -58,6 +57,13 @@ jobs:
         run: deno test --config supabase/functions/jarvis-api/deno.json supabase/functions/jarvis-api/semantic-memory.deno.ts
       - name: Preview Edge Function tests
         run: deno test --config supabase/functions/jarvis-preview-api/deno.json supabase/functions/jarvis-preview-api/semantic-memory.deno.ts
+      - name: Upload validated dependency lockfile
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: jarvis-validated-package-lock
+          path: package-lock.json
+          if-no-files-found: error
       - name: Publish commit validation status
         if: always()
         uses: actions/github-script@v8
