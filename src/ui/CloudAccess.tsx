@@ -475,7 +475,7 @@ export function CloudAccess({ onConnected, onDisconnected, onResumeConversation,
               Include approved memories in JARVIS replies
             </label>
             <div style={{ color: '#7797a2', marginBottom: 10, letterSpacing: 0 }}>
-              Off by default. When enabled, up to 20 non-expired saved memories may be sent to the configured AI provider with your message.
+              Off by default. When enabled, up to 20 non-expired saved memories and up to 8 relevant approved facts from prior conversations may be included with your message and sent to the configured AI provider. Pending candidates are never included.
             </div>
             <section aria-label="Pending semantic memory candidates" style={{ borderTop: '1px solid #214653', borderBottom: '1px solid #214653', padding: '10px 0', marginBottom: 12 }}>
               <strong style={{ display: 'block', color: '#83d9e8', marginBottom: 8 }}>MEMORY REVIEW QUEUE · {memoryCandidates.length}</strong>
