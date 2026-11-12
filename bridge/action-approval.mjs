@@ -28,10 +28,22 @@ export function canonicalizeArguments(value) {
     let result
     if (Array.isArray(input)) {
       const keys = Object.keys(input)
-      if (keys.length !== input.length || keys.some((key, i) => key !== String(i))) {
-        throw new TypeError('Approval arrays cannot contain holes or extra properties.')
+      const ownKeys = Reflect.ownKeys(input)
+      if (
+        keys.length !== input.length ||
+        keys.some((key, i) => key !== String(i)) ||
+        ownKeys.length !== input.length + 1 ||
+        ownKeys.some((key) => typeof key !== 'string' || (key !== 'length' && !keys.includes(key)))
+      ) {
+        throw new TypeError('Approval arrays cannot contain holes, hidden or extra properties.')
       }
-      result = '[' + input.map((item) => visit(item)).join(',') + ']'
+      for (const key of keys) {
+        const descriptor = Object.getOwnPropertyDescriptor(input, key)
+        if (!descriptor || !('value' in descriptor) || !descriptor.enumerable) {
+          throw new TypeError('Approval arrays must contain enumerable data elements only.')
+        }
+      }
+      result = '[' + keys.map((key) => visit(Object.getOwnPropertyDescriptor(input, key).value)).join(',') + ']'
     } else {
       const keys = Object.keys(input).sort()
       const allKeys = Reflect.ownKeys(input)
