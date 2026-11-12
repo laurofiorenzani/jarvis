@@ -55,9 +55,21 @@ async function askCloud(prompt: string, handlers: AskHandlers): Promise<{ text: 
   cloudAbort?.abort()
   cloudAbort = controller
   let text = ''
+  let activeTurnId: string | null = null
+  const cancelServerTurn = () => {
+    const current = cloudAuth.getSession()
+    if (!activeTurnId || !current || current.user.id !== session.user.id) return
+    // Abort the browser stream immediately, then ask the authenticated cloud
+    // API to cancel the durable turn so the provider stream is stopped server-side.
+    void cloudApi.cancelTurn(token, cloudConversationId!, activeTurnId).catch((error) => {
+      console.warn('[jarvis] cloud turn cancellation could not be confirmed', error)
+    })
+  }
+  controller.signal.addEventListener('abort', cancelServerTurn, { once: true })
   try {
     await cloudApi.streamTurn(token, cloudConversationId, prompt, (event) => {
       if (cloudAuth.getSession()?.user.id !== session.user.id) return
+      if (event.type === 'turn.started') activeTurnId = event.turnId
       if (event.type === 'text.delta') {
         text += event.delta
         handlers.onText(event.delta)
@@ -70,6 +82,7 @@ async function askCloud(prompt: string, handlers: AskHandlers): Promise<{ text: 
     }
     throw error
   } finally {
+    controller.signal.removeEventListener('abort', cancelServerTurn)
     if (cloudAbort === controller) cloudAbort = null
   }
 }
