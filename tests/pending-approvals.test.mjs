@@ -67,3 +67,16 @@ test('invalid TTL and malformed requests fail closed', () => {
   assert.throws(() => registry.create({ sessionId: '', toolUseId: 't', toolName: 'x', arguments: {} }), TypeError)
   registry.close()
 })
+
+test('duplicate invocation IDs, excessive pending requests and extra decision fields are rejected', async () => {
+  const registry = new PendingApprovalRegistry({ ttlMs: 120_000 })
+  const first = create(registry)
+  assert.throws(() => create(registry), /already exists/)
+  assert.equal(registry.resolve(decisionFor(first.request, { admin: true })), false)
+  const pending = [first]
+  for (let i = 1; i < 32; i++) pending.push(create(registry, { toolUseId: 'tool-' + (i + 1) }))
+  assert.equal(registry.size, 32)
+  assert.throws(() => create(registry, { toolUseId: 'tool-overflow' }), /Too many/)
+  registry.close()
+  for (const item of pending) assert.equal(await item.result, false)
+})
