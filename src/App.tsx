@@ -1,9 +1,10 @@
-import { useEffect, useRef } from 'react'
-import { Scene } from './scene/Scene'
-import { Hud } from './ui/Hud'
+import { lazy, Suspense, useEffect, useRef } from 'react'
 import { Boot } from './ui/Boot'
 import { Ignition } from './ui/Ignition'
-import { Diagnostics } from './ui/Diagnostics'
+
+const Scene = lazy(() => import('./scene/Scene').then((module) => ({ default: module.Scene })))
+const Hud = lazy(() => import('./ui/Hud').then((module) => ({ default: module.Hud })))
+const Diagnostics = lazy(() => import('./ui/Diagnostics').then((module) => ({ default: module.Diagnostics })))
 import { useStore } from './store'
 import { startVoice, type Voice, type VoiceMode } from './lib/voice'
 import { createSpeaker, cycleVoice, currentVoiceName } from './lib/tts'
@@ -701,10 +702,14 @@ export default function App() {
 
   return (
     <>
-      <Scene />
-      <Hud />
+      <Suspense fallback={<div className="scene-loading" aria-label="Initialising JARVIS" />}>
+        <Scene />
+      </Suspense>
+      <Suspense fallback={null}>
+        <Hud />
+        <Diagnostics />
+      </Suspense>
       <Boot />
-      <Diagnostics />
       <Ignition onStart={() => void powerOn()} />
     </>
   )
