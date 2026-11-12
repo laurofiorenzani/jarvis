@@ -71,6 +71,10 @@ Deno.test('automatic memory filter allows stable preferences but blocks sensitiv
   equal(isSafeAutoMemoryContent('My Eircode is A65 F4E2'), false, 'Eircode')
   equal(isSafeAutoMemoryContent('My date of birth is 21 August 1992'), false, 'date of birth')
   equal(isSafeAutoMemoryContent('My nationality is Brazilian'), false, 'nationality')
+  equal(isSafeAutoMemoryContent('12 Main Street'), false, 'bare street address')
+  equal(isSafeAutoMemoryContent('A65 F4E2'), false, 'bare Eircode')
+  equal(isSafeAutoMemoryContent('21/08/1992'), false, 'numeric date')
+  equal(isSafeAutoMemoryContent('21 August 1992'), false, 'written date')
 })
 
 Deno.test('automatic extraction creates only unique, bounded, provenance-linked candidates', () => {
@@ -101,6 +105,9 @@ Deno.test('automatic extraction skips a source turn containing sensitive data', 
   equal(isSafeAutoMemorySource('My home address is 10 Main Street'), false, 'home address')
   equal(isSafeAutoMemorySource('My date of birth is 21 August'), false, 'birth date')
   equal(isSafeAutoMemorySource('My nationality and visa status are private'), false, 'identity and immigration')
+  equal(isSafeAutoMemorySource('12 Main Street'), false, 'bare street address')
+  equal(isSafeAutoMemorySource('A65 F4E2'), false, 'bare Eircode')
+  equal(isSafeAutoMemorySource('21 August 1992'), false, 'written date')
 })
 
 Deno.test('automatic capture consent is subordinate to memory retrieval consent', () => {
