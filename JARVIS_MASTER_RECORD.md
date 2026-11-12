@@ -220,3 +220,68 @@ A deeper review of the older `docs/integrations/UNIFIED_ASSISTANT_INTEGRATIONS.m
 - This candidate has not been merged, deployed to production, or physically tested on iPhone. The current amber UI files were copied from the exact amber branch head `ae4e9d3...`; app auth/memory code remains from the semantic-memory foundation line.
 - Known unresolved integration risks: CloudMemoryPanel source still contains the older localStorage singleton implementation but is no longer imported by CommandCenter; CloudAccess uses an ephemeral in-memory token store by default and optional tab sessionStorage, not native Keychain; native Capacitor app is still absent; browser language is selected by config, not auto-detected.
 - No user accounts, passwords, auth sessions, production data, secrets, Supabase settings, deployments or repositories were modified/deleted.
+
+
+## 15. Repository consolidation and continuity audit — 2026-11-12 22:40 UTC
+
+### Canonical integration branch
+- Current integration candidate: `work/jarvis-canonical-integration`, based on `work/intelligent-memory-foundation`. Current code head at this record update: `257cce934ae6e2c2059e30e22dba4087dca156fe`.
+- Relative to default `main`, this branch has 487 commits ahead / 3 behind and a 124-file tree diff. This is a substantial consolidation, not a safe blind merge. Do not retarget to main or merge until each unique subsystem and production dependency is reviewed.
+- Current amber HUD files, cloud auth/memory foundation, account-switch clearing, guarded STT/TTS, read-only observer and no-Shortcuts integration spec are now present in this candidate.
+- The older `CloudMemoryPanel` source is a null-returning deprecated stub; CommandCenter no longer uses its duplicate localStorage auth path.
+- CloudAccess no longer exposes account creation in its UI. Existing-account sign-in, password recovery and resend-confirmation paths remain. The two existing accounts are not re-created or modified.
+- CloudAccess now uses a runtime generation guard. Sign-out invalidates in-flight memory/conversation operations, clears account-scoped component state immediately, and the App clears HUD turns/panels/blades, memory confirmation queue, STT and TTS provider state. Late STT/TTS results are discarded if the account changes.
+- Voice locale is configurable (pt-BR default, en-GB/en-US selectable); automatic per-utterance language detection is still not proven.
+- Current product experience target includes core presence, memory constellation with provenance, connected sources, explicit camera vision, device controls, mission/task center, diagnostics and guarded self-improvement. The current visual HUD exists; the full connected-source/device/vision/task experience is not yet implemented. The camera/live-vision architecture document is target-only; no multimodal camera endpoint or live video capture has been shipped.
+
+### Branch inventory snapshot (compare against the integration branch)
+| Branch | Unique commits/files vs candidate | Decision |
+|---|---:|---|
+| `work/jarvis-amber-production-track` | 212 / 49 | Keep until every unique cloud/action-approval/voice/UI feature is reviewed and migrated; only selected current UI files have been ported so far |
+| `work/jarvis-voice-locale` | 233 / 52 | Keep; review cloud STT/TTS, language, cancellation and connectivity changes feature-by-feature |
+| `work/jarvis-cloud-status-accuracy` | 225 / 51 | Keep until status and health semantics are reconciled |
+| `work/freellmapi-backend-prototype` | 32 / 21 | Keep; review provider/tool-loop code; local Node/MCP bridge is not the final mobile/cloud runtime |
+| `work/mobile-companion` | 114 / 18 | Keep until useful cloud contracts/docs are reconciled; audit found no Capacitor/Xcode project |
+| `work/memory-integration` | 148 / 42 | Keep for review; encrypted local/bridge memory is not to be merged wholesale into cloud-first runtime |
+| `feature/intelligent-memory` | 17 / 7 | Review local memory implementation; retire only after confirming no unique security tests are needed |
+| `feature/live-vision` | 2 / 2 | Migrate camera/live-vision design as a target-only spec, then retire |
+| `fix/auth-invite-password-recovery` | 5 / 3 | Auth recovery/resend behaviour and tests are represented in the integration candidate; verify exact test coverage before retiring |
+| `work/jarvis-amber-command-center` | 19 / 11 | Older UI line; observer/experience design work is being migrated; retire only after unique docs reviewed |
+| `work/self-evolution-engine-foundation` | 14 / 7 | Read-only observer, test and design doc have been ported; `README.md` and product vision are the remaining unique files to reconcile |
+| `work/intelligent-memory-foundation` | 0 / 0 | Base of current candidate; can be retired after PR #12 is integrated |
+| `work/memory-integration-ready` | 0 / 0 | Ancestor only; can be retired after dependent PRs/branches are reconciled |
+| `feature/gemini-live-voice` | 0 / 0 (behind) | No unique files vs candidate; retire after checking open references |
+| `fix/restore-main-preview-build` | 3 / 0 | No unique file diff; retain until mainline/preview history is reconciled |
+| `main` | 3 / 0 | Must remain until the canonical integration is approved and promoted |
+
+All branch counts are a snapshot from GitHub compare, not a deletion authorization. Do not delete any branch with unique commits or open PR references until the migration checklist is complete.
+
+### Private secondary repository
+- `laurofiorenzani/jarvis-personal-cloud` remains a private planning/research repository, not the canonical app.
+- Its `work/intelligent-memory-next` branch has 276 unique commits and 49 changed paths versus private main. It contains a separate Cloudflare Worker/D1 + local encrypted-memory prototype and memory-key lifecycle/approval research.
+- The selected production data architecture is Supabase Auth + Postgres/RLS + Edge Functions. Do not run Cloudflare D1 and Supabase as competing personal-memory stores.
+- Preserve key lifecycle findings: encryption needs versioned keys, rotation/recovery, backup and fail-closed behaviour; the old local Windows vault/bridge is not the mobile/cloud key store.
+- The Supabase semantic-memory schema currently stores content in the database under RLS and managed at-rest encryption; it does not yet provide the application-level envelope encryption described in the private prototype. **Do not store highly sensitive secrets or high-risk personal content in JARVIS memory until application-level encryption, key versioning/rotation, recovery and deletion are implemented and tested.** Approved low-sensitivity memory remains opt-in and user-scoped.
+- The private repo is a retirement candidate after its useful research is captured here. No repository deletion has been performed.
+
+### Self-evolution observer
+- Ported `src/lib/system-observer.ts`, its privacy/triage tests, the self-evolution design doc and two workflows into the canonical integration candidate.
+- Observer accepts only allowlisted metadata (API/PWA/CI/deployment status, timestamps, bounded status/duration codes); it drops prompts, request bodies, tokens and arbitrary fields. Proposals always require human approval.
+- `JARVIS Observer Validation` run #23 succeeded. `JARVIS Read-only System Observer` run #17 succeeded. These workflows are read-only and do not yet persist incidents into JARVIS memory or autonomously write code.
+- The scheduled observer only becomes active on the default branch after a later approved merge. The current branch's push workflow validates the observer tests/build.
+
+### Preview infrastructure and blockers
+- Vercel branch-scoped Preview environment variables were created for `work/jarvis-canonical-integration`: `VITE_BACKEND=cloud`, public Supabase URL/anon key, and `VITE_SUPABASE_FUNCTION_NAME=jarvis-preview-api`. No service-role or provider secret was added to the client.
+- Supabase `jarvis-preview-api` was deployed as version 11 (ACTIVE, `verify_jwt=false`, handler-level bearer validation retained) with the canonical integration preview origin allowlisted. Production `jarvis-api` was not modified.
+- Vercel has a free-tier API deployment cap of more than 100 deployments per 24 hours. The requested redeploy of the latest candidate was rejected with HTTP 402 and `retryAfter=86400`. No billing/plan change was made. The existing READY preview is for older commit `b96dd59...`; it predates the latest account-switch/observer/CORS changes and must not be represented as the latest build.
+- The new CI workflow now includes a preflight check against the canonical preview origin and `jarvis-preview-api`; current CI run #757 is executing against the latest pre-CORS-workflow code, and a newer run is queued for head `257cce...`.
+- Cloudflare account still reports no active tunnel and no zones. Oracle Cloud cannot be inspected via the currently connected tools. FreeLLMAPI can be added to the server-side provider router only when a stable HTTPS endpoint is reachable; no Windows/local relay is permitted.
+
+### Repository cleanup capability
+- The connected GitHub actions available in this session do not expose repository deletion, branch deletion or PR-close operations. No destructive GitHub cleanup has been attempted. The exact retirement candidates are listed above; perform deletion only after migration and with a GitHub operation that supports the requested action.
+- Open PR inventory remains #1, #4, #5, #6, #7, #8, #9, #10, #11 and #12. PR #12 is the active integration candidate; #10/#11 are documentation branches whose content is also included in #12. Do not merge multiple overlapping PRs independently.
+
+### Validation evidence
+- Full CI run #730 succeeded on commit `987509759f40a3619d53c1cd7b22b60f075a497c`: TypeScript/build, unit tests, lint, provider privacy routing, Edge Function typecheck, isolated Supabase migrations, SQL account-isolation tests, two-user semantic-memory API tests and production cloud API/CORS smoke test all passed.
+- Later commits added account-switch race guards, observer workflows and preview CORS validation. They are being revalidated in CI; do not treat run #730 as validation of commits after `987509...`.
+- No existing account was deleted, recreated or modified. No production database schema, production Edge Function, production domain, billing plan or main branch was changed.
