@@ -140,3 +140,11 @@ Continue autonomously across independent workstreams wherever safe. User explici
 - These remain isolated, unintegrated primitives. They do not pause the Claude Agent SDK hook, do not establish authenticated account ownership, and do not create a usable UI approval flow. The current global write gate remains authoritative; do not enable broad writes.
 - Latest commits: `d634fdb`, `80f07c7`, `04728c0`, `8359dd8`.
 - CI run observed for earlier head `f9ef2d5` (run #238) passed dependency install, high-severity audit and TypeScript/Vite build; unit/regression tests were still running at last inspection. Newer commits were pushed after that run, so a successful CI result for the current head is still required.
+
+
+## Follow-up validation and classifier correction — 2026-11-12
+- Inspected failed Actions run #246 (commit before latest hardening). Build and TypeScript/Vite passed; 45 of 46 executed Node tests passed. The failing regression exposed an overly broad read-verb match: an MCP tool named exactly `Read` was incorrectly treated as read-only.
+- Tightened MCP read classification to require an explicit verb-plus-underscore prefix (for example `get_event`, `list_messages`). Trusted SDK built-ins remain explicitly allowlisted by exact name; ambiguous MCP names now fail closed to approval-required.
+- Further hardened canonical approval digesting: arrays now reject non-enumerable/hidden elements as well as holes and extra properties.
+- Added regression tests for hidden array elements. Current branch head is newer than run #246; fresh CI confirmation is still pending.
+- No production or preview deployment was made. Vercel continues to reject deployments due to the account's free-plan daily deployment quota. The last known READY preview is behind current source.
