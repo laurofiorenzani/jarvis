@@ -208,3 +208,15 @@ A deeper review of the older `docs/integrations/UNIFIED_ASSISTANT_INTEGRATIONS.m
 - The previous integration plan must be treated as superseded once the corrective PR is reviewed.
 - This finding demonstrates why repository-wide doc/code search is required before declaring the project reconciled.
 - No repositories/branches/accounts/data were deleted or changed.
+
+
+## 14. Current amber UI + cloud auth integration candidate — 2026-11-12 22:16 UTC
+
+- Created `work/jarvis-canonical-integration` from the semantic-memory/auth foundation branch, then ported the current amber UI layer from `work/jarvis-amber-production-track`: current CSS, Scene/Core/MemoryWeb/Particles, store, HUD, CommandCenter, CloudMemoryPanel source, and AppErrorBoundary.
+- Updated `src/App.tsx` to lazy-load the current Scene/HUD/Diagnostics and use AppErrorBoundary while retaining the CloudAccess runtime and memory approval UI. This is intended to retain the amber interface and cloud account capability together; physical visual validation remains pending.
+- Removed the duplicate CloudMemoryPanel account/login/token path from CommandCenter because it used a separate global localStorage auth implementation. The single CloudAccess runtime remains the account/memory control surface. The old CloudMemoryPanel source file is currently orphaned and must be reviewed/removed in a follow-up cleanup after dependency checks.
+- Added `SPEECH_LOCALE` config (pt-BR default, en-GB/en-US selectable) and changed browser SpeechRecognition to use it. This is configurable locale support, not yet automatic per-utterance language detection.
+- Opened draft PR #12: https://github.com/laurofiorenzani/jarvis/pull/12. Base `work/intelligent-memory-foundation`, head `f295bcfa9112a37e91f149cd3c26e349ae0151cf` at opening. CI run #717 (GitHub Actions ID `43318376095`) was queued at 22:16 UTC; no pass/fail result available yet.
+- This candidate has not been merged, deployed to production, or physically tested on iPhone. The current amber UI files were copied from the exact amber branch head `ae4e9d3...`; app auth/memory code remains from the semantic-memory foundation line.
+- Known unresolved integration risks: CloudMemoryPanel source still contains the older localStorage singleton implementation but is no longer imported by CommandCenter; CloudAccess uses an ephemeral in-memory token store by default and optional tab sessionStorage, not native Keychain; native Capacitor app is still absent; browser language is selected by config, not auto-detected.
+- No user accounts, passwords, auth sessions, production data, secrets, Supabase settings, deployments or repositories were modified/deleted.
