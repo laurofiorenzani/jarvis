@@ -43,3 +43,9 @@ test('getters, symbol keys and extra array properties are rejected without execu
   Object.defineProperty(withHidden, 'hidden', { value: 1, enumerable: false })
   assert.throws(() => canonicalizeArguments(withHidden), /hidden properties/)
 })
+
+test('non-enumerable array elements are rejected', () => {
+  const hiddenElement = [1]
+  Object.defineProperty(hiddenElement, '0', { value: 1, enumerable: false })
+  assert.throws(() => canonicalizeArguments(hiddenElement), /hidden or extra/)
+})
