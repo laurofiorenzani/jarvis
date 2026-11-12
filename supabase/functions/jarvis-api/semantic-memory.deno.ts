@@ -67,6 +67,10 @@ Deno.test('automatic memory filter allows stable preferences but blocks sensitiv
   equal(isSafeAutoMemoryContent('My bank account balance is 5000'), false, 'financial data')
   equal(isSafeAutoMemoryContent('Contact me at person@example.com'), false, 'email')
   equal(isSafeAutoMemoryContent('Call me at +353 87 123 4567'), false, 'phone')
+  equal(isSafeAutoMemoryContent('My home address is 10 Main Street'), false, 'home address')
+  equal(isSafeAutoMemoryContent('My Eircode is A65 F4E2'), false, 'Eircode')
+  equal(isSafeAutoMemoryContent('My date of birth is 21 August 1992'), false, 'date of birth')
+  equal(isSafeAutoMemoryContent('My nationality is Brazilian'), false, 'nationality')
 })
 
 Deno.test('automatic extraction creates only unique, bounded, provenance-linked candidates', () => {
