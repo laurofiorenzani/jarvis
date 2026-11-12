@@ -422,6 +422,8 @@ async function startElevenVoice(h: VoiceHandlers): Promise<Voice> {
    */
   const pendingAudio: Blob[] = []
   let draining = false
+  let browserFallback: Voice | null = null
+  let guardPoll: ReturnType<typeof setInterval> | null = null
 
   /**
    * Transcripts become turns here rather than one-per-segment.
@@ -458,6 +460,21 @@ async function startElevenVoice(h: VoiceHandlers): Promise<Voice> {
       diag.idleMs = Math.round(performance.now() - t0)
       if (!res.ok) {
         diag.restarts++
+        if (res.status === 429) {
+          // The hosted transcription provider is quota-limited. Do not keep
+          // sending queued audio into a known 429 loop: hand the live session
+          // to the browser's native recognizer, which requires no API key.
+          diag.lastError = 'cloud STT quota exhausted (429); switching to browser recognition'
+          diag.dropped = 'cloud speech quota exhausted — using browser recognition'
+          pendingAudio.length = 0
+          assemble.cancel()
+          vad?.stop()
+          if (guardPoll !== null) clearInterval(guardPoll)
+          browserFallback = startBrowserVoice(h)
+          diag.engine = 'browser'
+          diag.running = browserFallback.live()
+          return
+        }
         diag.lastError = `stt ${res.status}`
         drop(`transcription failed (${res.status})`)
         return
@@ -564,7 +581,7 @@ async function startElevenVoice(h: VoiceHandlers): Promise<Voice> {
   // Raise the trigger bar exactly while he speaks. The mode is polled rather
   // than pushed because nothing in the app pushes phase changes here, and a
   // 200ms lag on the echo gate is imperceptible.
-  const guardPoll = setInterval(() => {
+  guardPoll = setInterval(() => {
     const mode = h.mode()
     vad?.setGuard(mode === 'guard')
     // He has stood down — by Escape, by the idle timeout, or by dropping back
@@ -576,12 +593,13 @@ async function startElevenVoice(h: VoiceHandlers): Promise<Voice> {
 
   return {
     stop: () => {
-      clearInterval(guardPoll)
+      if (guardPoll !== null) clearInterval(guardPoll)
+      browserFallback?.stop()
       assemble.cancel()
       vad?.stop()
       diag.running = false
     },
-    live: () => vad?.live() ?? false,
+    live: () => browserFallback?.live() ?? (vad?.live() ?? false),
   }
 }
 
