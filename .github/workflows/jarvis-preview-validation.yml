@@ -1,9 +1,14 @@
 name: Jarvis preview validation
 
 on:
-  push:
+  pull_request:
     branches:
-      - work/jarvis-amber-production-track
+      - main
+    types:
+      - opened
+      - synchronize
+      - reopened
+      - ready_for_review
 
 permissions:
   contents: read
