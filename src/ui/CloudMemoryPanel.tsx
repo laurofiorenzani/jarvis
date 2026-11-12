@@ -25,6 +25,7 @@ export function CloudMemoryPanel() {
   const [turnBusy, setTurnBusy] = useState(false)
   const [memoryQuery, setMemoryQuery] = useState('')
   const [memoryResults, setMemoryResults] = useState<CloudMemorySearchResult[]>([])
+  const [memorySearched, setMemorySearched] = useState(false)
   const abortTurn = useRef<AbortController | null>(null)
   const accountGeneration = useRef(0)
 
@@ -81,6 +82,7 @@ export function CloudMemoryPanel() {
     setCandidates([])
     setMemoryResults([])
     setMemoryQuery('')
+    setMemorySearched(false)
     setCloudAnswer('')
     setCloudQuestion('')
     setEnabled(false)
@@ -150,6 +152,7 @@ export function CloudMemoryPanel() {
       const result = await cloudApi.searchApprovedMemory(token, memoryQuery.trim())
       if (!isCurrentAccount(userId, generation)) return
       setMemoryResults(result.results)
+      setMemorySearched(true)
       if (!result.contextEnabled) setNotice('ENABLE MEMORY CONTEXT TO RETRIEVE APPROVED FACTS')
     } catch (cause) {
       if (isCurrentAccount(userId, generation)) setError(cause instanceof Error ? cause.message : 'Approved memory search failed.')
@@ -245,17 +248,17 @@ export function CloudMemoryPanel() {
           </div>
           <div style={{ border: '1px solid rgba(255,157,73,.28)', padding: 10, display: 'grid', gap: 8 }}>
             <b>AUTOMATIC MEMORY SUGGESTIONS</b>
-            <span style={muted}>Cloud conversations only for now. When the updated cloud API is available, JARVIS can send the current exchange to the configured free-tier model to extract stable, non-sensitive suggestions. A server-side filter blocks sensitive source turns and candidate content. Nothing enters approved memory until you review and approve it. Health, financial, legal, identity, contact details, and secrets are excluded. Local bridge voice conversations are not included yet.</span>
-            <button style={action} type="button" disabled={busy || !enabled || !autoCaptureSupported} onClick={() => void toggleAutoCapture()}>{!autoCaptureSupported ? 'WAITING FOR CLOUD API UPDATE' : autoCaptureEnabled ? 'DISABLE AUTOMATIC CAPTURE' : 'ENABLE AUTOMATIC CAPTURE'}</button>
-            <strong style={{ color: autoCaptureEnabled ? '#a7d8a1' : '#e6a36b' }}>{!autoCaptureSupported ? 'NOT AVAILABLE · BACKEND UPDATE REQUIRED' : autoCaptureEnabled ? 'ENABLED · PENDING REVIEW ONLY' : enabled ? 'DISABLED' : 'ENABLE MEMORY CONTEXT FIRST'}</strong>
+            <span style={muted}>Cloud conversations only for now. When enabled, JARVIS sends the current exchange through the configured cloud model to extract stable, non-sensitive suggestions. A server-side filter blocks sensitive source turns and candidate content. Nothing enters approved memory until you review and approve it. Health, financial, legal, identity, contact details, and secrets are excluded. Local bridge voice conversations are not included yet.</span>
+            <button style={action} type="button" disabled={busy || !enabled || !autoCaptureSupported} onClick={() => void toggleAutoCapture()}>{!autoCaptureSupported ? 'AUTOMATIC CAPTURE UNAVAILABLE' : autoCaptureEnabled ? 'DISABLE AUTOMATIC CAPTURE' : 'ENABLE AUTOMATIC CAPTURE'}</button>
+            <strong style={{ color: autoCaptureEnabled ? '#a7d8a1' : '#e6a36b' }}>{!autoCaptureSupported ? 'NOT AVAILABLE · API CAPABILITY NOT CONFIRMED' : autoCaptureEnabled ? 'ENABLED · PENDING REVIEW ONLY' : enabled ? 'DISABLED' : 'ENABLE MEMORY CONTEXT FIRST'}</strong>
           </div>
           <div style={{ border: '1px solid rgba(255,157,73,.28)', padding: 10, display: 'grid', gap: 8 }}>
             <b>APPROVED MEMORY RETRIEVAL</b>
             <form onSubmit={searchMemory} style={{ display: 'grid', gap: 8 }}>
-              <input style={field} value={memoryQuery} onChange={(event) => setMemoryQuery(event.target.value)} placeholder="Search approved facts…" maxLength={160} />
+              <input style={field} value={memoryQuery} onChange={(event) => { setMemoryQuery(event.target.value); setMemorySearched(false); setMemoryResults([]) }} placeholder="Search approved facts…" maxLength={160} />
               <button style={action} type="submit" disabled={busy || !memoryQuery.trim()}>SEARCH APPROVED MEMORY</button>
             </form>
-            {memoryResults.length === 0 && <span style={muted}>No matching approved facts loaded.</span>}
+            {memoryResults.length === 0 && <span style={muted}>{memorySearched ? 'No matching approved facts found.' : 'Search your approved facts to retrieve account-scoped memory.'}</span>}
             {memoryResults.map((item) => <article key={item.id} style={{ borderTop: '1px solid rgba(255,157,73,.2)', paddingTop: 7, display: 'grid', gap: 4 }}><small style={muted}>{item.type.toUpperCase()} {item.topic ? `· ${item.topic}` : ''}</small><span style={{ lineHeight: 1.5 }}>{item.content}</span></article>)}
           </div>
           <div style={{ border: '1px solid rgba(255,157,73,.28)', padding: 10, display: 'grid', gap: 8 }}>
