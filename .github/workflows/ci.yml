@@ -71,6 +71,9 @@ jobs:
       - name: Test provider privacy routing
         run: deno test supabase/functions/jarvis-api/model-router_test.ts
 
+      - name: Test semantic-memory validation and auto-capture policy
+        run: deno test supabase/functions/jarvis-api/semantic-memory.deno.ts
+
       - name: Type-check Supabase Edge Function
         run: deno check supabase/functions/jarvis-api/index.ts
 
