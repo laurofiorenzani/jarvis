@@ -617,7 +617,7 @@ async function startCloudVoice(h: VoiceHandlers): Promise<Voice> {
 
 /**
  * The keyless path. Uses the browser's own SpeechRecognition for both detection
- * and transcription, so a student who has configured nothing still gets voice.
+ * and transcription. It is available in supported desktop browsers and partially supported in iOS Safari.
  *
  * It is the flakier engine — Chrome throttles it and it can go silent with no
  * event to catch — so a heartbeat watches it and forces a fresh session
@@ -629,7 +629,7 @@ function startBrowserVoice(h: VoiceHandlers): Voice {
   const Ctor =
     (window as any).SpeechRecognition ?? (window as any).webkitSpeechRecognition
   if (!Ctor) {
-    h.onError('This browser has no speech recognition — use Chrome or Edge, or add an ElevenLabs key.')
+    h.onError('This browser has no speech recognition — try Safari on iOS or Chrome/Edge on desktop, or restore cloud speech transcription.')
     return { stop: () => {}, live: () => false }
   }
 
