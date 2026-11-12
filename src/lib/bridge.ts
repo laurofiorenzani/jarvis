@@ -265,10 +265,9 @@ function connect(): Promise<WebSocket> {
        */
       settle(
         new Error(
-          `Cannot reach the bridge at ${BRIDGE_WS_URL}. Either it is not ` +
-            'running (start it with `npm start`), or this page is on a port it ' +
-            `refuses — it accepts localhost:5173-5199 and 4173-4199, and this ` +
-            `page is on ${location.port || '80'}.`,
+          location.hostname !== 'localhost' && location.hostname !== '127.0.0.1'
+            ? 'The local JARVIS bridge is not available from this hosted preview. Cloud sign-in and the authenticated cloud model route are still being integrated; this device cannot reach a service running on your computer.'
+            : `Cannot reach the bridge at ${BRIDGE_WS_URL}. Start it with \`npm run bridge\` and use a supported localhost port (5173–5199 or 4173–4199).`,
         ),
       )
     }
