@@ -127,7 +127,7 @@ async function streamTurn(
           onEvent(event)
           if (event.type === 'turn.failed') throw new Error(event.message || 'Cloud turn failed.')
         }
-        boundary = buffer.indexOf('\\n\\n')
+        boundary = buffer.indexOf('\n\n')
       }
     }
   } finally {
