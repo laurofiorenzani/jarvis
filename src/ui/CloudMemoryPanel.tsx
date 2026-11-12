@@ -40,10 +40,10 @@ export function CloudMemoryPanel() {
       ])
       setEnabled(preference.contextEnabled)
       setCandidates(pending.candidates.filter((item) => item.status === 'pending'))
-      const names = Array.isArray(status.provider.providers)
-        ? status.provider.providers.map((item) => item.name).filter(Boolean).join(' / ')
+      const names = Array.isArray(status.providers)
+        ? status.providers.map((item) => item.name).filter(Boolean).join(' / ')
         : ''
-      setProvider(names ? names.toUpperCase() : status.provider.configured === true ? 'CONFIGURED' : 'UNAVAILABLE')
+      setProvider(names ? names.toUpperCase() : status.configured === true ? 'CONFIGURED' : 'UNAVAILABLE')
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Cloud data could not be loaded.')
     } finally {
