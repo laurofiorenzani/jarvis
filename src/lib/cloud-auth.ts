@@ -108,11 +108,14 @@ export const cloudAuth = {
   },
 
   async refresh(): Promise<CloudSession | null> {
-    if (refreshInFlight) return refreshInFlight
-    refreshInFlight = (async () => {
-      const current = readSession()
-      if (!current?.refresh_token) return null
-      const revision = authRevision
+    const current = readSession()
+    if (!current?.refresh_token) return null
+    const revision = authRevision
+    const key = String(revision) + ':' + current.user.id + ':' + current.refresh_token
+    const existing = refreshInFlight.get(key)
+    if (existing) return existing
+
+    const pending = (async () => {
       try {
         const payload = await authRequest('token?grant_type=refresh_token', { refresh_token: current.refresh_token })
         const latest = readSession()
@@ -134,10 +137,12 @@ export const cloudAuth = {
         }
         throw error
       } finally {
-        refreshInFlight = null
+        // An older account's completion must never clear a newer refresh entry.
+        if (refreshInFlight.get(key) === pending) refreshInFlight.delete(key)
       }
     })()
-    return refreshInFlight
+    refreshInFlight.set(key, pending)
+    return pending
   },
 
   async getValidAccessToken(): Promise<string | null> {
