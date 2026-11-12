@@ -13,6 +13,13 @@ const SUPABASE_PUBLIC_KEY = (import.meta.env.VITE_SUPABASE_ANON_KEY as string | 
 const FUNCTION_NAME = ((import.meta.env.VITE_SUPABASE_FUNCTION_NAME as string | undefined)?.trim() || 'jarvis-api')
 
 export type CloudMemoryPreference = { version: 1; contextEnabled: boolean }
+export type CloudConversation = { id: string; title: string | null; createdAt: string; updatedAt: string }
+export type CloudMessage = { id: string; role: 'user' | 'assistant'; content: string; createdAt: string }
+export type CloudTurnEvent =
+  | { type: 'text.delta'; delta: string; conversationId: string; turnId: string }
+  | { type: 'turn.completed'; assistantMessage: CloudMessage; conversationId: string; turnId: string }
+  | { type: 'turn.cancelled'; conversationId: string; turnId: string }
+  | { type: 'turn.failed'; code: string; message: string; retryable: boolean; conversationId: string; turnId: string }
 export type CloudMemoryCandidate = {
   id: string
   fact_type: string
@@ -75,7 +82,82 @@ async function request<T>(
 }
 
 
+async function streamTurn(
+  token: string,
+  conversationId: string,
+  text: string,
+  onEvent: (event: CloudTurnEvent) => void,
+  signal?: AbortSignal,
+): Promise<void> {
+  if (!cloudApiConfigured()) throw new Error('Cloud API is not configured for this deployment.')
+  const turnId = globalThis.crypto?.randomUUID?.()
+  if (!turnId) throw new Error('A secure browser context is required for cloud conversations.')
+  const response = await fetch(endpoint('/turns'), {
+    method: 'POST',
+    headers: {
+      apikey: SUPABASE_PUBLIC_KEY!,
+      Authorization: `Bearer ${token}`,
+      'x-jarvis-api-version': String(VERSION),
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ version: VERSION, conversationId, turnId, text }),
+    cache: 'no-store',
+    signal,
+  })
+  if (!response.ok || !response.body) {
+    const payload = await response.json().catch(() => null) as { error?: { message?: string } } | null
+    throw new Error(payload?.error?.message || `Cloud turn failed (${response.status}).`)
+  }
+  const reader = response.body.getReader()
+  const decoder = new TextDecoder()
+  let buffer = ''
+  try {
+    while (true) {
+      const { value, done } = await reader.read()
+      if (done) break
+      buffer += decoder.decode(value, { stream: true })
+      let boundary = buffer.indexOf('\\n\\n')
+      while (boundary >= 0) {
+        const frame = buffer.slice(0, boundary)
+        buffer = buffer.slice(boundary + 2)
+        const data = frame.split('\\n').filter((line) => line.startsWith('data:')).map((line) => line.slice(5).trim()).join('\\n')
+        if (data) {
+          const event = JSON.parse(data) as CloudTurnEvent
+          onEvent(event)
+          if (event.type === 'turn.failed') throw new Error(event.message || 'Cloud turn failed.')
+        }
+        boundary = buffer.indexOf('\\n\\n')
+      }
+    }
+  } finally {
+    reader.releaseLock()
+  }
+}
+
 export const cloudApi = {
+  createConversation: (token: string) =>
+    request<{ version: 1; conversation: CloudConversation }>('/conversations', token, { method: 'POST' }),
+
+  listConversations: (token: string) =>
+    request<{ version: 1; conversations: CloudConversation[] }>('/conversations', token),
+
+  getConversation: (token: string, id: string) =>
+    request<{ version: 1; conversation: CloudConversation; messages: CloudMessage[] }>(
+      `/conversations/${encodeURIComponent(id)}`, token,
+    ),
+
+  deleteConversation: (token: string, id: string) =>
+    request<{ version: 1; deleted: boolean }>(
+      `/conversations/${encodeURIComponent(id)}`, token, { method: 'DELETE' },
+    ),
+
+  streamTurn,
+
+  cancelTurn: (token: string, conversationId: string, turnId: string) =>
+    request<{ version: 1; cancelled: boolean }>('/turns/cancel', token, {
+      method: 'POST',
+      body: JSON.stringify({ version: VERSION, conversationId, turnId }),
+    }),
   providerStatus: (token: string) =>
     request<{ version: 1; provider: Record<string, unknown> }>('/provider-status', token),
 
