@@ -10,7 +10,7 @@ Continue autonomously across independent workstreams wherever safe. User explici
 
 ## Current verified state
 - Latest UI PR #7 remains OPEN and DRAFT; base `main`. Do not merge automatically.
-- Active branch head at this update: `f722cd01c16d82bfafcb75f5985f816bc3eaa4fb` (recheck before continuing).
+- Active branch head at this update: `3be0eba8b6e25b06411b2301a61a397989d67b00` (recheck before continuing).
 - GitHub Actions run `43278833174` completed SUCCESS for commit `fdf65c7e24399868a629a603a3daa326af1b7a91`: npm ci, TypeScript/Vite production build, tests, and lint all passed. This includes the SSE stream cancellation implementation and PR-triggered CI workflow.
 - GitHub Actions run `43278949364` completed SUCCESS for commit `beab81377c6c34f1acfe94691f67402f9364b7bd`: npm ci, TypeScript/Vite production build, tests, and lint all passed.
 - GitHub Actions run `43280101199` (run #61) completed SUCCESS for commit `c03a8ee148d455f6511442b1cc4bd3fef51d8b5c`: Node tests, lint, Deno typecheck, and Deno semantic-memory tests all passed.
@@ -32,6 +32,7 @@ Continue autonomously across independent workstreams wherever safe. User explici
 
 ## Latest code and infrastructure work
 - Refactored SSE frame splitting into `src/lib/sse-frames.js`, with TypeScript declarations in `src/lib/sse-frames.d.ts`.
+- Added `docs/architecture/hybrid-brain.md` as a design-only plan for a safe cloud-reasoning/local-bridge hybrid. It explicitly preserves MCP tools, camera, UI events, panels/blades, cancellation, account isolation, and the bridge's default-deny action gate; no hybrid runtime code has been enabled.
 - Cloud STT telemetry showed repeated HTTP 429 responses from the preview transcription provider. `src/lib/voice.ts` now falls back to browser-native SpeechRecognition on 429/503 or network failure, clears queued cloud audio, stops the VAD pipeline, and prevents further cloud STT attempts for that session. Validate in Chrome/Edge and iOS Safari after the latest frontend preview deploy.
 - `src/lib/cloud-api.ts` now consumes streamed frames with LF/CRLF support, chunk-boundary buffering, multiline data fields, final-frame flushing, and correct reader cancellation.
 - Added seven Node built-in tests in `src/lib/sse-frames.test.mjs`: multiple frames, chunk boundaries, CRLF, final frame, malformed JSON boundary, AbortSignal cancellation, and reader cancellation after callback/parser failure.
