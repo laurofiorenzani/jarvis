@@ -121,3 +121,13 @@ Continue autonomously across independent workstreams wherever safe. User explici
 - Commits: `9a585e8be56888b0c184fbb61b0dee4d881fa63d` and `a19683c2f99cc3893d6e2f0a85c14db18dacd8a7`.
 - This is groundwork only: it is not wired into `PreToolUse`, does not create or resolve approval requests, and does not enable writes. Existing bridge policy remains authoritative. Do not treat the pre-authorisation hook as production-ready until a trusted rule store, owner/session binding, scope validation, expiry and revocation are implemented.
 - Next: run CI on the updated branch; then implement canonical argument hashing and a single-use expiring pending-approval registry with disconnect/timeout cleanup before adding any UI or protocol path.
+
+
+## Approval lifecycle implementation groundwork — 2026-11-12 (continued)
+- Hardened `bridge/action-risk.mjs`: routine/pre-authorisation cannot be asserted through classifier input; only an explicitly named builtin (not an MCP tool impersonating that name) receives builtin read classification. Unknown/effectful tools remain approval-required.
+- Added `bridge/action-approval.mjs`: deterministic recursive JSON canonicalisation and SHA-256 argument digest; rejects non-JSON values, cycles, class instances and dangerous object keys.
+- Added `bridge/pending-approvals.mjs`: in-memory one-shot approval registry bound to session ID, tool-use ID and exact argument digest; enforces bounded TTL (max 120 seconds), rejects replay/mismatch, and denies on timeout, session cancellation or registry close.
+- Added unit tests for digest stability/tampering, malformed arguments, MCP impersonation, single-use approval, mismatch, rejection, expiry and cleanup.
+- Commits include `d49a88c`, `e02a498`, `97f037c`, `61090ac`, `405d8db`, `0f6f3d2`, `faa2ae3`, `e0a4217`, and `413ea8f`.
+- Important limitation: these modules are still not wired into the bridge's `PreToolUse` hook or WebSocket/HUD protocol. The current global read-only/--writes policy remains the only live enforcement. Do not describe action approvals as implemented or enable broad writes.
+- Next: validate the new modules in GitHub Actions; then implement bridge-side ownership and WebSocket decision handling, disconnect cleanup, and a visible accessible approval card. Verify actual SDK hook behavior before allowing the tool call to proceed.
