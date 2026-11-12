@@ -1,4 +1,4 @@
-import { BACKEND, BRIDGE_HTTP_URL } from '../config'
+import { BACKEND, BRIDGE_HTTP_URL, SPEECH_LOCALE } from '../config'
 import { getMic } from './audio'
 import { speakingNow, speakingSince } from './tts'
 import { startVad, type Vad } from './vad'
@@ -804,7 +804,7 @@ function startBrowserVoice(h: VoiceHandlers): Voice {
     rec = new Ctor()
     rec.continuous = true
     rec.interimResults = true
-    rec.lang = 'pt-BR'
+    rec.lang = SPEECH_LOCALE
     rec.onstart = () => {
       running = true
       diag.running = true
