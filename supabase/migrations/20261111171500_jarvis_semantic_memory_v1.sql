@@ -285,6 +285,17 @@ create policy "Users can read their own Jarvis memory topic links"
   on public.jarvis_memory_topic_links for select to authenticated
   using (user_id = (select auth.uid()));
 
+-- Clients may read their own rows through RLS, but all writes must go
+-- through the authenticated Edge Function using the service role.
+revoke all privileges on table public.jarvis_memory_summaries from public, anon, authenticated;
+revoke all privileges on table public.jarvis_memory_topics from public, anon, authenticated;
+revoke all privileges on table public.jarvis_memory_facts from public, anon, authenticated;
+revoke all privileges on table public.jarvis_memory_topic_links from public, anon, authenticated;
+grant select on table public.jarvis_memory_summaries to authenticated;
+grant select on table public.jarvis_memory_topics to authenticated;
+grant select on table public.jarvis_memory_facts to authenticated;
+grant select on table public.jarvis_memory_topic_links to authenticated;
+
 comment on table public.jarvis_memory_summaries is
   'Versioned, provenance-backed conversation summaries. Pending until explicitly approved.';
 comment on table public.jarvis_memory_topics is
