@@ -1,6 +1,6 @@
 import { createClient } from '@supabase/supabase-js'
 import { getFreeProviderStatus, startFreeModelStream } from './model-router.ts'
-import { isSemanticMemoryId, isSafeAutoMemorySource, normalizeSemanticMemoryQuery, parseAutoMemoryCandidates, parseSemanticMemoryCandidate, parseSemanticMemoryDecision, parseSemanticMemorySearch } from './semantic-memory.ts'
+import { isSemanticMemoryId, isSafeAutoMemorySource, mergeSemanticMemoryPreferences, normalizeSemanticMemoryQuery, parseAutoMemoryCandidates, parseSemanticMemoryCandidate, parseSemanticMemoryDecision, parseSemanticMemorySearch } from './semantic-memory.ts'
 
 const VERSION = 1
 const MAX_TEXT = 20_000
@@ -503,12 +503,14 @@ Deno.serve(async (request) => {
     const { data: current, error: currentError } = await db.from('jarvis_memory_preferences')
       .select('context_enabled,auto_capture_enabled').eq('user_id', userId).maybeSingle()
     if (currentError) return error('service_unavailable', 'Current memory preferences could not be loaded.', 503, true, cors)
-    const contextEnabled = typeof body.contextEnabled === 'boolean'
-      ? body.contextEnabled
-      : current?.context_enabled === true
-    const autoCaptureEnabled = contextEnabled && (typeof body.autoCaptureEnabled === 'boolean'
-      ? body.autoCaptureEnabled
-      : current?.auto_capture_enabled === true)
+    const nextPreferences = mergeSemanticMemoryPreferences({
+      contextEnabled: current?.context_enabled === true,
+      autoCaptureEnabled: current?.auto_capture_enabled === true,
+    }, {
+      ...(typeof body.contextEnabled === 'boolean' ? { contextEnabled: body.contextEnabled } : {}),
+      ...(typeof body.autoCaptureEnabled === 'boolean' ? { autoCaptureEnabled: body.autoCaptureEnabled } : {}),
+    })
+    const { contextEnabled, autoCaptureEnabled } = nextPreferences
     const { error: preferenceError } = await db.from('jarvis_memory_preferences').upsert({
       user_id: userId,
       context_enabled: contextEnabled,
