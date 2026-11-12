@@ -52,6 +52,7 @@ function severityFor(status: ObservationStatus): ObservationSeverity {
 
 /** Copies only allowlisted fields; unknown fields are ignored and never persisted. */
 export function normalizeObservation(input: ObservationInput): SystemObservation | null {
+  if (!input || typeof input !== 'object') return null
   if (typeof input.source !== 'string' || !SOURCES.has(input.source as ObservationSource)) return null
   if (typeof input.status !== 'string' || !STATUSES.has(input.status as ObservationStatus)) return null
   if (!input || typeof input !== 'object') return null
