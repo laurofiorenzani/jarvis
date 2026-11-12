@@ -3,6 +3,21 @@ import * as direct from './anthropic'
 import * as bridge from './bridge'
 import type { AskHandlers, Msg } from './anthropic'
 import type { Blade, Panel } from '../store'
+import type { CloudBrain } from './cloud-brain'
+
+let activeCloudBrain: CloudBrain | null = null
+
+/** Enable the authenticated cloud brain for this page session. */
+export function selectCloudBrain(brain: CloudBrain): void {
+  activeCloudBrain = brain
+}
+
+/** Return to the configured default backend after signing out of cloud. */
+export function selectConfiguredBrain(): void {
+  // Do not let a response keep streaming after the user signs out.
+  activeCloudBrain?.cancel()
+  activeCloudBrain = null
+}
 
 export type { AskHandlers, Msg }
 export type { ConnectionState } from './bridge'
@@ -21,21 +36,27 @@ export type { ConnectionState } from './bridge'
  */
 
 export const usingBridge = BACKEND === 'bridge'
+export const usingDirect = BACKEND === 'direct'
 
-/** Conversation state lives in the bridge session, so history is only threaded
- *  through on the direct path. */
+/** Bridge and cloud keep conversation state server-side; only direct demo mode
+ *  needs the browser to thread the transcript history through each request. */
 export async function ask(
   prompt: string,
   history: Msg[],
   handlers: AskHandlers,
 ): Promise<{ text: string; tools: string[] }> {
+  if (activeCloudBrain) return activeCloudBrain.ask(prompt, history, handlers)
+  if (BACKEND === 'cloud') {
+    throw new Error('Cloud sign-in required. Open CLOUD BRAIN and authenticate before speaking to JARVIS.')
+  }
   return usingBridge
     ? bridge.ask(prompt, handlers)
     : direct.ask([...history, { role: 'user', content: prompt }], handlers)
 }
 
 export async function warm(): Promise<void> {
-  if (usingBridge) await bridge.warmBridge()
+  if (activeCloudBrain) await activeCloudBrain.warm()
+  else if (usingBridge) await bridge.warmBridge()
 }
 
 /** The bridge reports its server list twice — from config on connect, then
@@ -91,8 +112,9 @@ export function watchCapture(
  * path by aborting the stream so the model stops generating and billing.
  */
 export function cancel(): void {
-  if (usingBridge) bridge.cancel()
-  else direct.cancel()
+  if (activeCloudBrain) activeCloudBrain.cancel()
+  else if (usingBridge) bridge.cancel()
+  else if (usingDirect) direct.cancel()
 }
 
 /** The older name for `cancel()`. */
@@ -108,7 +130,7 @@ export function interrupt(): void {
  * so there is nothing that can be down until you try it.
  */
 export function isConnected(): boolean {
-  return usingBridge ? bridge.isConnected() : true
+  return activeCloudBrain ? true : usingBridge ? bridge.isConnected() : usingDirect
 }
 
 /**
@@ -125,7 +147,27 @@ export function watchConnection(
   if (usingBridge) bridge.watchConnection(fn)
 }
 
+/** Explicit memory write approval is bridge-only; direct mode has no durable memory runtime. */
+export function watchMemoryConfirmations(
+  fn: (challenge: bridge.MemoryConfirmationChallenge) => void,
+): void {
+  if (usingBridge) bridge.watchMemoryConfirmation(fn)
+}
+
+export function watchMemoryConfirmationCancelled(fn: (id: string) => void): void {
+  if (usingBridge) bridge.watchMemoryConfirmationCancelled(fn)
+}
+
+export function decideMemoryConfirmation(
+  challenge: bridge.MemoryConfirmationChallenge,
+  approved: boolean,
+): boolean {
+  return usingBridge ? bridge.replyMemoryConfirmation(challenge, approved) : false
+}
+
 /** Labels for the HUD's SYSTEMS rail. */
 export function connectedLabels(): string[] {
+  if (activeCloudBrain) return ['SUPABASE CLOUD']
+  if (BACKEND === 'cloud') return ['CLOUD SIGN-IN REQUIRED']
   return usingBridge ? bridge.bridgeServers() : direct.connectedLabels()
 }

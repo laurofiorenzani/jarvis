@@ -2,22 +2,28 @@
   "name": "jarvis",
   "private": true,
   "version": "0.0.0",
-  "description": "A browser voice assistant with an Iron Man holographic interface, driven by Claude Code through a small Node bridge.",
+  "description": "Cloud-first personal AI assistant with an Iron Man holographic interface, Supabase cloud brain, and optional local MCP bridge.",
   "license": "MIT",
   "type": "module",
   "engines": {
     "node": ">=20"
   },
   "scripts": {
-    "start": "node scripts/start.mjs",
+    "start": "vite",
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "oxlint",
-    "test": "node --test",
+    "audit": "npm audit --audit-level=low",
+    "test": "node --import tsx --test tests/*.test.ts test/*.test.mjs",
     "preview": "vite preview",
     "bridge": "node bridge/server.mjs",
     "bridge:writes": "node bridge/server.mjs --writes",
-    "setup": "node scripts/setup.mjs"
+    "setup": "node scripts/setup.mjs",
+    "bridge:memory": "node scripts/start-memory.mjs",
+    "memory:doctor": "node scripts/memory-doctor.mjs",
+    "freellmapi:smoke": "node scripts/freellmapi-smoke.mjs",
+    "start:local": "node scripts/start.mjs",
+    "start:local:writes": "node scripts/start.mjs --writes"
   },
   "dependencies": {
     "@anthropic-ai/claude-agent-sdk": "^0.3.220",
@@ -50,5 +56,11 @@
     "tsx": "^4.23.1",
     "typescript": "~6.0.2",
     "vite": "^8.2.0"
+  },
+  "optionalDependencies": {
+    "@napi-rs/keyring": "2.1.2"
+  },
+  "overrides": {
+    "sharp": "^0.35.5"
   }
 }

@@ -1,42 +1,51 @@
 # J.A.R.V.I.S.
 
-A browser voice assistant with an Iron Man holographic interface. Say
-**"Hey Jarvis"**, he wakes, listens, and does real things through your tools —
-searches the web, generates images, drives your phone, reads your mail. The face
-is a web page (React + Vite + Three.js + custom GLSL). The brain is Claude Code,
-run headless as a library.
+A cloud-first personal AI assistant with an Iron Man holographic interface.
+The React/Vite HUD connects directly to the authenticated Supabase Cloud API;
+the server-side model router is designed for explicitly configured free-quota
+providers. The iPhone is intended to connect to this same cloud backend without
+depending on a Windows PC.
 
-**The only subscription you need is Claude Code.** No API keys, no OpenAI
-account, no cloud bill — the brain runs on your existing Claude Code login, and
-the heavy work (the model itself) runs on Anthropic's servers, so even a low-end
-laptop only has to draw the interface. **ElevenLabs is an optional add-on** that
-gives JARVIS a much better voice and sharper hearing; without it he speaks and
-listens through the browser's own speech, and everything still works.
+The optional local Node bridge is a separate developer/local-tools mode. It
+runs the Claude Agent SDK and local MCP servers on a developer machine, but it
+is **not** the production brain and is not required for cloud chat. Select it
+explicitly with `VITE_BACKEND=bridge`.
+
+**Current release boundary:** cloud authentication, conversation storage,
+streaming API, and the cloud HUD path are implemented. A real authenticated
+model inference still needs provider configuration and end-to-end validation.
+Cloud speech currently uses browser-native speech; server-side ElevenLabs
+proxying is not yet integrated into the cloud path. Capacitor, native iOS
+Keychain/audio, physical-device testing, signing, and TestFlight remain pending.
+See [the cloud-first architecture](docs/architecture/CLOUD_FIRST_ARCHITECTURE.md),
+[implementation status](docs/architecture/IMPLEMENTATION_STATUS_2026-11-10.md), and
+the [Google AI Studio provider guide](docs/cloud/GOOGLE_AI_STUDIO_PROVIDER.md),
+which documents the server-side setup and its free-tier privacy trade-off.
+
 
 ---
 
 ## Requirements
 
-**In one line:** a Claude Code subscription, plus two free things every computer
-can have — Node.js and Chrome. That's the whole list.
+**To use the cloud app:** a supported browser (Chrome or Edge), microphone
+permission, and an authorised JARVIS Supabase account. The cloud service must
+also have a server-side model provider configured by the operator. Provider
+keys belong in Supabase Edge Function secrets, never in the browser bundle.
+No Windows PC, Claude Code installation, Node bridge, or local API key is
+required for the cloud runtime.
 
-- **Claude Code, installed and logged in** — this is the only account you need.
-  Install it with the official method — `npm install -g @anthropic-ai/claude-code`,
-  or the platform installer at <https://docs.claude.com/en/docs/claude-code> —
-  then run `claude` once and complete login. The bridge reuses that login. **No
-  API key**, and usage is billed to your existing Claude account.
-- **Node.js 20 or newer** — free, one installer from <https://nodejs.org>. This
-  is a Node web app, so it is the one unavoidable tool.
-- **Google Chrome or Microsoft Edge**, in a **real browser window** — not an
-  embedded preview pane. Preview panes (including the one inside editors and
-  Claude Code) block microphone access, so the page loads and looks right but
-  never hears you. JARVIS also needs WebGL, which these browsers provide.
-- **Optional: an ElevenLabs API key** — a good add-on, not a requirement. It
-  gives a better voice and sharper transcription; the free tier is plenty for a
-  demo. Without it, everything runs on the browser's own speech.
+**To run the web UI locally:** Node.js 20 or newer and Chrome/Edge. Install
+dependencies with `npm install`; `npm start` serves the cloud-first UI.
 
-Run `npm run setup` after cloning and it checks all of this for you, in plain
-language.
+**For optional local bridge development only:**
+- Claude Code installed and logged in; the bridge reuses that local login.
+- Node.js 20 or newer.
+- Chrome or Edge in a real browser window with microphone and WebGL support.
+- Optional ElevenLabs credentials configured on the local bridge, not in a
+  production browser bundle.
+
+`npm run setup` checks the local bridge development prerequisites; it is not
+a cloud deployment or iPhone installer.
 
 ---
 
@@ -46,24 +55,26 @@ First, install, then start it:
 
 ```bash
 npm install
-npm start          # runs the brain and the face together
+npm start          # starts the cloud-first web app (no local bridge required)
 ```
 
-Then open the URL it prints (http://localhost:5173) in **Chrome**, click **INITIALISE**, and say **“Hey Jarvis”**.
+Then open the URL it prints (http://localhost:5173) in **Chrome**. The default mode is cloud: expand CLOUD BRAIN, sign in, then click **INITIALISE** and say **“Hey Jarvis”**. No local bridge is started or required.
 
-Prefer two terminals? Run them separately instead:
+For optional local-tool development only, set `VITE_BACKEND=bridge` in `.env.local` and run `npm run start:local`. This starts the Node bridge alongside Vite. To test effectful local tools, use `npm run start:local:writes` only after reviewing the bridge permission gate.
+
+Prefer two terminals for optional local bridge development? First set `VITE_BACKEND=bridge` in `.env.local`, then run the bridge and UI separately:
 
 ```bash
 npm install
 ```
 
-Terminal 1 — the brain:
+Terminal 1 — the local bridge:
 
 ```bash
 npm run bridge
 ```
 
-Terminal 2 — the face:
+Terminal 2 — the web HUD:
 
 ```bash
 npm run dev
@@ -84,63 +95,52 @@ Click **INITIALISE**, allow the microphone when asked, and say **"Hey Jarvis"**.
 
 ## How it works
 
-JARVIS is two processes. The browser is the face and the voice; the bridge is
-the brain and the hands.
+### Default production path — cloud
 
 ```
-  ┌─ browser (the face) ───────────────┐        ┌─ bridge (the brain) ─────────────┐
-  │  "Hey Jarvis" wake word            │        │  Node · bridge/server.mjs        │
-  │  local VAD  →  speech to text      │   ws   │  Claude Agent SDK                │
-  │  reactor UI (Three.js + GLSL)      │◄─────► │   = Claude Code, headless        │
-  │  text to speech                    │  8787  │  spawns your MCP servers         │
-  │  heads-up display                  │        │  permission gate (decideTool)    │
-  └────────────────────────────────────┘        └──────────────────────────────────┘
+  Browser HUD / future iPhone app
+              │ HTTPS + Supabase Auth
+              ▼
+       Supabase Edge Function
+             jarvis-api
+              │
+       Server-side model router
+              │
+       Configured free-quota provider
 ```
 
-Everything you see and hear happens in the browser. The bridge is a single Node
-process (`bridge/server.mjs`) that runs the **Claude Agent SDK**
-(`@anthropic-ai/claude-agent-sdk`) — this spawns the real `claude` CLI as a child
-process, so **the brain literally is Claude Code, headless.** They talk over a
-WebSocket (plus a few HTTP endpoints) on `ws://localhost:8787`.
+Supabase Auth identifies the user. Postgres stores conversations, messages,
+turns, and explicitly managed memories under user-scoped access controls.
+Provider credentials remain server-side. Cloud mode is the application default:
+without a cloud session, JARVIS asks the user to sign in and does not fall back
+to localhost or a browser-exposed provider key.
 
-**Why a bridge at all?** A browser tab cannot spawn the local stdio MCP servers —
-`higgsfield`, `elevenlabs`, `android`, `playwright`, `exa`, `serper`, and the
-rest. The bridge can. And because it is the Agent SDK, it authenticates off your
-existing Claude Code login: no API key, billed to that same Claude account.
+The cloud API reports whether provider configuration is declared. That status
+is not proof that a provider is reachable, that inference succeeds, or that
+free-tier quota remains available. Those conditions still require a controlled
+end-to-end test.
 
-**The model.** `claude-opus-5` at effort `medium` by default. Override with the
-`JARVIS_MODEL` and `JARVIS_EFFORT` environment variables. On startup the bridge
-prints its choice, e.g. `[jarvis] model claude-opus-5 · effort medium`.
+### Optional local bridge — development and local tools
 
-### The voice pipeline
+The local bridge is a separate Node process (`bridge/server.mjs`) that runs
+the **Claude Agent SDK** using the developer's existing Claude Code login. It
+can spawn local stdio MCP servers and access explicitly allowed local tools.
+It communicates with the browser over `ws://localhost:8787`.
 
-The loop is designed so that nothing silently dies and barge-in feels natural.
+To use it, set `VITE_BACKEND=bridge` in `.env.local` and run
+`npm run start:local`. The bridge is not deployed as the cloud service and
+must not be exposed to the public internet as a substitute for the cloud API.
 
-- **Detection is local.** An energy-based voice-activity detector
-  (`src/lib/vad.ts`) decides when you are speaking. It is instant, cannot quietly
-  fail, and is what makes **barge-in** work — speak while JARVIS is talking and he
-  stops.
-- **Transcription has two tiers, chosen automatically at boot.** The browser asks
-  the bridge `/health` and picks the best available:
-  - **ElevenLabs key present** → ElevenLabs Scribe, via the bridge `/stt` endpoint.
-  - **Nothing configured** → the browser's own `SpeechRecognition` (Chrome/Edge),
-    guarded by a heartbeat so it recovers when Chrome throttles it.
-- **Speaking** uses the **ElevenLabs voice when a key is present**, and the
-  browser's `speechSynthesis` otherwise. If a cloud call fails it falls back to
-  the browser voice, and if the OS voice itself is broken it latches over to the
-  cloud voice.
+**Why keep it?** A browser cannot spawn local stdio MCP servers or reach
+desktop-only tools. The bridge remains useful for optional local development
+and experiments, but the core cloud assistant must work while Windows is off.
 
-So it works with no keys and auto-upgrades when a key appears — there is no flag
-to set. Capability detection lives in `src/lib/capabilities.ts`, which probes the
-bridge's `GET /health` (returning `{ ok, tts, stt }`, both tracking the
-ElevenLabs key) once at boot and picks the engines.
 
 ---
 
-## What JARVIS can do
+## Optional local MCP capabilities
 
-Beyond answering, JARVIS reaches every MCP server in your Claude Code
-configuration, and can drive his own interface.
+These capabilities are available only when the local bridge is explicitly enabled. They are not yet part of the cloud tool registry.
 
 ### Your tools
 
@@ -168,9 +168,9 @@ A few things you can say:
 > to let them in, and `JARVIS_MCP_SERVERS` to choose which `~/.claude.json`
 > servers JARVIS gets.
 
-### JARVIS controls the interface
+### Local bridge UI controls
 
-He drives the UI through MCP tools the bridge exposes:
+The local bridge exposes these optional MCP tools:
 
 - `ui_theme` — accent, background, per-phase colours
 - `ui_reactor` — colour, scale, intensity, spin, and style (`ring` | `sphere` | `wire`), visibility
@@ -185,13 +185,7 @@ command.
 
 ### The heads-up display
 
-JARVIS authors panels with a `display` tool against a fixed `.hud-*` design
-system. The browser sanitises the markup (DOMPurify, a class allowlist and a
-strict CSP) before rendering. Rich media works — images, `<video>`, and
-YouTube/Vimeo embeds. Remote images and video are fetched **server-side** through
-the bridge (`/img` and `/media`, both SSRF-guarded), so hotlink-blocked news
-thumbnails still appear and the page never beacons your IP to a host the model
-chose.
+JARVIS renders panels against a fixed `.hud-*` design system. The browser sanitises model-authored markup (DOMPurify, a class allowlist and a strict CSP). Rich media works — images, `<video>`, and YouTube/Vimeo embeds. Remote media proxying through the local bridge is available only in bridge mode; the equivalent cloud media/tool service is not yet implemented.
 
 ---
 
@@ -221,8 +215,7 @@ then the triangular arc reactor lighting up — with a start-up sound under it
 
 ## Configuration
 
-Everything is optional in bridge mode. Frontend settings live in `.env.local`
-(copy `.env.example`); bridge settings are environment variables.
+The cloud app uses public Supabase URL/publishable-key settings and a signed-in user session. Frontend settings live in `.env.local` (copy `.env.example`). Local bridge settings are read by the Node bridge process; production provider secrets must be stored server-side in Supabase.
 
 ### Bridge
 
@@ -252,7 +245,7 @@ Everything is optional in bridge mode. Frontend settings live in `.env.local`
 
 | Variable | Effect |
 |---|---|
-| `VITE_BACKEND` | `bridge` (default) or `direct` |
+| `VITE_BACKEND` | `cloud` (default), `bridge` (local development), or `direct` (local demo only) |
 | `VITE_BRIDGE_URL` | Where to reach the bridge |
 | `VITE_TTS_ENGINE` | `system` or `kokoro` |
 | `VITE_KOKORO_VOICE` | Voice for the Kokoro engine |
@@ -296,7 +289,7 @@ npm run bridge:writes
 ```
 
 The script passes `--writes` to the bridge, so it works in Windows `cmd` and
-PowerShell too. With `npm start`, use `npm start -- --writes`. Writes add `Bash`,
+PowerShell too. With the optional local bridge, use `npm run start:local:writes`. Writes add `Bash`,
 `Write`, `Edit` and `NotebookEdit` to the agent's tools. The file tools stay
 inside the same folders; the shell can reach anything your user account can.
 
@@ -343,6 +336,10 @@ relay, which runs only under WSL. The network and allowlist tests start the
 bridge on a random loopback port, and none of the tests opens an agent session.
 
 ---
+
+## Encrypted memory (experimental)
+
+A guarded, encrypted memory integration is being developed on the isolated `work/memory-integration-ready` branch. It is disabled by default. Windows Credential Manager support is integrated and covered by CI; run `npm run memory:doctor` for a disposable local check, then use `npm run bridge:memory` only after reviewing the data and approval behavior in [the memory integration guide](docs/security/MEMORY_INTEGRATION.md). Do not use personal data until the remaining target-PC, backup/recovery, and retention release gates are complete.
 
 ## Security
 

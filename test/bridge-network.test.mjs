@@ -8,10 +8,12 @@
 import { test, before, after } from 'node:test'
 import assert from 'node:assert/strict'
 import { spawn } from 'node:child_process'
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { request } from 'node:http'
 import { connect } from 'node:net'
-import { networkInterfaces } from 'node:os'
+import { homedir, networkInterfaces, tmpdir } from 'node:os'
 import { fileURLToPath } from 'node:url'
+import { join } from 'node:path'
 
 const SERVER = fileURLToPath(new URL('../bridge/server.mjs', import.meta.url))
 
@@ -143,6 +145,87 @@ test('refuses HTTP requests addressed to a foreign Host (DNS rebinding)', async 
   assert.equal(await get(bridge.port, '/file?path=/tmp/x.png', { host: 'attacker.example' }), 403)
   assert.equal(await get(bridge.port, '/health', { host: `localhost:${bridge.port}` }), 200)
   assert.equal(await get(bridge.port, '/health', { host: `[::1]:${bridge.port}` }), 200)
+})
+
+test('paid speech proxy rejects requests without a browser Origin', async () => {
+  for (const route of ['/tts', '/stt']) {
+    const status = await new Promise((resolve, reject) => {
+      const req = request({
+        host: '127.0.0.1',
+        port: bridge.port,
+        path: route,
+        method: 'POST',
+        headers: { host: `127.0.0.1:${bridge.port}`, 'content-type': 'application/json' },
+        timeout: 3000,
+      }, (res) => {
+        res.resume()
+        resolve(res.statusCode)
+      })
+      req.on('error', reject)
+      req.on('timeout', () => req.destroy(new Error('timeout')))
+      req.end('{}')
+    })
+    assert.equal(status, 403, `${route} must require an allowed Origin`)
+  }
+})
+
+test('paid speech proxy enforces per-minute request quotas', async () => {
+  const post = (route) => new Promise((resolve, reject) => {
+    const req = request({
+      host: '127.0.0.1',
+      port: bridge.port,
+      path: route,
+      method: 'POST',
+      headers: {
+        host: `127.0.0.1:${bridge.port}`,
+        origin: 'http://localhost:5173',
+        'content-type': 'application/json',
+      },
+      timeout: 3000,
+    }, (res) => {
+      res.resume()
+      resolve(res.statusCode)
+    })
+    req.on('error', reject)
+    req.on('timeout', () => req.destroy(new Error('timeout')))
+    req.end('{}')
+  })
+
+  for (let i = 0; i < 30; i++) await post('/tts')
+  assert.equal(await post('/tts'), 429, '31st TTS request in a minute is limited')
+
+  for (let i = 0; i < 12; i++) await post('/stt')
+  assert.equal(await post('/stt'), 429, '13th STT request in a minute is limited')
+})
+
+test('local media endpoint only serves images from configured roots', async () => {
+  const outside = mkdtempSync(join(homedir(), '.jarvis-media-test-'))
+  const allowed = mkdtempSync(join(tmpdir(), 'jarvis-media-allowed-'))
+  const privateImage = join(outside, 'private.png')
+  const allowedImage = join(allowed, 'allowed.png')
+  let scopedBridge
+  try {
+    writeFileSync(privateImage, 'private')
+    writeFileSync(allowedImage, 'temporary')
+    // Give this bridge a dedicated workspace root. This tests the same
+    // canonicalized root on Windows and POSIX without relying on OS temp
+    // directory aliases or platform-specific TEMP path casing.
+    scopedBridge = await startBridge({ JARVIS_WORKSPACE: allowed, JARVIS_DEBUG_MEDIA_PATHS: '1' })
+    const host = { host: `127.0.0.1:${scopedBridge.port}` }
+    assert.equal(
+      await get(scopedBridge.port, `/file?path=${encodeURIComponent(privateImage)}`, host),
+      400,
+    )
+    assert.equal(
+      await get(scopedBridge.port, `/file?path=${encodeURIComponent(allowedImage)}`, host),
+      200,
+      `allowed image should be served; bridge diagnostics: ${scopedBridge.log()}`,
+    )
+  } finally {
+    scopedBridge?.child.kill()
+    rmSync(outside, { recursive: true, force: true })
+    rmSync(allowed, { recursive: true, force: true })
+  }
 })
 
 test('refuses a WebSocket addressed to a foreign Host even with a local Origin', async () => {

@@ -1,0 +1,92 @@
+name: CI
+
+on:
+  push:
+    branches: [main, "work/**"]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-release-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    name: Typecheck, build, tests and lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install locked dependencies
+        run: npm ci
+
+      - name: Report dependency security advisories
+        continue-on-error: true
+        shell: bash
+        run: |
+          npm audit --json > npm-audit.json || true
+          node -e 'const r=require("./npm-audit.json"); for (const [name,v] of Object.entries(r.vulnerabilities || {})) console.log(JSON.stringify({name,severity:v.severity,range:v.range,fixAvailable:v.fixAvailable,via:(v.via || []).map(x => typeof x === "string" ? x : {title:x.title,url:x.url,range:x.range})}))'
+
+      - name: Apply non-breaking dependency security fixes for validation
+        shell: bash
+        run: |
+          npm audit fix || true
+          npm audit --json > npm-audit-after.json || true
+          node -e 'const r=require("./npm-audit-after.json"); console.log(JSON.stringify(r.metadata?.vulnerabilities || r.error || {})); for (const [name,v] of Object.entries(r.vulnerabilities || {})) console.log(JSON.stringify({name,severity:v.severity,range:v.range,fixAvailable:v.fixAvailable}))'
+          npm run audit
+
+      - name: Upload validated security-updated lockfile
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: jarvis-security-updated-lockfile
+          path: package-lock.json
+          if-no-files-found: error
+
+      - name: Typecheck and production build
+        run: npm run build
+
+      - name: Run tests
+        run: npm test
+
+      - name: Run lint
+        run: npm run lint
+
+      - name: Set up Deno
+        uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+
+      - name: Test provider privacy routing
+        run: deno test supabase/functions/jarvis-api/model-router_test.ts
+
+      - name: Type-check Supabase Edge Function
+        run: deno check supabase/functions/jarvis-api/index.ts
+
+      - name: Smoke-test deployed cloud API and production CORS
+        shell: bash
+        run: |
+          set -euo pipefail
+          endpoint="https://undmhmdwhxvjgvezvucy.supabase.co/functions/v1/jarvis-api"
+          apikey="$(sed -nE "s/.*supabasePublishableKey:.*'([^']+)'.*/\\1/p" src/config.ts | head -n 1)"
+          test -n "$apikey"
+          health="$(curl --fail --silent --show-error "$endpoint/health" --header "apikey: $apikey")"
+          grep -q '"status":"ok"' <<< "$health"
+          headers="$(curl --silent --show-error --dump-header - --output /dev/null --request OPTIONS "$endpoint/provider-status" \
+            --header "apikey: $apikey" \
+            --header "Origin: https://jarvis-lauro-fiorenzani.vercel.app" \
+            --header "Access-Control-Request-Method: GET" \
+            --header "Access-Control-Request-Headers: apikey,authorization,x-jarvis-api-version")"
+          grep -Fqi "access-control-allow-origin: https://jarvis-lauro-fiorenzani.vercel.app" <<< "$headers"
+          grep -Eqi "access-control-allow-headers:.*apikey" <<< "$headers"

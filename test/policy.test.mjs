@@ -3,12 +3,27 @@ import assert from 'node:assert/strict'
 import { mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
 import { homedir, tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { builtinTools, checkToolUse, decideTool, fetchTargetProblem, fileRoots } from '../bridge/policy.mjs'
+import { allowedMcpServers, builtinTools, checkToolUse, decideTool, fetchTargetProblem, fileRoots } from '../bridge/policy.mjs'
 
 const workspace = mkdtempSync(join(tmpdir(), 'jarvis-ws-'))
 const roots = fileRoots({ workspace })
 const ctx = (allowWrites = false) => ({ allowWrites, cwd: workspace, roots })
 const allowed = (name, input, w) => checkToolUse(name, input, ctx(w)).allow
+
+test('MCP servers require an explicit allowlist', () => {
+  const configured = {
+    elevenlabs: { command: 'node', args: [] },
+    exa: { command: 'node', args: [] },
+    unknown_powerful_server: { command: 'node', args: [] },
+  }
+  assert.deepEqual(allowedMcpServers(configured, undefined), {})
+  assert.deepEqual(allowedMcpServers(configured, ''), {})
+  assert.deepEqual(allowedMcpServers(configured, 'exa'), { exa: configured.exa })
+  assert.deepEqual(
+    allowedMcpServers(configured, 'exa, elevenlabs'),
+    { elevenlabs: configured.elevenlabs, exa: configured.exa },
+  )
+})
 
 test('decideTool keeps its existing verdicts', () => {
   assert.equal(decideTool('Read'), true)
@@ -22,6 +37,22 @@ test('decideTool keeps its existing verdicts', () => {
   assert.equal(decideTool('SomeFutureBuiltin'), false)
 })
 
+test('memory tools reach their explicit approval broker in read-only mode', () => {
+  for (const tool of ['memory_search', 'memory_save', 'memory_update', 'memory_delete']) {
+    const name = `mcp__jarvis_memory__${tool}`
+    assert.equal(decideTool(name), true, name)
+    assert.equal(allowed(name, {}), true, name)
+  }
+  assert.equal(decideTool('mcp__jarvis_memory__memory_admin'), false)
+  assert.equal(allowed('mcp__jarvis_memory__memory_admin', {}), false)
+})
+
+test('memory policy rejects undeclared tools even when general writes are enabled', () => {
+  assert.equal(decideTool('mcp__jarvis_memory__memory_export'), false)
+  assert.equal(decideTool('mcp__jarvis_memory__memory_import'), false)
+  assert.equal(decideTool('mcp__jarvis_memory__memory_export', true), false)
+})
+
 test('read-only mode refuses a shell command the CLI would auto-approve', () => {
   // `cat` is what the CLI's own classifier runs without asking canUseTool.
   assert.equal(allowed('Bash', { command: 'cat ~/.ssh/id_rsa' }), false)
@@ -30,6 +61,7 @@ test('read-only mode refuses a shell command the CLI would auto-approve', () => 
 })
 
 test('file tools are confined to the workspace and temp roots', () => {
+  assert.ok(!roots.includes(homedir()), 'the default file roots must not expose the whole home directory')
   writeFileSync(join(workspace, 'note.txt'), 'hi')
   assert.equal(allowed('Read', { file_path: join(workspace, 'note.txt') }), true)
   assert.equal(allowed('Read', { file_path: 'note.txt' }), true) // relative to cwd

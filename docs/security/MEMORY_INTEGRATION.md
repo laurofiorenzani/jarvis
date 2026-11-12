@@ -1,0 +1,68 @@
+# Encrypted memory integration — development branch
+
+## Scope
+
+The memory foundation from the isolated workbench has been copied into this application on the separate branch `work/memory-integration`. The bridge can now compose a per-process encrypted store and expose a per-connection `jarvis_memory` MCP server. Browser approval messages are correlated to the exact operation, record ID, payload digest, payload preview and active turn.
+
+This is an opt-in integration. It is **disabled by default** and is not ready for personal data.
+
+## Safe local commands
+
+- `npm run memory:doctor` runs a disposable Windows Credential Manager round-trip using a unique temporary credential and removes it afterward. It does not enable memory or create the real Jarvis memory key.
+- `npm run bridge:memory` is the explicit opt-in launcher. It sets `JARVIS_MEMORY_ENABLED=1` for that bridge process only; the normal `npm run bridge` remains memory-disabled.
+
+Do not use the opt-in launcher until you have reviewed the data scope, retention behavior, and the on-screen approval prompt. The doctor command can be run first without enabling the memory feature.
+
+## Runtime behavior
+
+- `JARVIS_MEMORY_ENABLED` must be set to `1` before the memory runtime is loaded.
+- On Windows, the built-in adapter uses Windows Credential Manager through `@napi-rs/keyring`. On another platform, `JARVIS_MEMORY_VAULT_MODULE` must point to an absolute local JavaScript module exporting `createVault()`.
+- That module must return a vault adapter implementing:
+  - `getSecret(name): Promise<Buffer | null>`
+  - `createSecretIfAbsent(name, value): Promise<Buffer>`
+- `createSecretIfAbsent` must be atomic across processes and return the single stored winner. A plain get-then-set implementation is not acceptable.
+- The built-in adapter uses Windows Credential Manager generic credentials and stores the 32-byte key as a binary secret. A per-entry atomic lock serializes first-run creation across processes; waiters return the stored winner. A stale lock fails closed and requires manual inspection. No environment-variable, plaintext-file, PowerShell, or silent fallback is permitted.
+- If the adapter is missing, invalid, unavailable, or the key is missing for an existing store, startup fails closed when memory is enabled.
+- The encrypted store is placed at `~/.jarvis/memory/memory.enc`; metadata-only audit entries are appended to `~/.jarvis/memory/audit.jsonl`.
+- One process owns the store. An atomic local lock directory prevents a second bridge process from opening the writer. A clean exit releases it; a crash leaves a stale lock that must be inspected and removed manually only after confirming no bridge process is alive. Per-WebSocket connections receive their own MCP server and confirmation transport.
+
+## Retention defaults
+
+New memories default to **90 days**. The model may use 30 days for short-lived notes or 365 days when a longer horizon is justified. Indefinite retention is reserved for cases where the user explicitly asks for permanent storage. Sensitive memories remain disabled in this integration.
+
+## Model-facing tools
+
+The `jarvis_memory` MCP server exposes search/save/update/delete operations. Sensitive records are hidden from model-facing search. Mutations require a trusted, correlated browser approval; model text or model-supplied flags cannot approve a write. The bridge policy allows these memory tools to reach the approval broker in read-only mode; the memory handlers still reject every mutation without the explicit dialog approval.
+
+When a write is proposed, the UI displays the exact payload preview, operation, and target memory ID. Approval expires after 30 seconds. Denial, timeout, malformed reply, disconnect, mismatched metadata, or a user interrupt fails closed. Interrupting or abandoning a turn cancels outstanding approvals and dismisses their UI prompts.
+
+The direct-browser backend does not load this local memory runtime.
+
+## Enablement gate
+
+Do not enable this feature until all of the following are true:
+
+1. The built-in Windows Credential Manager adapter has passed CI integration tests and has been tested under the actual Windows account that runs Jarvis.
+2. Concurrent first-run tests prove two processes receive the same key.
+3. Missing/corrupt key behavior and encrypted-store recovery have been tested.
+4. Windows ACLs on the memory directory and audit log have been verified.
+5. A real UI approval test proves the displayed payload is exactly the payload written.
+6. Bridge restart tests prove encrypted memory persists across process restarts.
+7. Search isolation, retention, sensitive-memory denial, deletion, and backup/restore have been verified.
+8. The exclusive writer lock and stale-lock recovery procedure have been tested on the target Windows filesystem.
+
+Until those gates pass, leave `JARVIS_MEMORY_ENABLED` unset and use synthetic data only. The CI adapter test uses a disposable Windows runner credential; it does not prove the user's own Windows profile, Credential Manager policy, or ACL configuration is compatible. The feature is a guarded integration foundation, not a production-ready memory service.
+
+
+## Automated validation
+
+GitHub Actions run [#42637485810](https://github.com/laurofiorenzani/jarvis/actions/runs/42637485810) completed successfully on both Ubuntu and Windows using Node 24. Ubuntu ran **116 tests: 114 passed, 0 failed, 2 skipped**; Windows ran **116 tests: 115 passed, 0 failed, 1 skipped**. Both TypeScript/Vite production builds succeeded. The Windows-only native test exercised two simultaneous first-run callers against Windows Credential Manager and verified both receive the same stored 32-byte key; the separate `npm run memory:doctor` command also passed on the Windows runner. The lockfile update job completed successfully, with write permission isolated from the test matrix. Regression coverage includes the 90-day default retention, concurrent startup/writer-lock behavior, approval cancellation on interruption, and denial of undeclared memory MCP tools.
+
+This validates the current integration code and its synthetic test fixtures. It does not validate a real Windows Credential Manager adapter, target-PC permissions, or real user-data operation; those remain explicit release gates above.
+
+
+## Validation
+
+The integration branch's cross-platform workflow [#42634588630](https://github.com/laurofiorenzani/jarvis/actions/runs/42634588630) passed on Ubuntu and Windows with Node 24. Each platform reported **110 passed, 0 failed, 1 skipped**; `npm run build` also passed on both platforms. The workflow covers the complete existing test suite, memory modules, policy boundary, bootstrap locking, and production TypeScript/Vite build.
+
+This validates the guarded integration code, not the missing native Windows vault adapter or the release gates above.

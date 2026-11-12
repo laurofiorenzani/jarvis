@@ -9,9 +9,13 @@
  * Vite inlines a blank `.env` entry as an empty string, not as undefined, so
  * `??` never falls through to the default — and .env.example ships every
  * optional key blank, which is exactly the shape that used to bite. A blank
- * VITE_BACKEND silently selected the direct path and then complained about a
- * missing API key. Treat whitespace-only as unset everywhere in this file.
+ * VITE_BACKEND silently selected the default backend, which is now cloud.
+ * Treat whitespace-only as unset everywhere in this file.
  */
+// Vite provides import.meta.env in the browser/build. Node-based tests import
+// this module too, where the property is absent; use an empty env in that case.
+const viteEnv = import.meta.env ?? {}
+
 function str(raw: unknown): string | undefined {
   const value = typeof raw === 'string' ? raw.trim() : ''
   return value === '' ? undefined : value
@@ -47,22 +51,20 @@ function flag(name: string, raw: unknown, fallback: boolean): boolean {
 }
 
 /**
- * Which brain to use.
+ * Which brain to use. Cloud is the production default; the local bridge is an
+ * explicit developer/local-tools option. Direct browser-to-provider mode is
+ * retained only for isolated local demos and must never be used in production.
  *
- *   'bridge' — run `npm run bridge` alongside the app. Authenticates off your
- *              existing Claude Code login (no API key), and every MCP server in
- *              your Claude Code config is available to JARVIS, including local
- *              ones like higgsfield, elevenlabs, android and playwright.
- *
- *   'direct' — the browser calls the Claude API itself. Nothing to run and it
- *              deploys as a static site, but it needs VITE_ANTHROPIC_API_KEY in
- *              the bundle and only reaches remote HTTP MCP servers.
+ *   'cloud'  — require an authenticated Supabase CloudBrain. No local server or
+ *              provider secret is needed in the browser bundle.
+ *   'bridge' — explicit local development mode using the Node bridge.
+ *   'direct' — explicit local demo mode; requires a browser-exposed API key.
  */
-export const BACKEND: 'bridge' | 'direct' = choice(
+export const BACKEND: 'cloud' | 'bridge' | 'direct' = choice(
   'VITE_BACKEND',
-  import.meta.env.VITE_BACKEND,
-  ['bridge', 'direct'] as const,
-  'bridge',
+  viteEnv.VITE_BACKEND,
+  ['cloud', 'bridge', 'direct'] as const,
+  'cloud',
 )
 
 /**
@@ -71,7 +73,7 @@ export const BACKEND: 'bridge' | 'direct' = choice(
  * `wss://` maps to `https://` on its own, which is why this is a prefix swap
  * rather than a hardcoded scheme.
  */
-export const BRIDGE_WS_URL = str(import.meta.env.VITE_BRIDGE_URL) ?? 'ws://localhost:8787'
+export const BRIDGE_WS_URL = str(viteEnv.VITE_BRIDGE_URL) ?? 'ws://localhost:8787'
 export const BRIDGE_HTTP_URL = BRIDGE_WS_URL.replace(/^ws/, 'http')
 
 /**
@@ -85,9 +87,9 @@ export const BRIDGE_HTTP_URL = BRIDGE_WS_URL.replace(/^ws/, 'http')
  *   round trip plus generation, which is the difference between a conversation
  *   and a walkie-talkie. Turn it on when you want the voice more than the pace.
  */
-export const USE_ELEVENLABS = flag(
+export const USE_ELEVENLABS = BACKEND !== 'cloud' && flag(
   'VITE_USE_ELEVENLABS',
-  import.meta.env.VITE_USE_ELEVENLABS,
+  viteEnv.VITE_USE_ELEVENLABS,
   false,
 )
 
@@ -109,7 +111,7 @@ export const USE_ELEVENLABS = flag(
  */
 export const TTS_ENGINE: 'kokoro' | 'system' = choice(
   'VITE_TTS_ENGINE',
-  import.meta.env.VITE_TTS_ENGINE,
+  viteEnv.VITE_TTS_ENGINE,
   ['kokoro', 'system'] as const,
   'system',
 )
@@ -123,17 +125,23 @@ export const TTS_ENGINE: 'kokoro' | 'system' = choice(
  */
 export const KOKORO_VOICE = choice(
   'VITE_KOKORO_VOICE',
-  import.meta.env.VITE_KOKORO_VOICE,
+  viteEnv.VITE_KOKORO_VOICE,
   ['bm_george', 'bm_fable', 'bm_lewis', 'bm_daniel'] as const,
   'bm_george',
 )
 
 export const env = {
-  anthropicKey: str(import.meta.env.VITE_ANTHROPIC_API_KEY) ?? '',
-  elevenKey: str(import.meta.env.VITE_ELEVENLABS_API_KEY) ?? '',
+  // Browser-exposed provider keys are permitted only in explicit local demo mode.
+  // Cloud and bridge modes never read these VITE_* secrets into the client config.
+  anthropicKey: BACKEND === 'direct' ? str(viteEnv.VITE_ANTHROPIC_API_KEY) ?? '' : '',
+  elevenKey: BACKEND === 'direct' ? str(viteEnv.VITE_ELEVENLABS_API_KEY) ?? '' : '',
   elevenVoiceId:
-    str(import.meta.env.VITE_ELEVENLABS_VOICE_ID) ?? 'JBFqnCBsd6RMkjVDRZzb',
-  porcupineKey: str(import.meta.env.VITE_PICOVOICE_ACCESS_KEY) ?? '',
+    str(viteEnv.VITE_ELEVENLABS_VOICE_ID) ?? 'JBFqnCBsd6RMkjVDRZzb',
+  porcupineKey: str(viteEnv.VITE_PICOVOICE_ACCESS_KEY) ?? '',
+  // These are public client settings (never service-role credentials). Environment
+  // values can override them for another Supabase project or deployment.
+  supabaseUrl: str(viteEnv.VITE_SUPABASE_URL) ?? 'https://undmhmdwhxvjgvezvucy.supabase.co',
+  supabasePublishableKey: str(viteEnv.VITE_SUPABASE_PUBLISHABLE_KEY) ?? 'sb_publishable_oJvnF8wB4y1mrFWzlzSZOQ_kFy-jzVx',
 }
 
 /** `claude-opus-5` is the strongest model; `claude-sonnet-5` trades a little
@@ -176,24 +184,20 @@ export type McpServer = {
 }
 
 /**
- * These are passed to the Messages API `mcp_servers` parameter. Anthropic dials
- * the servers itself, so there is no CORS to fight and no local bridge to run —
- * which is what makes a backend-free JARVIS possible.
+ * Demo-only remote MCP servers for the explicit browser-direct backend.
+ * They are never configured in the cloud or bridge backends. The cloud runtime
+ * has its own server-side API boundary; it does not read this list.
  *
- * Only *remote HTTP* MCP servers work here. Local stdio servers (filesystem,
- * Blender, Playwright) need a machine to run on and are out of scope for a
- * browser-only build.
+ * Only remote HTTP MCP servers work here. Local stdio servers (filesystem,
+ * Blender, Playwright) need a machine to run on and are outside this demo path.
  *
- * READ THIS BEFORE FILLING ANY OF THESE IN. Every one of them ships to the
- * browser. In direct mode Vite inlines each token below into the JavaScript
- * bundle, and the Zapier and Pipedream URLs *are* secrets — the URL is the
- * credential. Anyone who opens devtools on a deployed build gets your Notion,
- * Linear, GitHub, Stripe, Sentry and Home Assistant access, not just the
- * Anthropic key. This is fine for a demo on your own machine or a recording;
- * it is not fine for anything public. The bridge backend (the default) reads
- * none of this — it uses your Claude Code MCP config, where the secrets stay on
- * your machine — so if you want these integrations without the exposure, run
- * `npm run bridge` instead of filling in this block.
+ * SECURITY: every value configured here is exposed in the browser bundle.
+ * In direct mode Vite inlines tokens and private endpoint URLs into JavaScript.
+ * Anyone who can load that build can inspect and reuse those credentials.
+ * Never populate these values for a public deployment. Use this mode only for
+ * isolated local demos with disposable, least-privilege credentials. For the
+ * production cloud backend, add integrations behind authenticated server-side
+ * adapters instead of putting vendor credentials in VITE_* variables.
  */
 export const MCP_SERVERS: McpServer[] = [
   // The single highest-leverage integration: one URL, ~8,000 apps, managed
@@ -203,16 +207,16 @@ export const MCP_SERVERS: McpServer[] = [
   {
     name: 'zapier',
     label: 'Zapier',
-    url: str(import.meta.env.VITE_ZAPIER_MCP_URL) ?? '',
-    enabled: Boolean(str(import.meta.env.VITE_ZAPIER_MCP_URL)),
+    url: str(BACKEND === 'direct' ? viteEnv.VITE_ZAPIER_MCP_URL : undefined) ?? '',
+    enabled: Boolean(str(BACKEND === 'direct' ? viteEnv.VITE_ZAPIER_MCP_URL : undefined)),
   },
 
   // Alternative/complementary gateway: ~3,000 apps, free for personal use.
   {
     name: 'pipedream',
     label: 'Pipedream',
-    url: str(import.meta.env.VITE_PIPEDREAM_MCP_URL) ?? '',
-    enabled: Boolean(str(import.meta.env.VITE_PIPEDREAM_MCP_URL)),
+    url: str(BACKEND === 'direct' ? viteEnv.VITE_PIPEDREAM_MCP_URL : undefined) ?? '',
+    enabled: Boolean(str(BACKEND === 'direct' ? viteEnv.VITE_PIPEDREAM_MCP_URL : undefined)),
   },
 
   // Official first-party servers. Each needs its own OAuth token pasted in.
@@ -220,36 +224,36 @@ export const MCP_SERVERS: McpServer[] = [
     name: 'notion',
     label: 'Notion',
     url: 'https://mcp.notion.com/mcp',
-    token: str(import.meta.env.VITE_NOTION_TOKEN),
-    enabled: Boolean(str(import.meta.env.VITE_NOTION_TOKEN)),
+    token: str(BACKEND === 'direct' ? viteEnv.VITE_NOTION_TOKEN : undefined),
+    enabled: Boolean(str(BACKEND === 'direct' ? viteEnv.VITE_NOTION_TOKEN : undefined)),
   },
   {
     name: 'linear',
     label: 'Linear',
     url: 'https://mcp.linear.app/mcp',
-    token: str(import.meta.env.VITE_LINEAR_TOKEN),
-    enabled: Boolean(str(import.meta.env.VITE_LINEAR_TOKEN)),
+    token: str(BACKEND === 'direct' ? viteEnv.VITE_LINEAR_TOKEN : undefined),
+    enabled: Boolean(str(BACKEND === 'direct' ? viteEnv.VITE_LINEAR_TOKEN : undefined)),
   },
   {
     name: 'github',
     label: 'GitHub',
     url: 'https://api.githubcopilot.com/mcp/',
-    token: str(import.meta.env.VITE_GITHUB_TOKEN),
-    enabled: Boolean(str(import.meta.env.VITE_GITHUB_TOKEN)),
+    token: str(BACKEND === 'direct' ? viteEnv.VITE_GITHUB_TOKEN : undefined),
+    enabled: Boolean(str(BACKEND === 'direct' ? viteEnv.VITE_GITHUB_TOKEN : undefined)),
   },
   {
     name: 'stripe',
     label: 'Stripe',
     url: 'https://mcp.stripe.com',
-    token: str(import.meta.env.VITE_STRIPE_TOKEN),
-    enabled: Boolean(str(import.meta.env.VITE_STRIPE_TOKEN)),
+    token: str(BACKEND === 'direct' ? viteEnv.VITE_STRIPE_TOKEN : undefined),
+    enabled: Boolean(str(BACKEND === 'direct' ? viteEnv.VITE_STRIPE_TOKEN : undefined)),
   },
   {
     name: 'sentry',
     label: 'Sentry',
     url: 'https://mcp.sentry.dev/mcp',
-    token: str(import.meta.env.VITE_SENTRY_TOKEN),
-    enabled: Boolean(str(import.meta.env.VITE_SENTRY_TOKEN)),
+    token: str(BACKEND === 'direct' ? viteEnv.VITE_SENTRY_TOKEN : undefined),
+    enabled: Boolean(str(BACKEND === 'direct' ? viteEnv.VITE_SENTRY_TOKEN : undefined)),
   },
   // Home Assistant is self-hosted, so this needs a publicly reachable URL
   // (Nabu Casa Cloud, or a Cloudflare tunnel). Worth the setup — "Jarvis, dim
@@ -260,11 +264,11 @@ export const MCP_SERVERS: McpServer[] = [
   {
     name: 'home',
     label: 'Home',
-    url: str(import.meta.env.VITE_HOMEASSISTANT_MCP_URL) ?? '',
-    token: str(import.meta.env.VITE_HOMEASSISTANT_TOKEN),
+    url: str(BACKEND === 'direct' ? viteEnv.VITE_HOMEASSISTANT_MCP_URL : undefined) ?? '',
+    token: str(BACKEND === 'direct' ? viteEnv.VITE_HOMEASSISTANT_TOKEN : undefined),
     enabled: Boolean(
-      str(import.meta.env.VITE_HOMEASSISTANT_MCP_URL) &&
-        str(import.meta.env.VITE_HOMEASSISTANT_TOKEN),
+      str(BACKEND === 'direct' ? viteEnv.VITE_HOMEASSISTANT_MCP_URL : undefined) &&
+        str(BACKEND === 'direct' ? viteEnv.VITE_HOMEASSISTANT_TOKEN : undefined),
     ),
   },
 ]

@@ -221,6 +221,17 @@ export function candidateVoices(): SpeechSynthesisVoice[] {
 
 let cachedVoice: SpeechSynthesisVoice | null | undefined
 
+function pickVoiceForText(text: string): SpeechSynthesisVoice | null {
+  const portuguese = /[ãõáàâéêíóôúç]|\b(?:não|você|vocês|está|estou|estamos|para|com|uma|que|como|olá|obrigado|obrigada|carro|casa|hoje|amanhã|preciso|quero|pode|favor|sim|também)\b/i.test(text)
+  if (portuguese) {
+    const voices = speechSynthesis.getVoices()
+    return voices.find((voice) => /^pt-BR/i.test(voice.lang)) ??
+      voices.find((voice) => /^pt/i.test(voice.lang)) ??
+      pickVoice()
+  }
+  return pickVoice()
+}
+
 function pickVoice(): SpeechSynthesisVoice | null {
   if (cachedVoice !== undefined) return cachedVoice
   const all = speechSynthesis.getVoices()
@@ -475,9 +486,9 @@ export function createSpeaker(): Speaker {
       speechSynthesis.resume()
 
       const u = new SpeechSynthesisUtterance(text)
-      const voice = pickVoice()
+      const voice = pickVoiceForText(text)
       if (voice) u.voice = voice
-      u.lang = voice?.lang ?? 'en-GB'
+      u.lang = voice?.lang ?? (/[ãõáàâéêíóôúç]|\b(?:não|você|está|estou|para|com|uma|que|olá|obrigado|obrigada|também)\b/i.test(text) ? 'pt-BR' : 'en-GB')
       // Deliberate, and deliberately invariant — the character's pace does not
       // change with stakes, and that steadiness is most of the effect. This
       // lands around 130 wpm, below the median for film dialogue.

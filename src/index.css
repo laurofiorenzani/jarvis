@@ -1898,3 +1898,50 @@ kbd {
   transform: scaleX(-1);
   background: #000;
 }
+
+
+/* Mobile-safe text composer: speech remains available, but is never required. */
+.text-composer {
+  pointer-events: auto;
+  position: fixed;
+  left: 50%;
+  bottom: max(4.8rem, calc(env(safe-area-inset-bottom) + 3.8rem));
+  transform: translateX(-50%);
+  z-index: 30;
+  display: flex;
+  align-items: stretch;
+  gap: 6px;
+  width: min(560px, calc(100vw - 28px));
+  padding: 6px;
+  border: 1px solid color-mix(in srgb, var(--accent) 38%, transparent);
+  background: rgba(2, 10, 14, 0.94);
+  backdrop-filter: blur(12px);
+  box-shadow: 0 8px 28px rgba(0,0,0,.35);
+}
+.text-composer input {
+  flex: 1;
+  min-width: 0;
+  min-height: 42px;
+  border: 0;
+  outline: 0;
+  padding: 0 10px;
+  color: #d8f4f2;
+  background: transparent;
+  font: 14px ui-monospace, "SF Mono", Menlo, monospace;
+  letter-spacing: .04em;
+  text-transform: none;
+}
+.text-composer input::placeholder { color: rgba(170, 205, 205, .55) }
+.text-composer button {
+  min-width: 66px;
+  border: 1px solid color-mix(in srgb, var(--accent) 45%, transparent);
+  padding: 0 10px;
+  color: color-mix(in srgb, var(--accent) 90%, white);
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+  font: 11px ui-monospace, "SF Mono", Menlo, monospace;
+  letter-spacing: .14em;
+}
+.text-composer button:active { background: color-mix(in srgb, var(--accent) 24%, transparent) }
+@media (max-height: 620px) {
+  .text-composer { bottom: max(3.6rem, calc(env(safe-area-inset-bottom) + 2.8rem)) }
+}

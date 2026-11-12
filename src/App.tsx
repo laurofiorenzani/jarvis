@@ -1,11 +1,14 @@
-import { useEffect, useRef } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Scene } from './scene/Scene'
 import { Hud } from './ui/Hud'
 import { Boot } from './ui/Boot'
 import { Ignition } from './ui/Ignition'
 import { Diagnostics } from './ui/Diagnostics'
+import { MemoryConfirmation } from './ui/MemoryConfirmation'
+import { CloudAccess } from './ui/CloudAccess'
+import type { MemoryConfirmationChallenge } from './lib/bridge'
 import { useStore } from './store'
-import { startVoice, type Voice, type VoiceMode } from './lib/voice'
+import { startVoice, type CloudTranscriber, type Voice, type VoiceMode } from './lib/voice'
 import { createSpeaker, cycleVoice, currentVoiceName } from './lib/tts'
 import * as sfx from './lib/sfx'
 import * as music from './lib/music'
@@ -13,7 +16,7 @@ import * as hands from './lib/hands'
 import { listenForClap } from './lib/clap'
 import * as camera from './lib/camera'
 import * as kokoro from './lib/kokoro'
-import { TTS_ENGINE } from './config'
+import { BACKEND, TTS_ENGINE } from './config'
 import { forTool, attention } from './lib/fillers'
 import {
   ask,
@@ -25,8 +28,11 @@ import {
   watchCapture,
   watchUi,
   watchConnection,
+  watchMemoryConfirmations,
+  watchMemoryConfirmationCancelled,
+  decideMemoryConfirmation,
   connectedLabels,
-  usingBridge,
+  usingDirect,
   type Msg,
 } from './lib/brain'
 import { startAnalyser, micLevel } from './lib/audio'
@@ -73,8 +79,14 @@ export default function App() {
   const store = useStore
   const phase = useStore((s) => s.phase)
   const history = useRef<Msg[]>([])
+  const [memoryConfirmations, setMemoryConfirmations] = useState<MemoryConfirmationChallenge[]>([])
+  const decideMemory = useCallback((challenge: MemoryConfirmationChallenge, approved: boolean) => {
+    decideMemoryConfirmation(challenge, approved)
+    setMemoryConfirmations((pending) => pending.filter((item) => item.id !== challenge.id))
+  }, [])
   const speaker = useRef<ReturnType<typeof createSpeaker> | null>(null)
   const voice = useRef<Voice | null>(null)
+  const cloudTranscriber = useRef<CloudTranscriber | null>(null)
 
   /**
    * Monotonic turn counter. Every await in a turn checks it on the way out:
@@ -101,6 +113,10 @@ export default function App() {
   const goDormant = () => {
     clearIdle()
     silence()
+    const currentPhase = store.getState().phase
+    if (currentPhase === 'thinking' || currentPhase === 'tooling' || currentPhase === 'speaking') {
+      interrupt()
+    }
     turn.current++
     const s = store.getState()
     s.setCaption('')
@@ -186,7 +202,7 @@ export default function App() {
 
       // The bridge keeps conversation state in its own session, so history is
       // only threaded through on the direct path.
-      if (!usingBridge) {
+      if (usingDirect) {
         history.current.push({ role: 'user', content: said })
         history.current.push({ role: 'assistant', content: text || '…' })
         if (history.current.length > 16) {
@@ -217,6 +233,24 @@ export default function App() {
       }
     }
   }
+
+  // Text composer shares the exact same turn pipeline as speech.
+  useEffect(() => {
+    const onTextTurn = (event: Event) => {
+      const detail = (event as CustomEvent<string>).detail
+      const message = typeof detail === 'string' ? detail.trim() : ''
+      if (!message) return
+      if (store.getState().phase === 'offline' || store.getState().phase === 'boot') {
+        store.getState().setError('Power on JARVIS before sending a text message.')
+        return
+      }
+      void respond(message)
+    }
+    window.addEventListener('jarvis:send-text', onTextTurn)
+    return () => window.removeEventListener('jarvis:send-text', onTextTurn)
+    // respond is stable for the lifetime of this mounted App instance.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   // -- voice events ---------------------------------------------------------
 
@@ -452,8 +486,18 @@ export default function App() {
     // In bridge mode the conversation lives in the agent session, which is tied
     // to the socket — so a drop silently wipes his memory while the transcript
     // on screen still shows it. Better to say so than to let him quietly forget.
+    watchMemoryConfirmations((challenge) => {
+      setMemoryConfirmations((pending) => [
+        ...pending.filter((item) => item.id !== challenge.id),
+        challenge,
+      ])
+    })
+    watchMemoryConfirmationCancelled((id) => {
+      setMemoryConfirmations((pending) => pending.filter((item) => item.id !== id))
+    })
     watchConnection((state) => {
       if (state === 'lost') {
+        setMemoryConfirmations([])
         store.getState().setError('Bridge connection lost — reconnecting.')
       } else if (state === 'reconnected') {
         store
@@ -463,7 +507,7 @@ export default function App() {
     })
     const warming = warm().catch((err: Error) => s.setError(err.message))
 
-    if (!usingBridge && !env.anthropicKey) {
+    if (BACKEND === 'direct' && !env.anthropicKey) {
       s.setError(
         'No Anthropic API key — copy .env.example to .env.local and set VITE_ANTHROPIC_API_KEY.',
       )
@@ -524,7 +568,7 @@ export default function App() {
       onPartial,
       onUtterance,
       onError: onVoiceError,
-    })
+    }, cloudTranscriber.current ?? undefined)
 
     store.getState().setPhase('dormant')
   }
@@ -701,8 +745,27 @@ export default function App() {
     <>
       <Scene />
       <Hud />
+      <CloudAccess
+        onConnected={() => store.getState().setConnected(connectedLabels())}
+        onDisconnected={() => { cloudTranscriber.current = null; store.getState().setConnected(connectedLabels()) }}
+        onSpeechApiReady={(transcribe) => { cloudTranscriber.current = transcribe }}
+        onResumeConversation={(messages) => {
+          useStore.setState({
+            turns: messages.map((message) => ({
+              id: message.id,
+              role: message.role === 'assistant' ? 'jarvis' : 'user',
+              text: message.content,
+            })),
+          })
+        }}
+      />
       <Boot />
       <Diagnostics />
+      <MemoryConfirmation
+        challenge={memoryConfirmations[0] ?? null}
+        queued={Math.max(0, memoryConfirmations.length - 1)}
+        onDecision={decideMemory}
+      />
       <Ignition onStart={() => void powerOn()} />
     </>
   )
