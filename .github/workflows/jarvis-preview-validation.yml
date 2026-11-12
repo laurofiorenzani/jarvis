@@ -4,10 +4,6 @@ on:
   push:
     branches:
       - work/jarvis-amber-production-track
-  pull_request:
-    branches:
-      - main
-      - work/jarvis-amber-production-track
 
 permissions:
   contents: read
