@@ -51,6 +51,8 @@ jobs:
         run: deno check --config supabase/functions/jarvis-preview-api/deno.json supabase/functions/jarvis-preview-api/index.ts
       - name: Edge Function tests
         run: deno test --config supabase/functions/jarvis-api/deno.json supabase/functions/jarvis-api/semantic-memory.deno.ts
+      - name: Preview Edge Function tests
+        run: deno test --config supabase/functions/jarvis-preview-api/deno.json supabase/functions/jarvis-preview-api/semantic-memory.deno.ts
       - name: Publish commit validation status
         if: always()
         uses: actions/github-script@v7
