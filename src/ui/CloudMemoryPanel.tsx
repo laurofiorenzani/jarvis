@@ -13,6 +13,7 @@ export function CloudMemoryPanel() {
   const [password, setPassword] = useState('')
   const [enabled, setEnabled] = useState(false)
   const [autoCaptureEnabled, setAutoCaptureEnabled] = useState(false)
+  const [autoCaptureSupported, setAutoCaptureSupported] = useState(false)
   const [candidates, setCandidates] = useState<CloudMemoryCandidate[]>([])
   const [provider, setProvider] = useState('NOT CHECKED')
   const [busy, setBusy] = useState(false)
@@ -51,7 +52,8 @@ export function CloudMemoryPanel() {
       ])
       if (!isCurrentAccount(userId, generation)) return
       setEnabled(preference.contextEnabled)
-      setAutoCaptureEnabled(preference.autoCaptureEnabled)
+      setAutoCaptureEnabled(preference.autoCaptureEnabled === true)
+      setAutoCaptureSupported(typeof preference.autoCaptureEnabled === 'boolean')
       setCandidates(pending.candidates.filter((item) => item.status === 'pending'))
       const names = Array.isArray(status.providers)
         ? status.providers.map((item) => item.name).filter(Boolean).join(' / ')
@@ -83,6 +85,7 @@ export function CloudMemoryPanel() {
     setCloudQuestion('')
     setEnabled(false)
     setAutoCaptureEnabled(false)
+    setAutoCaptureSupported(false)
     setProvider(session ? 'LOADING' : 'NOT SIGNED IN')
     if (!session) return
     void load()
@@ -165,7 +168,8 @@ export function CloudMemoryPanel() {
       const saved = await cloudApi.setMemoryPreference(token, { contextEnabled: !enabled })
       if (!isCurrentAccount(userId, generation)) return
       setEnabled(saved.contextEnabled)
-      setAutoCaptureEnabled(saved.autoCaptureEnabled)
+      setAutoCaptureEnabled(saved.autoCaptureEnabled === true)
+      setAutoCaptureSupported(typeof saved.autoCaptureEnabled === 'boolean')
       setNotice(saved.contextEnabled ? 'APPROVED-MEMORY CONTEXT ENABLED' : 'MEMORY CONTEXT DISABLED')
     } catch (cause) {
       if (isCurrentAccount(userId, generation)) setError(cause instanceof Error ? cause.message : 'Preference could not be saved.')
@@ -173,7 +177,7 @@ export function CloudMemoryPanel() {
   }
 
   async function toggleAutoCapture() {
-    if (!session || !enabled) return
+    if (!session || !enabled || !autoCaptureSupported) return
     const userId = session.user.id
     const generation = accountGeneration.current
     setBusy(true); setError(''); setNotice('')
@@ -240,9 +244,9 @@ export function CloudMemoryPanel() {
           </div>
           <div style={{ border: '1px solid rgba(255,157,73,.28)', padding: 10, display: 'grid', gap: 8 }}>
             <b>AUTOMATIC MEMORY SUGGESTIONS</b>
-            <span style={muted}>Cloud conversations only for now. When enabled, JARVIS sends the current exchange to the configured free-tier model to extract stable, non-sensitive suggestions. A server-side filter blocks sensitive source turns and candidate content. Nothing enters approved memory until you review and approve it. Health, financial, legal, identity, contact details, and secrets are excluded. Local bridge voice conversations are not included yet.</span>
-            <button style={action} type="button" disabled={busy || !enabled} onClick={() => void toggleAutoCapture()}>{autoCaptureEnabled ? 'DISABLE AUTOMATIC CAPTURE' : 'ENABLE AUTOMATIC CAPTURE'}</button>
-            <strong style={{ color: autoCaptureEnabled ? '#a7d8a1' : '#e6a36b' }}>{autoCaptureEnabled ? 'ENABLED · PENDING REVIEW ONLY' : enabled ? 'DISABLED' : 'ENABLE MEMORY CONTEXT FIRST'}</strong>
+            <span style={muted}>Cloud conversations only for now. When the updated cloud API is available, JARVIS can send the current exchange to the configured free-tier model to extract stable, non-sensitive suggestions. A server-side filter blocks sensitive source turns and candidate content. Nothing enters approved memory until you review and approve it. Health, financial, legal, identity, contact details, and secrets are excluded. Local bridge voice conversations are not included yet.</span>
+            <button style={action} type="button" disabled={busy || !enabled || !autoCaptureSupported} onClick={() => void toggleAutoCapture()}>{!autoCaptureSupported ? 'WAITING FOR CLOUD API UPDATE' : autoCaptureEnabled ? 'DISABLE AUTOMATIC CAPTURE' : 'ENABLE AUTOMATIC CAPTURE'}</button>
+            <strong style={{ color: autoCaptureEnabled ? '#a7d8a1' : '#e6a36b' }}>{!autoCaptureSupported ? 'NOT AVAILABLE · BACKEND UPDATE REQUIRED' : autoCaptureEnabled ? 'ENABLED · PENDING REVIEW ONLY' : enabled ? 'DISABLED' : 'ENABLE MEMORY CONTEXT FIRST'}</strong>
           </div>
           <div style={{ border: '1px solid rgba(255,157,73,.28)', padding: 10, display: 'grid', gap: 8 }}>
             <b>APPROVED MEMORY RETRIEVAL</b>
