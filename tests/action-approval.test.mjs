@@ -27,3 +27,19 @@ test('cycles, class instances and dangerous object keys are rejected', () => {
   const dangerous = JSON.parse('{"__proto__":{"polluted":true}}')
   assert.throws(() => canonicalizeArguments(dangerous), /prohibited object key/)
 })
+
+test('getters, symbol keys and extra array properties are rejected without execution', () => {
+  let executed = false
+  const withGetter = {}
+  Object.defineProperty(withGetter, 'secret', { enumerable: true, get() { executed = true; return 'x' } })
+  assert.throws(() => canonicalizeArguments(withGetter), /data properties/)
+  assert.equal(executed, false)
+  const withSymbol = { value: 1, [Symbol('hidden')]: 2 }
+  assert.throws(() => canonicalizeArguments(withSymbol), /symbol keys/)
+  const withExtraArrayProperty = [1, 2]
+  withExtraArrayProperty.extra = true
+  assert.throws(() => canonicalizeArguments(withExtraArrayProperty), /extra properties/)
+  const withHidden = {}
+  Object.defineProperty(withHidden, 'hidden', { value: 1, enumerable: false })
+  assert.throws(() => canonicalizeArguments(withHidden), /hidden properties/)
+})
