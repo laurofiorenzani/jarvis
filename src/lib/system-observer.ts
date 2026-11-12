@@ -54,7 +54,9 @@ function severityFor(status: ObservationStatus): ObservationSeverity {
 export function normalizeObservation(input: ObservationInput): SystemObservation | null {
   if (typeof input.source !== 'string' || !SOURCES.has(input.source as ObservationSource)) return null
   if (typeof input.status !== 'string' || !STATUSES.has(input.status as ObservationStatus)) return null
+  if (!input || typeof input !== 'object') return null
   if (typeof input.observedAt !== 'string' || input.observedAt.length > 40) return null
+  if (!/^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d{1,3})?(?:Z|[+-]\\d{2}:\\d{2})$/.test(input.observedAt)) return null
 
   const timestamp = Date.parse(input.observedAt)
   if (!Number.isFinite(timestamp)) return null
