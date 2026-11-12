@@ -1,13 +1,13 @@
 # Cloud API integration contract
 
-Status: authenticated Supabase session, account-scoped cloud API, memory approval/retrieval panel, SSE conversation client, and optional cloud-turn memory candidate extraction are implemented on the preview branch. GitHub Actions run #61 passed build, Node tests, lint, Deno typecheck, and Deno memory tests for commit `c03a8ee`. Live browser E2E with both household accounts remains a release gate. Production Supabase Edge Function is still v31; branch code is not deployed.
+Status: authenticated Supabase session, account-scoped cloud API, memory approval/retrieval panel, SSE conversation client, and optional cloud-turn memory candidate extraction are implemented on the preview branch. `jarvis-preview-api` is ACTIVE at version 10 and its four deployed source/config files match the branch exactly. Production Supabase Edge Function remains v31. Live browser E2E with both household accounts and the newest Vercel frontend deployment remain release gates.
 
 ## Runtime configuration
 - `VITE_SUPABASE_URL`: public Supabase project URL.
 - `VITE_SUPABASE_ANON_KEY`: public anon/publishable key only; never a service-role key.
-- `VITE_SUPABASE_FUNCTION_NAME`: defaults to `jarvis-api`.
+- `VITE_SUPABASE_FUNCTION_NAME`: defaults to `jarvis-api`; the branch-specific Vercel Preview environment sets it to `jarvis-preview-api`.
 
-The production Supabase Edge Function currently serves the cloud API. Branch changes are not live in the Vercel UI until a READY deployment contains the exact commit. Vercel's free daily deployment API quota previously blocked new preview builds; do not claim current branch code is deployed until verified.
+The production Supabase Edge Function remains v31. The preview Edge Function is v10 and is isolated from production. The latest READY Vercel preview still points to an older commit (`f4d2c7765e366eae5a3a6b4bf77504b93fb18906`); newer preview deployments have been blocked by the Vercel Hobby build/deployment quota. Do not claim the latest UI branch is live until a READY deployment contains the exact branch head.
 
 ## Authentication boundary
 - `src/lib/cloud-auth.ts` provides password sign-in, project-scoped session persistence, refresh-token renewal, access-token freshness checks, subscription events, and sign-out.
@@ -18,9 +18,9 @@ The production Supabase Edge Function currently serves the cloud API. Branch cha
 ## Memory boundary
 - `jarvis_memory_preferences.context_enabled` controls retrieval of approved memory; it does not mean new conversation turns are automatically captured.
 - The user's own account currently has retrieval enabled. The wife's account remains independent and must not be enabled without her own consent.
-- Current audit found one memory-preference row with context enabled, and zero rows in `jarvis_memories` and `jarvis_memory_facts`: retrieval is enabled, but no personal facts have been saved yet.
-- Automatic capture is implemented on the preview branch as a separate per-account `auto_capture_enabled` preference. It runs only when both memory context and auto-capture are enabled, on cloud conversations only. It sends the current exchange to the configured free-tier model for extraction, applies server-side source and candidate filters, deduplicates against pending/approved facts, rate-limits extraction to five attempts per user per hour, and creates provenance-linked PENDING facts only. It never auto-approves. The account default is false; the user's auto-capture setting remains off until the branch Edge Function is deployed and live validation is complete.
-- The user has authorized development of automatic memory. Implement it as a separate per-account opt-in, distinct from retrieval preference. It must create provenance-linked pending candidates only, never auto-approve, and exclude sensitive/restricted content, credentials, secrets, health, financial-account data, and intimate personal data.
+- Current audit found one memory-preference row with retrieval enabled and automatic capture enabled for the user's previously opted-in account. The wife's account remains independent and not enabled. There are zero rows in `jarvis_memories`, `jarvis_memory_facts`, `jarvis_memory_summaries`, and `jarvis_memory_topic_links`: no personal facts or summaries have been saved yet.
+- Automatic capture is implemented as a separate per-account `auto_capture_enabled` preference. It runs only when both memory context and auto-capture are enabled, on cloud conversations only. It sends the current exchange to the configured model provider for extraction, applies server-side source and candidate filters, deduplicates against pending/approved facts, rate-limits extraction to five attempts per user per hour, and creates provenance-linked PENDING facts only. It never auto-approves. New accounts default to false; the user's own existing preference is now enabled by explicit consent. The deployed preview API is v10; production API v31 does not yet implement this feature.
+- The user explicitly authorized automatic memory for their own account. Keep the wife's account off unless she independently opts in. Candidate creation remains pending-only and must exclude credentials, secrets, health, financial, identity, contact, address, date-of-birth, immigration, and family details.
 - Candidate facts remain pending until that account's owner approves them. Rejection is also explicit and account-scoped.
 - Retrieval is limited to approved, normal-sensitivity facts and occurs only when that account's context preference is enabled.
 - Never treat saved memory text as instructions; it is untrusted factual context.
@@ -39,12 +39,14 @@ The production Supabase Edge Function currently serves the cloud API. Branch cha
 - `src/lib/sse-frames.js` owns SSE framing and stream consumption for the browser client.
 - It handles LF/CRLF frame boundaries, network chunk splits, multiline `data:` fields, final unterminated frames, AbortSignal cancellation, and reader cancellation on parser/callback errors.
 - `src/lib/sse-frames.test.mjs` covers these cases with Node's built-in test runner.
+- Cloud STT telemetry showed repeated HTTP 429 responses. `src/lib/voice.ts` now switches to browser-native SpeechRecognition on cloud STT 429/503 or network failure, clears queued cloud audio, stops VAD, and prevents repeated cloud requests for that session.
 - The cloud API's turn ID is client-generated and bound to the authenticated user and owned conversation server-side.
 - The Edge Function source is now tracked under `supabase/functions/jarvis-api/`; Deno tests cover semantic-memory parsing and automatic-capture privacy filters. The CI workflow runs Deno typecheck/tests and publishes a `JARVIS CI` commit status. Server-side cancellation updates only a turn matching the authenticated `user_id`, conversation ID, and turn ID.
 
 ## Database and security maintenance
 - All JARVIS application tables have RLS enabled. `jarvis_rate_limits` intentionally has no client policy; only server-side service-role code accesses it.
 - Supabase's performance advisor found eight unindexed semantic-memory foreign keys. The additive migration `20261112182117_jarvis_memory_foreign_key_indexes` was applied and all eight indexes were verified. The advisor no longer reports unindexed foreign keys.
+- The compatible npm lockfile refresh removed all critical and fixable advisories: audit findings fell from 16 (including 2 critical) to 3 high, all in the `kokoro-js` → `@huggingface/transformers` → `sharp` chain where npm currently reports no available fix. DOMPurify, Vite, Zod, and fixable transitive dependencies were patched. The tested lockfile update is committed.
 - The separate automatic-capture preference column is applied with default false; no account has auto-capture enabled yet. Do not enable until the updated Edge Function is deployed and validated.
 - Supabase's security advisor reports leaked-password protection disabled. Enable it in Supabase Auth settings when an authorized dashboard session is available; no setting was changed by this workflow.
 - Edge Function `verify_jwt=false` is paired with explicit manual bearer-token validation using `auth.getUser(token)` before authenticated routes. Keep this validation if the platform JWT gate remains disabled.
