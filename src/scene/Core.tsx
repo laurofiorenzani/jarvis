@@ -148,10 +148,19 @@ const fragment = /* glsl */ `
     float radar = wake * band(r, R - 0.02, 0.075) * (0.55 + uLevel * 0.45);
 
     // -- concentric hairlines inside ---------------------------------------
+    float spokes = pow(max(cos(a * 42.0 + uPhase * 0.035), 0.0), 34.0)
+                  * smoothstep(0.24, 0.42, r)
+                  * (1.0 - smoothstep(0.68, 0.77, r));
+    float radialThreads = pow(max(cos(a * 84.0 - uPhase * 0.025), 0.0), 54.0)
+                        * smoothstep(0.32, 0.48, r)
+                        * (1.0 - smoothstep(0.63, 0.73, r));
     float lines =
-        band(r, 0.615, 0.0035) * 0.45
-      + band(r, 0.560, 0.0030) * 0.28
-      + band(r, 0.470, 0.0035) * 0.36;
+        band(r, 0.665, 0.0025) * 0.42
+      + band(r, 0.615, 0.0035) * 0.45
+      + band(r, 0.560, 0.0030) * 0.32
+      + band(r, 0.470, 0.0035) * 0.42
+      + spokes * 0.17
+      + radialThreads * 0.075;
 
     // -- the textured core disc --------------------------------------------
     // Two counter-rotating polar meshes, dense enough to read as a woven
@@ -223,10 +232,10 @@ export function Core({ drive }: { drive: Drive }) {
 
   const uniforms = useMemo(
     () => ({
-      uColor: { value: new THREE.Color('#19c4c4') },
+      uColor: { value: new THREE.Color('#ff8a24') },
       // Not white — a tinted highlight keeps the hue readable once bloom
       // stacks on top, instead of washing the ring out to a grey band.
-      uHot: { value: new THREE.Color('#c9fdff') },
+      uHot: { value: new THREE.Color('#fff0cf') },
       uLevel: { value: 0 },
       uPhase: { value: 0 },
       uOpen: { value: 0 },
