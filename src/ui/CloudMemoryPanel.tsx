@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { cloudAuth, type CloudSession } from '../lib/cloud-auth'
-import { cloudApi, type CloudMemoryCandidate } from '../lib/cloud-api'
+import { cloudApi, type CloudMemoryCandidate, type CloudMemorySearchResult } from '../lib/cloud-api'
 
 const panel: React.CSSProperties = { display: 'grid', gap: 12, padding: 14, color: '#f4d2ad', fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace', fontSize: 11 }
 const field: React.CSSProperties = { width: '100%', minWidth: 0, boxSizing: 'border-box', padding: '11px 12px', color: '#ffe4c7', background: 'rgba(10,8,6,.78)', border: '1px solid rgba(255,157,73,.34)', borderRadius: 5, outlineColor: '#ffad62' }
@@ -21,6 +21,8 @@ export function CloudMemoryPanel() {
   const [cloudAnswer, setCloudAnswer] = useState('')
   const [cloudQuestion, setCloudQuestion] = useState('')
   const [turnBusy, setTurnBusy] = useState(false)
+  const [memoryQuery, setMemoryQuery] = useState('')
+  const [memoryResults, setMemoryResults] = useState<CloudMemorySearchResult[]>([])
   const abortTurn = useRef<AbortController | null>(null)
 
   useEffect(() => cloudAuth.subscribe(setSession), [])
@@ -98,6 +100,21 @@ export function CloudMemoryPanel() {
     } finally { setBusy(false) }
   }
 
+  async function searchMemory(event: React.FormEvent) {
+    event.preventDefault()
+    if (!memoryQuery.trim()) return
+    setBusy(true); setError('')
+    try {
+      const token = await cloudAuth.getValidAccessToken()
+      if (!token) throw new Error('Sign in again to search approved memory.')
+      const result = await cloudApi.searchApprovedMemory(token, memoryQuery.trim())
+      setMemoryResults(result.results)
+      if (!result.contextEnabled) setNotice('ENABLE MEMORY CONTEXT TO RETRIEVE APPROVED FACTS')
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'Approved memory search failed.')
+    } finally { setBusy(false) }
+  }
+
   async function toggleMemory() {
     if (!session) return
     setBusy(true); setError(''); setNotice('')
@@ -154,6 +171,15 @@ export function CloudMemoryPanel() {
             <span style={muted}>Memory is off until you explicitly enable it. Only approved facts can be retrieved for this account.</span>
             <button style={action} type="button" disabled={busy} onClick={() => void toggleMemory()}>{enabled ? 'DISABLE MEMORY CONTEXT' : 'ENABLE MEMORY CONTEXT'}</button>
             <strong style={{ color: enabled ? '#a7d8a1' : '#e6a36b' }}>{enabled ? 'ENABLED' : 'DISABLED'}</strong>
+          </div>
+          <div style={{ border: '1px solid rgba(255,157,73,.28)', padding: 10, display: 'grid', gap: 8 }}>
+            <b>APPROVED MEMORY RETRIEVAL</b>
+            <form onSubmit={searchMemory} style={{ display: 'grid', gap: 8 }}>
+              <input style={field} value={memoryQuery} onChange={(event) => setMemoryQuery(event.target.value)} placeholder="Search approved facts…" maxLength={160} />
+              <button style={action} type="submit" disabled={busy || !memoryQuery.trim()}>SEARCH APPROVED MEMORY</button>
+            </form>
+            {memoryResults.length === 0 && <span style={muted}>No matching approved facts loaded.</span>}
+            {memoryResults.map((item) => <article key={item.id} style={{ borderTop: '1px solid rgba(255,157,73,.2)', paddingTop: 7, display: 'grid', gap: 4 }}><small style={muted}>{item.type.toUpperCase()} {item.topic ? `· ${item.topic}` : ''}</small><span style={{ lineHeight: 1.5 }}>{item.content}</span></article>)}
           </div>
           <div style={{ border: '1px solid rgba(255,157,73,.28)', padding: 10, display: 'grid', gap: 8 }}>
             <b>FREE MODEL CLOUD TEST</b>
