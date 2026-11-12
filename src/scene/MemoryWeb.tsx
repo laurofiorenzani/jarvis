@@ -56,6 +56,7 @@ export function MemoryWeb({ drive }: { drive: Drive }) {
     const phaseSpeed =
       drive.spin * (drive.level > 0.18 ? 0.32 + drive.level * 0.7 : 0.12)
     group.current.rotation.y += dt * phaseSpeed
+    group.current.rotation.z += dt * phaseSpeed * 0.31
     group.current.rotation.x = Math.sin(state.clock.elapsedTime * 0.16) * 0.12
     const scale = 0.88 + drive.open * 0.13 + Math.sin(state.clock.elapsedTime * 1.1) * 0.025
     group.current.scale.setScalar(scale)
@@ -63,6 +64,14 @@ export function MemoryWeb({ drive }: { drive: Drive }) {
 
   return (
     <group ref={group}>
+      <mesh>
+        <sphereGeometry args={[1.48, 40, 28]} />
+        <meshBasicMaterial color="#ff9b43" wireframe transparent opacity={0.105} depthWrite={false} />
+      </mesh>
+      <mesh rotation={[0.35, 0.2, 0]}>
+        <sphereGeometry args={[1.62, 28, 20]} />
+        <meshBasicMaterial color="#ffc477" wireframe transparent opacity={0.055} depthWrite={false} />
+      </mesh>
       <lineSegments geometry={lineGeometry}>
         <lineBasicMaterial color="#ff9b43" transparent opacity={0.28} depthWrite={false} />
       </lineSegments>
