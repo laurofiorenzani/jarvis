@@ -113,3 +113,11 @@ Continue autonomously across independent workstreams wherever safe. User explici
 - Added `docs/architecture/action-approval-lifecycle.md` as the normative design for per-action approvals.
 - It defines risk classes, a nonce/session/toolUseId/argument-digest-bound approval envelope, fail-closed behavior, account isolation, accessible desktop/iPhone UI requirements, audit redaction, and unit/integration/E2E release gates.
 - This is a design document only. The current bridge still uses the global `JARVIS_ALLOW_WRITES=1` / `--writes` gate. Do not claim per-action approvals are implemented or enable broad writes before the full lifecycle is tested.
+
+
+## Action-risk classifier groundwork — 2026-11-12
+- Added `bridge/action-risk.mjs`, a pure conservative classifier for read, routine, approval-required, and deny risk outcomes.
+- Added `tests/action-risk.test.mjs` covering built-in reads, MCP read verbs, effectful verbs, unknown tools, malformed/prohibited names, and the explicit pre-authorisation signal.
+- Commits: `9a585e8be56888b0c184fbb61b0dee4d881fa63d` and `a19683c2f99cc3893d6e2f0a85c14db18dacd8a7`.
+- This is groundwork only: it is not wired into `PreToolUse`, does not create or resolve approval requests, and does not enable writes. Existing bridge policy remains authoritative. Do not treat the pre-authorisation hook as production-ready until a trusted rule store, owner/session binding, scope validation, expiry and revocation are implemented.
+- Next: run CI on the updated branch; then implement canonical argument hashing and a single-use expiring pending-approval registry with disconnect/timeout cleanup before adding any UI or protocol path.
