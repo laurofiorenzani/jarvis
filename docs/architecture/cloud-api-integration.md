@@ -1,6 +1,6 @@
 # Cloud API integration contract
 
-Status: authenticated Supabase session, account-scoped cloud API, memory approval/retrieval panel, and SSE conversation client are implemented on the preview branch. CI validates TypeScript, production build, regression tests, and lint. Live browser E2E with both household accounts remains a release gate.
+Status: authenticated Supabase session, account-scoped cloud API, memory approval/retrieval panel, SSE conversation client, and optional cloud-turn memory candidate extraction are implemented on the preview branch. GitHub Actions run #61 passed build, Node tests, lint, Deno typecheck, and Deno memory tests for commit `c03a8ee`. Live browser E2E with both household accounts remains a release gate. Production Supabase Edge Function is still v31; branch code is not deployed.
 
 ## Runtime configuration
 - `VITE_SUPABASE_URL`: public Supabase project URL.
@@ -19,7 +19,7 @@ The production Supabase Edge Function currently serves the cloud API. Branch cha
 - `jarvis_memory_preferences.context_enabled` controls retrieval of approved memory; it does not mean new conversation turns are automatically captured.
 - The user's own account currently has retrieval enabled. The wife's account remains independent and must not be enabled without her own consent.
 - Current audit found one memory-preference row with context enabled, and zero rows in `jarvis_memories` and `jarvis_memory_facts`: retrieval is enabled, but no personal facts have been saved yet.
-- Candidate creation is currently an explicit API operation; chat turns do not automatically create candidates yet.
+- Automatic capture is implemented on the preview branch as a separate per-account `auto_capture_enabled` preference. It runs only when both memory context and auto-capture are enabled, on cloud conversations only. It sends the current exchange to the configured free-tier model for extraction, applies server-side source and candidate filters, deduplicates against pending/approved facts, rate-limits extraction to five attempts per user per hour, and creates provenance-linked PENDING facts only. It never auto-approves. The account default is false; the user's auto-capture setting remains off until the branch Edge Function is deployed and live validation is complete.
 - The user has authorized development of automatic memory. Implement it as a separate per-account opt-in, distinct from retrieval preference. It must create provenance-linked pending candidates only, never auto-approve, and exclude sensitive/restricted content, credentials, secrets, health, financial-account data, and intimate personal data.
 - Candidate facts remain pending until that account's owner approves them. Rejection is also explicit and account-scoped.
 - Retrieval is limited to approved, normal-sensitivity facts and occurs only when that account's context preference is enabled.
