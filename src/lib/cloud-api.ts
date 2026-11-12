@@ -117,11 +117,11 @@ async function streamTurn(
       const { value, done } = await reader.read()
       if (done) break
       buffer += decoder.decode(value, { stream: true })
-      let boundary = buffer.indexOf('\\n\\n')
+      let boundary = buffer.indexOf('\n\n')
       while (boundary >= 0) {
         const frame = buffer.slice(0, boundary)
         buffer = buffer.slice(boundary + 2)
-        const data = frame.split('\\n').filter((line) => line.startsWith('data:')).map((line) => line.slice(5).trim()).join('\\n')
+        const data = frame.split('\n').filter((line) => line.startsWith('data:')).map((line) => line.slice(5).trim()).join('\n')
         if (data) {
           const event = JSON.parse(data) as CloudTurnEvent
           onEvent(event)
