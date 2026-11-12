@@ -24,20 +24,31 @@ export function CloudMemoryPanel() {
   const [memoryQuery, setMemoryQuery] = useState('')
   const [memoryResults, setMemoryResults] = useState<CloudMemorySearchResult[]>([])
   const abortTurn = useRef<AbortController | null>(null)
+  const accountGeneration = useRef(0)
+
+  function isCurrentAccount(userId: string | undefined, generation: number): boolean {
+    return Boolean(userId) && accountGeneration.current === generation &&
+      cloudAuth.getSession()?.user.id === userId
+  }
 
   useEffect(() => cloudAuth.subscribe(setSession), [])
 
   const load = useCallback(async () => {
+    const userId = cloudAuth.getSession()?.user.id
+    const generation = accountGeneration.current
+    if (!userId) return
     setBusy(true)
     setError('')
     try {
       const token = await cloudAuth.getValidAccessToken()
+      if (!isCurrentAccount(userId, generation)) return
       if (!token) throw new Error('Sign in again to access cloud memory.')
       const [preference, pending, status] = await Promise.all([
         cloudApi.getMemoryPreference(token),
         cloudApi.listMemoryCandidates(token),
         cloudApi.providerStatus(token),
       ])
+      if (!isCurrentAccount(userId, generation)) return
       setEnabled(preference.contextEnabled)
       setCandidates(pending.candidates.filter((item) => item.status === 'pending'))
       const names = Array.isArray(status.providers)
@@ -45,9 +56,9 @@ export function CloudMemoryPanel() {
         : ''
       setProvider(names ? names.toUpperCase() : status.configured === true ? 'CONFIGURED' : 'UNAVAILABLE')
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : 'Cloud data could not be loaded.')
+      if (isCurrentAccount(userId, generation)) setError(cause instanceof Error ? cause.message : 'Cloud data could not be loaded.')
     } finally {
-      setBusy(false)
+      if (isCurrentAccount(userId, generation)) setBusy(false)
     }
   }, [])
 
@@ -55,7 +66,14 @@ export function CloudMemoryPanel() {
     // Clear account-scoped UI state whenever the authenticated identity changes.
     // This prevents results from the previous household member remaining visible
     // after sign-out or a switch between the two separate accounts.
+    accountGeneration.current += 1
     abortTurn.current?.abort()
+    abortTurn.current = null
+    setBusy(false)
+    setTurnBusy(false)
+    setError('')
+    setNotice('')
+    setCloudInput('')
     setCandidates([])
     setMemoryResults([])
     setMemoryQuery('')
@@ -72,25 +90,32 @@ export function CloudMemoryPanel() {
     const question = cloudInput.trim()
     if (!question || !session || turnBusy) return
     setTurnBusy(true); setError(''); setCloudAnswer(''); setCloudQuestion(question)
+    const userId = session.user.id
+    const generation = accountGeneration.current
     const controller = new AbortController()
     abortTurn.current = controller
     try {
       const token = await cloudAuth.getValidAccessToken()
+      if (!isCurrentAccount(userId, generation) || controller.signal.aborted) return
       if (!token) throw new Error('Sign in again to use the cloud model.')
       const created = await cloudApi.createConversation(token)
+      if (!isCurrentAccount(userId, generation) || controller.signal.aborted) return
       await cloudApi.streamTurn(token, created.conversation.id, question, (event) => {
+        if (!isCurrentAccount(userId, generation)) return
         if (event.type === 'text.delta') setCloudAnswer((current) => current + event.delta)
         if (event.type === 'turn.failed') setError(event.message)
       }, controller.signal)
-      setCloudInput('')
-      setNotice('CLOUD MODEL TURN COMPLETED')
+      if (isCurrentAccount(userId, generation)) {
+        setCloudInput('')
+        setNotice('CLOUD MODEL TURN COMPLETED')
+      }
     } catch (cause) {
-      if (!(cause instanceof DOMException && cause.name === 'AbortError')) {
+      if (isCurrentAccount(userId, generation) && !(cause instanceof DOMException && cause.name === 'AbortError')) {
         setError(cause instanceof Error ? cause.message : 'Cloud model turn failed.')
       }
     } finally {
-      abortTurn.current = null
-      setTurnBusy(false)
+      if (abortTurn.current === controller) abortTurn.current = null
+      if (isCurrentAccount(userId, generation)) setTurnBusy(false)
     }
   }
 
@@ -108,44 +133,57 @@ export function CloudMemoryPanel() {
 
   async function searchMemory(event: React.FormEvent) {
     event.preventDefault()
-    if (!memoryQuery.trim()) return
+    if (!memoryQuery.trim() || !session) return
+    const userId = session.user.id
+    const generation = accountGeneration.current
     setBusy(true); setError('')
     try {
       const token = await cloudAuth.getValidAccessToken()
+      if (!isCurrentAccount(userId, generation)) return
       if (!token) throw new Error('Sign in again to search approved memory.')
       const result = await cloudApi.searchApprovedMemory(token, memoryQuery.trim())
+      if (!isCurrentAccount(userId, generation)) return
       setMemoryResults(result.results)
       if (!result.contextEnabled) setNotice('ENABLE MEMORY CONTEXT TO RETRIEVE APPROVED FACTS')
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : 'Approved memory search failed.')
-    } finally { setBusy(false) }
+      if (isCurrentAccount(userId, generation)) setError(cause instanceof Error ? cause.message : 'Approved memory search failed.')
+    } finally { if (isCurrentAccount(userId, generation)) setBusy(false) }
   }
 
   async function toggleMemory() {
     if (!session) return
+    const userId = session.user.id
+    const generation = accountGeneration.current
     setBusy(true); setError(''); setNotice('')
     try {
       const token = await cloudAuth.getValidAccessToken()
+      if (!isCurrentAccount(userId, generation)) return
       if (!token) throw new Error('Sign in again to change memory settings.')
       const saved = await cloudApi.setMemoryPreference(token, !enabled)
+      if (!isCurrentAccount(userId, generation)) return
       setEnabled(saved.contextEnabled)
       setNotice(saved.contextEnabled ? 'APPROVED-MEMORY CONTEXT ENABLED' : 'MEMORY CONTEXT DISABLED')
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : 'Preference could not be saved.')
-    } finally { setBusy(false) }
+      if (isCurrentAccount(userId, generation)) setError(cause instanceof Error ? cause.message : 'Preference could not be saved.')
+    } finally { if (isCurrentAccount(userId, generation)) setBusy(false) }
   }
 
   async function decide(candidate: CloudMemoryCandidate, decision: 'approved' | 'rejected') {
+    if (!session) return
+    const userId = session.user.id
+    const generation = accountGeneration.current
     setBusy(true); setError(''); setNotice('')
     try {
       const token = await cloudAuth.getValidAccessToken()
+      if (!isCurrentAccount(userId, generation)) return
       if (!token) throw new Error('Sign in again to review memory.')
       await cloudApi.decideMemoryCandidate(token, candidate.id, decision)
+      if (!isCurrentAccount(userId, generation)) return
       setCandidates((current) => current.filter((item) => item.id !== candidate.id))
       setNotice(decision === 'approved' ? 'MEMORY FACT APPROVED' : 'MEMORY FACT REJECTED')
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : 'Memory decision failed.')
-    } finally { setBusy(false) }
+      if (isCurrentAccount(userId, generation)) setError(cause instanceof Error ? cause.message : 'Memory decision failed.')
+    } finally { if (isCurrentAccount(userId, generation)) setBusy(false) }
   }
 
   return (
