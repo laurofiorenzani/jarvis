@@ -519,8 +519,8 @@ Deno.serve(async (request) => {
     return response({ version: VERSION, contextEnabled, autoCaptureEnabled }, 200, cors)
   }
 
-  // Personal memory is written only through this explicit authenticated endpoint.
-  // Chat turns never auto-populate this table; the caller must request a save.
+  // Legacy jarvis_memories remain explicit-only. Semantic facts are separate:
+  // opted-in cloud turns may create pending suggestions, never approved facts.
   if (request.method === 'GET' && matchesPath('/memories')) {
     const allowed = await consumeLimit('memory_read_minute', 30, 60)
     if (allowed === null) return error('service_unavailable', 'Rate limiter is unavailable.', 503, true, cors)
