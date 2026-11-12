@@ -114,3 +114,23 @@ export function parseAutoMemoryCandidates(
   }
   return output
 }
+
+
+export type SemanticMemoryPreferences = {
+  contextEnabled: boolean
+  autoCaptureEnabled: boolean
+}
+
+/** Merge a partial preference update while making auto-capture subordinate to retrieval consent. */
+export function mergeSemanticMemoryPreferences(
+  current: SemanticMemoryPreferences,
+  patch: Partial<SemanticMemoryPreferences>,
+): SemanticMemoryPreferences {
+  const contextEnabled = typeof patch.contextEnabled === 'boolean'
+    ? patch.contextEnabled
+    : current.contextEnabled
+  const autoCaptureEnabled = contextEnabled && (typeof patch.autoCaptureEnabled === 'boolean'
+    ? patch.autoCaptureEnabled
+    : current.autoCaptureEnabled)
+  return { contextEnabled, autoCaptureEnabled }
+}
