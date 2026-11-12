@@ -148,3 +148,12 @@ Continue autonomously across independent workstreams wherever safe. User explici
 - Further hardened canonical approval digesting: arrays now reject non-enumerable/hidden elements as well as holes and extra properties.
 - Added regression tests for hidden array elements. Current branch head is newer than run #246; fresh CI confirmation is still pending.
 - No production or preview deployment was made. Vercel continues to reject deployments due to the account's free-plan daily deployment quota. The last known READY preview is behind current source.
+
+
+## Supabase security review — 2026-11-12
+- Rechecked both Edge Functions: `jarvis-api` v32 and `jarvis-preview-api` v10 are ACTIVE. The function has `verify_jwt=false`, but the handler explicitly requires a Bearer token and validates it with `auth.getUser(token)` before creating a user-scoped service-role client. This is intentional custom auth validation; preserve it and regression-test it.
+- Confirmed public tables have RLS enabled. Policies scope conversations/messages/turns and memory records/preferences by `auth.uid()`; memory tables expose authenticated SELECT only. The rate-limit table intentionally has RLS enabled with no client policies.
+- Audited `jarvis_consume_rate_limit`: SECURITY DEFINER, fixed `search_path=public`, validates basic inputs, and EXECUTE is granted only to postgres and service_role (not anon/authenticated). No database changes made.
+- Security advisor findings: leaked-password protection remains disabled (owner action in Supabase Auth settings); one informational RLS/no-policy finding for the service-only rate-limit table. Performance advisor reports 18 unused indexes; leave them in place until real workload data justifies removal.
+- The account's current memory preference row has context and automatic candidate capture enabled. Automatic extraction still creates pending candidates, not approved memory; keep approval and user isolation requirements.
+- Current Actions run #253 is validating the latest head after the classifier and canonicalization fixes. Vercel preview deployments remain blocked by the free daily deployment quota.
