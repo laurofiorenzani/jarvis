@@ -160,7 +160,7 @@ export const cloudApi = {
       body: JSON.stringify({ version: VERSION, conversationId, turnId }),
     }),
   providerStatus: (token: string) =>
-    request<{ version: 1; provider: Record<string, unknown> }>('/provider-status', token),
+    request<{ version: 1; configured: boolean; providers: { name: string; model: string }[] }>('/provider-status', token),
 
   getMemoryPreference: (token: string) =>
     request<CloudMemoryPreference>('/memory-preferences', token),
