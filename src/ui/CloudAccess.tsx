@@ -441,6 +441,16 @@ export function CloudAccess({ onConnected, onDisconnected, onResumeConversation,
       onTtsApiReady?.(null)
       setConnected(false)
       setCanRestoreTabSession(false)
+      // Do not retain one family member's private memory or conversation data
+      // in component state after sign-out or before the next account connects.
+      setMemories([])
+      setMemoryCandidates([])
+      setMemoryReviewAvailable(false)
+      setConversations([])
+      setMemoryContextEnabled(false)
+      setMemoryContent('')
+      setMemoryCategory('preference')
+      setProviderStatus('NOT CHECKED')
       try { window.sessionStorage.removeItem(TAB_SESSION_CHOICE) } catch { /* Sign-out remains complete if storage is unavailable. */ }
       setBusy(false)
       onDisconnected?.()
