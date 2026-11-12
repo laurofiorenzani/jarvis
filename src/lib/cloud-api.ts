@@ -134,7 +134,7 @@ export const cloudApi = {
   listMemoryCandidates: (token: string) => request<{ version: 1; candidates: CloudMemoryCandidate[] }>('/semantic-memory/candidates', token),
   decideMemoryCandidate: (token: string, id: string, decision: 'approved' | 'rejected') => request<{ version: 1; candidate: CloudMemoryCandidate }>(
     `/semantic-memory/candidates/${encodeURIComponent(id)}`, token,
-    { method: 'PUT', body: JSON.stringify({ version: VERSION, decision }),
+    { method: 'PUT', body: JSON.stringify({ version: VERSION, decision }) },
   ),
   searchApprovedMemory: (token: string, query: string, limit = 8) => {
     const params = new URLSearchParams({ q: query, limit: String(Math.max(1, Math.min(8, Math.floor(limit)))) })
