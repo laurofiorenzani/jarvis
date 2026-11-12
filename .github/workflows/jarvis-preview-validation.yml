@@ -1,6 +1,9 @@
 name: Jarvis preview validation
 
 on:
+  push:
+    branches:
+      - work/jarvis-amber-production-track
   pull_request:
     branches:
       - main
