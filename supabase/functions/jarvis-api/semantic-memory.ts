@@ -65,3 +65,46 @@ export function parseSemanticMemoryDecision(value: unknown): 'approved' | 'rejec
 export function isSemanticMemoryId(value: string): boolean {
   return UUID_PATTERN.test(value)
 }
+
+
+const AUTO_MEMORY_SENSITIVE = /\\b(?:password|passphrase|passcode|pin code|api[\\s_-]?key|access token|refresh token|credential|secret|private key|health|medical|diagnos|medication|prescription|hormone|therapy|sexual|intimate|religion|politic|ethnic|race|bank|iban|swift|credit card|debit card|account number|salary|income|mortgage|loan|investment|portfolio|financial|finance|tax return|tax id|passport|national id|social security|criminal|lawsuit)\\b/i
+const AUTO_MEMORY_EMAIL = /\\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\\.[A-Z]{2,}\\b/i
+const AUTO_MEMORY_PHONE = /(?:\\+?\\d[\\d\\s().-]{7,}\\d)/
+
+/** Conservative post-model filter: memory suggestions must never contain secrets or sensitive personal data. */
+export function isSafeAutoMemoryContent(value: string): boolean {
+  const content = value.replace(/[\\u0000-\\u001f\\u007f]/g, ' ').replace(/\\s+/g, ' ').trim()
+  if (content.length < 12 || content.length > 1_000) return false
+  if (AUTO_MEMORY_SENSITIVE.test(content) || AUTO_MEMORY_EMAIL.test(content) || AUTO_MEMORY_PHONE.test(content)) return false
+  return true
+}
+
+/** Convert model suggestions into bounded, provenance-linked pending candidates. */
+export function parseAutoMemoryCandidates(
+  value: unknown,
+  sourceConversationId: string,
+  sourceMessageIds: string[],
+): SemanticMemoryCandidateInput[] {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return []
+  const candidates = (value as Record<string, unknown>).candidates
+  if (!Array.isArray(candidates)) return []
+  const output: SemanticMemoryCandidateInput[] = []
+  const seen = new Set<string>()
+  for (const raw of candidates.slice(0, 5)) {
+    if (!raw || typeof raw !== 'object' || Array.isArray(raw)) continue
+    const item = raw as Record<string, unknown>
+    const candidate = parseSemanticMemoryCandidate({
+      version: 1,
+      factType: item.factType,
+      content: item.content,
+      sourceConversationId,
+      sourceMessageIds,
+    })
+    if (!candidate || !isSafeAutoMemoryContent(candidate.content)) continue
+    const key = candidate.content.toLowerCase()
+    if (seen.has(key)) continue
+    seen.add(key)
+    output.push(candidate)
+  }
+  return output
+}
