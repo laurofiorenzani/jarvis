@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react'
+import { useRef, useState } from 'react'
 import { Html } from '@react-three/drei'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
@@ -19,42 +19,44 @@ const DOMAINS = [
   'WORKFLOWS', 'INTEGRATIONS', 'NOTES', 'REFERENCES',
 ]
 
+
+const MEMORY_NODES: THREE.Vector3[] = DOMAINS.map((_, index) => {
+  const count = DOMAINS.length
+  const y = 1 - (index / (count - 1)) * 2
+  const radius = Math.sqrt(Math.max(0, 1 - y * y))
+  const theta = Math.PI * (3 - Math.sqrt(5)) * index
+  const shell = 2.05 + (index % 3) * 0.22
+  return new THREE.Vector3(
+    Math.cos(theta) * radius * shell,
+    y * shell,
+    Math.sin(theta) * radius * shell,
+  )
+})
+
+const MEMORY_LINES = (() => {
+  const vertices: number[] = []
+  MEMORY_NODES.forEach((point, index) => {
+    vertices.push(0, 0, 0, point.x, point.y, point.z)
+    for (const neighbour of [index + 1, (index + 3) % MEMORY_NODES.length]) {
+      if (neighbour <= index) continue
+      const other = MEMORY_NODES[neighbour]
+      if (!other) continue
+      vertices.push(point.x, point.y, point.z, other.x, other.y, other.z)
+    }
+  })
+  const geometry = new THREE.BufferGeometry()
+  geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3))
+  return geometry
+})()
+
 export function MemoryWeb({ drive }: { drive: Drive }) {
   const [selected, setSelected] = useState<string | null>(null)
   const group = useRef<THREE.Group>(null)
-  const nodes = useMemo(() => {
-    const result: THREE.Vector3[] = []
-    const count = DOMAINS.length
-    const golden = Math.PI * (3 - Math.sqrt(5))
-    for (let i = 0; i < count; i++) {
-      const y = 1 - (i / (count - 1)) * 2
-      const radius = Math.sqrt(1 - y * y)
-      const theta = golden * i
-      const shell = 2.05 + (i % 3) * 0.22
-      result.push(new THREE.Vector3(
-        Math.cos(theta) * radius * shell,
-        y * shell,
-        Math.sin(theta) * radius * shell,
-      ))
-    }
-    return result
-  }, [])
-
-  const lineGeometry = useMemo(() => {
-    const vertices: number[] = []
-    nodes.forEach((point, i) => {
-      // Each domain connects to the core and to its two nearest neighbours.
-      vertices.push(0, 0, 0, point.x, point.y, point.z)
-      for (const j of [i + 1, (i + 3) % nodes.length]) {
-        if (j <= i) continue
-        const other = nodes[j]
-        vertices.push(point.x, point.y, point.z, other.x, other.y, other.z)
-      }
-    })
-    const geometry = new THREE.BufferGeometry()
-    geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3))
-    return geometry
-  }, [nodes])
+  // Build immutable geometry once at module scope. Keeping array traversal out
+  // of React render hooks avoids a fatal mobile recovery path if a renderer or
+  // hot-reload leaves a memoized value in an unexpected shape.
+  const nodes = MEMORY_NODES
+  const lineGeometry = MEMORY_LINES
 
   useFrame((state, dt) => {
     if (!group.current) return
