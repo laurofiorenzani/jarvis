@@ -203,7 +203,17 @@ Deno.serve(async (request) => {
     }).catch(() => null)
     if (!upstream) return error('service_unavailable', 'Speech transcription service could not be reached.', 503, true, cors)
     if (!upstream.ok) {
+      // Preserve provider throttling semantics so the client can distinguish
+      // exhausted quota from a network outage and honour a bounded cooldown.
       console.warn('[jarvis] speech transcription provider returned non-success status', { status: upstream.status })
+      if (upstream.status === 429) {
+        const retryAfter = upstream.headers.get('retry-after')
+        const seconds = retryAfter && /^\d{1,4}$/.test(retryAfter) ? Math.min(300, Math.max(5, Number(retryAfter))) : 60
+        return error('rate_limited', 'Speech transcription quota is temporarily unavailable. Please wait before trying again.', 429, true, {
+          ...cors,
+          'Retry-After': String(seconds),
+        })
+      }
       return error('service_unavailable', 'Speech transcription failed. Please try again.', 503, true, cors)
     }
     const payload = await upstream.json().catch(() => null)
