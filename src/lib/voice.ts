@@ -332,7 +332,7 @@ function isEcho(heard: string, spoken: string): boolean {
  * apart in one glance.
  */
 export const diag = {
-  /** Which input engine is running: 'elevenlabs' (VAD+Scribe) or 'browser'. */
+  /** Which input engine is running: 'cloud' (VAD + hosted transcription) or 'browser'. */
   engine: 'browser',
   /** Whether the microphone pipeline is live. */
   running: false,
@@ -398,12 +398,12 @@ export async function startVoice(h: VoiceHandlers): Promise<Voice> {
     )
     return { stop: () => {}, live: () => false }
   }
-  diag.engine = caps().stt ? 'elevenlabs' : 'browser'
-  return caps().stt ? startElevenVoice(h) : startBrowserVoice(h)
+  diag.engine = caps().stt ? 'cloud' : 'browser'
+  return caps().stt ? startCloudVoice(h) : startBrowserVoice(h)
 }
 
-/** VAD + ElevenLabs Scribe. */
-async function startElevenVoice(h: VoiceHandlers): Promise<Voice> {
+/** VAD + hosted cloud speech transcription. */
+async function startCloudVoice(h: VoiceHandlers): Promise<Voice> {
   let lastWake = 0
   let vad: Vad | null = null
 
@@ -422,6 +422,8 @@ async function startElevenVoice(h: VoiceHandlers): Promise<Voice> {
    */
   const pendingAudio: Blob[] = []
   let draining = false
+  let browserFallback: Voice | null = null
+  let guardPoll: ReturnType<typeof setInterval> | null = null
 
   /**
    * Transcripts become turns here rather than one-per-segment.
@@ -437,6 +439,19 @@ async function startElevenVoice(h: VoiceHandlers): Promise<Voice> {
     partial: (text) => h.onPartial(text),
   })
 
+  const fallbackToBrowser = (reason: string) => {
+    if (browserFallback) return
+    diag.lastError = reason
+    diag.dropped = `${reason} — switching to browser recognition`
+    pendingAudio.length = 0
+    assemble.cancel()
+    vad?.stop()
+    if (guardPoll !== null) clearInterval(guardPoll)
+    browserFallback = startBrowserVoice(h)
+    diag.engine = 'browser'
+    diag.running = browserFallback.live()
+  }
+
   /**
    * Send one captured segment to the bridge and act on the words.
    *
@@ -446,6 +461,7 @@ async function startElevenVoice(h: VoiceHandlers): Promise<Voice> {
    * now, not the one they interrupted.
    */
   const transcribe = async (blob: Blob) => {
+    if (browserFallback) return
     const mode = h.mode()
     if (mode === 'deaf') return
     const t0 = performance.now()
@@ -458,6 +474,11 @@ async function startElevenVoice(h: VoiceHandlers): Promise<Voice> {
       diag.idleMs = Math.round(performance.now() - t0)
       if (!res.ok) {
         diag.restarts++
+        if (res.status === 429 || res.status === 503) {
+          // Quota exhaustion and provider outages should not leave voice deaf.
+          fallbackToBrowser(`cloud STT unavailable (${res.status})`)
+          return
+        }
         diag.lastError = `stt ${res.status}`
         drop(`transcription failed (${res.status})`)
         return
@@ -499,6 +520,10 @@ async function startElevenVoice(h: VoiceHandlers): Promise<Voice> {
       assemble.feed(said, vad?.meter().speaking ?? false)
     } catch (err) {
       diag.restarts++
+      if (err instanceof TypeError) {
+        fallbackToBrowser('cloud speech service unreachable')
+        return
+      }
       diag.lastError = String(err)
       drop('could not reach the speech service')
     }
@@ -564,7 +589,7 @@ async function startElevenVoice(h: VoiceHandlers): Promise<Voice> {
   // Raise the trigger bar exactly while he speaks. The mode is polled rather
   // than pushed because nothing in the app pushes phase changes here, and a
   // 200ms lag on the echo gate is imperceptible.
-  const guardPoll = setInterval(() => {
+  guardPoll = setInterval(() => {
     const mode = h.mode()
     vad?.setGuard(mode === 'guard')
     // He has stood down — by Escape, by the idle timeout, or by dropping back
@@ -576,12 +601,13 @@ async function startElevenVoice(h: VoiceHandlers): Promise<Voice> {
 
   return {
     stop: () => {
-      clearInterval(guardPoll)
+      if (guardPoll !== null) clearInterval(guardPoll)
+      browserFallback?.stop()
       assemble.cancel()
       vad?.stop()
       diag.running = false
     },
-    live: () => vad?.live() ?? false,
+    live: () => browserFallback?.live() ?? (vad?.live() ?? false),
   }
 }
 
@@ -591,7 +617,7 @@ async function startElevenVoice(h: VoiceHandlers): Promise<Voice> {
 
 /**
  * The keyless path. Uses the browser's own SpeechRecognition for both detection
- * and transcription, so a student who has configured nothing still gets voice.
+ * and transcription. It is available in supported desktop browsers and partially supported in iOS Safari.
  *
  * It is the flakier engine — Chrome throttles it and it can go silent with no
  * event to catch — so a heartbeat watches it and forces a fresh session
@@ -603,7 +629,7 @@ function startBrowserVoice(h: VoiceHandlers): Voice {
   const Ctor =
     (window as any).SpeechRecognition ?? (window as any).webkitSpeechRecognition
   if (!Ctor) {
-    h.onError('This browser has no speech recognition — use Chrome or Edge, or add an ElevenLabs key.')
+    h.onError('This browser has no speech recognition — try Safari on iOS or Chrome/Edge on desktop, or restore cloud speech transcription.')
     return { stop: () => {}, live: () => false }
   }
 

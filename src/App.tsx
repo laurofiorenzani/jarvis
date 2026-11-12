@@ -1,9 +1,10 @@
-import { useEffect, useRef } from 'react'
-import { Scene } from './scene/Scene'
-import { Hud } from './ui/Hud'
+import { lazy, Suspense, useEffect, useRef } from 'react'
 import { Boot } from './ui/Boot'
 import { Ignition } from './ui/Ignition'
-import { Diagnostics } from './ui/Diagnostics'
+
+const Scene = lazy(() => import('./scene/Scene').then((module) => ({ default: module.Scene })))
+const Hud = lazy(() => import('./ui/Hud').then((module) => ({ default: module.Hud })))
+const Diagnostics = lazy(() => import('./ui/Diagnostics').then((module) => ({ default: module.Diagnostics })))
 import { useStore } from './store'
 import { startVoice, type Voice, type VoiceMode } from './lib/voice'
 import { createSpeaker, cycleVoice, currentVoiceName } from './lib/tts'
@@ -12,7 +13,6 @@ import * as music from './lib/music'
 import * as hands from './lib/hands'
 import { listenForClap } from './lib/clap'
 import * as camera from './lib/camera'
-import * as kokoro from './lib/kokoro'
 import { TTS_ENGINE } from './config'
 import { forTool, attention } from './lib/fillers'
 import {
@@ -474,6 +474,9 @@ export default function App() {
     // — if it's slow, JARVIS comes up on the system voice and swaps over the
     // moment the model is ready.
     if (TTS_ENGINE === 'kokoro') {
+      // Keep the 2MB voice runtime out of the initial app bundle. It is loaded
+      // only when the selected engine actually needs it, during ignition.
+      const kokoro = await import('./lib/kokoro')
       void kokoro.load()
       voicePoll.current = setInterval(() => {
         const p = kokoro.loadProgress()
@@ -699,10 +702,14 @@ export default function App() {
 
   return (
     <>
-      <Scene />
-      <Hud />
+      <Suspense fallback={<div className="scene-loading" aria-label="Initialising JARVIS" />}>
+        <Scene />
+      </Suspense>
+      <Suspense fallback={null}>
+        <Hud />
+        <Diagnostics />
+      </Suspense>
       <Boot />
-      <Diagnostics />
       <Ignition onStart={() => void powerOn()} />
     </>
   )

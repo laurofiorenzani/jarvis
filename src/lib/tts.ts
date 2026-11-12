@@ -6,7 +6,6 @@ import {
   KOKORO_VOICE,
   BRIDGE_HTTP_URL,
 } from '../config'
-import * as kokoro from './kokoro'
 import { caps } from './capabilities'
 
 /**
@@ -164,6 +163,18 @@ const MAX_UNSPOKEN = 220
 
 const VOICE_PREF_KEY = 'jarvis.voice'
 
+// Keep the neural runtime out of the initial application graph. It is only
+// requested when Kokoro is explicitly selected and a sentence is ready.
+type KokoroModule = typeof import('./kokoro')
+let kokoroModule: Promise<KokoroModule> | null = null
+function loadKokoro(): Promise<KokoroModule> {
+  kokoroModule ??= import('./kokoro').catch((error) => {
+    kokoroModule = null
+    throw error
+  })
+  return kokoroModule
+}
+
 /**
  * Rank installed voices by how close they are to the character: a British
  * male, low and level, not a novelty voice.
@@ -245,7 +256,7 @@ function pickVoice(): SpeechSynthesisVoice | null {
  *  quietly replaced. */
 export function currentVoiceName(): string {
   if (USE_ELEVENLABS || caps().tts) return 'ElevenLabs'
-  if (TTS_ENGINE === 'kokoro' && !kokoro.isUnavailable()) {
+  if (TTS_ENGINE === 'kokoro') {
     return KOKORO_VOICE.replace(/^bm_/, '')
   }
   return pickVoice()?.name ?? 'default'
@@ -387,9 +398,13 @@ export function createSpeaker(): Speaker {
       diag.engine = 'elevenlabs'
       return fetchCloudAudio(text).catch(() => null)
     }
-    if (TTS_ENGINE === 'kokoro' && !kokoro.isUnavailable()) {
+    if (TTS_ENGINE === 'kokoro') {
       diag.engine = 'kokoro'
-      return kokoro.speak(text).catch(() => null)
+      return loadKokoro()
+        .then((kokoro) =>
+          kokoro.isUnavailable() ? null : kokoro.speak(text),
+        )
+        .catch(() => null)
     }
     diag.engine = 'system'
     return null
