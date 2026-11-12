@@ -103,8 +103,8 @@ select throws_ok(
   'authenticated user cannot bypass the review API with a direct memory insert'
 );
 select throws_ok(
-  $update public.jarvis_memory_facts set content = 'Cross-account mutation'
-    where user_id = '00000000-0000-4000-8000-000000000002'$,
+  $$update public.jarvis_memory_facts set content = 'Cross-account mutation'
+    where user_id = '00000000-0000-4000-8000-000000000002'$$,
   '42501', null,
   'authenticated user A cannot update another account memory rows directly'
 );
@@ -131,8 +131,8 @@ select throws_ok(
   'second authenticated user also cannot bypass the review API with a direct memory insert'
 );
 select throws_ok(
-  $update public.jarvis_memory_facts set content = 'Cross-account mutation'
-    where user_id = '00000000-0000-4000-8000-000000000001'$,
+  $$update public.jarvis_memory_facts set content = 'Cross-account mutation'
+    where user_id = '00000000-0000-4000-8000-000000000001'$$,
   '42501', null,
   'authenticated user B cannot update another account memory rows directly'
 );
