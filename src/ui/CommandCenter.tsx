@@ -1,6 +1,5 @@
 import { useState } from 'react'
 import { useStore } from '../store'
-import { CloudMemoryPanel } from './CloudMemoryPanel'
 
 type Area = 'core' | 'memory' | 'devices' | 'vision'
 const areas: { id: Area; label: string; code: string }[] = [
@@ -60,7 +59,7 @@ export function CommandCenter({ connected }: { connected: string[] }) {
         {area === 'memory' && (
           <div className="memory-constellation">
             <div className="command-note"><b>ACCOUNT-SCOPED MEMORY</b><span>Sign in to view this account's pending facts, manage explicit memory consent, and review approved-memory settings. The 3D constellation remains a visual map of knowledge domains, not a claim that records are already connected.</span></div>
-            <CloudMemoryPanel />
+            <div className="command-note"><b>SECURE ACCOUNT MEMORY</b><span>Account sign-in, approved memory, pending suggestions, and conversation history are managed through the authenticated JARVIS account panel. One session and one identity store are used for the whole assistant; this panel does not create a second login or separate token store.</span></div>
           </div>
         )}
 
