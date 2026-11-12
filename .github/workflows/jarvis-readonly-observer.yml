@@ -1,0 +1,78 @@
+name: JARVIS Read-only System Observer
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "17,47 * * * *"
+  push:
+    branches: ["work/jarvis-canonical-integration", "main"]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: jarvis-readonly-observer-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  observe:
+    name: Observe public service health
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check production cloud API health
+        env:
+          JARVIS_API_URL: https://undmhmdwhxvjgvezvucy.supabase.co/functions/v1/jarvis-api/health
+        run: |
+          node --input-type=module <<'NODE'
+          const url = process.env.JARVIS_API_URL;
+          const controller = new AbortController();
+          const timer = setTimeout(() => controller.abort(), 10000);
+          try {
+            const response = await fetch(url, {
+              method: 'GET',
+              headers: { accept: 'application/json' },
+              signal: controller.signal,
+              redirect: 'error',
+            });
+            const healthy = response.ok;
+            console.log(JSON.stringify({
+              signal: 'production_api_http',
+              status: response.status,
+              healthy,
+              observedAt: new Date().toISOString(),
+            }));
+            if (!healthy) process.exitCode = 1;
+          } finally {
+            clearTimeout(timer);
+          }
+          NODE
+
+      - name: Check production PWA availability
+        env:
+          JARVIS_PWA_URL: https://jarvis-lauro-fiorenzani.vercel.app
+        run: |
+          node --input-type=module <<'NODE'
+          const url = process.env.JARVIS_PWA_URL;
+          const controller = new AbortController();
+          const timer = setTimeout(() => controller.abort(), 10000);
+          try {
+            const response = await fetch(url, {
+              method: 'GET',
+              headers: { accept: 'text/html' },
+              signal: controller.signal,
+              redirect: 'error',
+            });
+            const healthy = response.ok && (response.headers.get('content-type') || '').includes('text/html');
+            console.log(JSON.stringify({
+              signal: 'production_pwa_http',
+              status: response.status,
+              contentType: response.headers.get('content-type'),
+              healthy,
+              observedAt: new Date().toISOString(),
+            }));
+            if (!healthy) process.exitCode = 1;
+          } finally {
+            clearTimeout(timer);
+          }
+          NODE
