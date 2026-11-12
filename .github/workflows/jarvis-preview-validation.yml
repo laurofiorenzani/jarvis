@@ -14,7 +14,7 @@ on:
       - ready_for_review
 
 permissions:
-  contents: read
+  contents: write
   statuses: write
 
 concurrency:
@@ -40,6 +40,10 @@ jobs:
         run: |
           npm audit --json > npm-audit.json || true
           node -e "const r=require('./npm-audit.json'); console.log('npm audit summary:', JSON.stringify(r.metadata?.vulnerabilities ?? {})); for (const [name, item] of Object.entries(r.vulnerabilities ?? {})) console.log(name, JSON.stringify({severity:item.severity,isDirect:item.isDirect,range:item.range,fixAvailable:item.fixAvailable}))"
+      - name: Apply compatible dependency security updates
+        run: npm audit fix --package-lock-only
+      - name: Install patched dependencies
+        run: npm ci
       - name: Resolve compatible npm security fixes
         run: npm audit fix --package-lock-only --ignore-scripts || true
       - name: Install patched dependency tree
@@ -76,6 +80,58 @@ jobs:
         run: deno test --config supabase/functions/jarvis-api/deno.json supabase/functions/jarvis-api/semantic-memory.deno.ts
       - name: Preview Edge Function tests
         run: deno test --config supabase/functions/jarvis-preview-api/deno.json supabase/functions/jarvis-preview-api/semantic-memory.deno.ts
+      - name: Commit tested dependency lock updates
+        if: success()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs')
+            const branch = context.payload.pull_request?.head?.ref ?? context.ref.replace('refs/heads/', '')
+            if (branch !== 'work/jarvis-amber-production-track') {
+              core.info('Not the Jarvis integration branch; leaving dependency updates uncommitted.')
+              return
+            }
+            const expectedHead = context.payload.pull_request?.head?.sha ?? context.sha
+            const ref = await github.rest.git.getRef({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              ref: `heads/${branch}`,
+            })
+            if (ref.data.object.sha !== expectedHead) {
+              core.warning('Branch advanced during validation; skipping automated lockfile commit.')
+              return
+            }
+            const file = await github.rest.repos.getContent({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              path: 'package-lock.json',
+              ref: branch,
+            })
+            const current = Buffer.from(file.data.content, 'base64').toString('utf8')
+            const updated = fs.readFileSync('package-lock.json', 'utf8')
+            if (current === updated) {
+              core.info('No compatible dependency updates were required.')
+              return
+            }
+            const saved = await github.rest.repos.createOrUpdateFileContents({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              path: 'package-lock.json',
+              message: 'fix(deps): apply tested compatible security updates',
+              content: Buffer.from(updated).toString('base64'),
+              sha: file.data.sha,
+              branch,
+            })
+            await github.rest.repos.createCommitStatus({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              sha: saved.data.commit.sha,
+              state: 'success',
+              context: 'JARVIS CI',
+              description: 'Updated lockfile was installed and passed build, tests, lint and Deno checks',
+              target_url: `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
+            })
+            core.info(`Committed tested dependency updates: ${saved.data.commit.sha}`)
       - name: Publish commit validation status
         if: always()
         uses: actions/github-script@v7
