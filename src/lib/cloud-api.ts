@@ -198,6 +198,6 @@ export const cloudApi = {
     request<{ version: 1; candidate: CloudMemoryCandidate }>(
       '/semantic-memory/candidates',
       token,
-      { method: 'POST', body: JSON.stringify(candidate) },
+      { method: 'POST', body: JSON.stringify({ version: VERSION, ...candidate }) },
     ),
 }
