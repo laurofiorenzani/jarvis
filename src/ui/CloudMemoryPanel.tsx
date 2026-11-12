@@ -204,7 +204,7 @@ export function CloudMemoryPanel() {
           <div style={muted}>{session.user.email || session.user.id}</div>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             <button style={action} type="button" disabled={busy} onClick={() => void load()}>REFRESH CLOUD DATA</button>
-            <button style={action} type="button" disabled={busy} onClick={() => void cloudAuth.signOut()}>SIGN OUT</button>
+            <button style={action} type="button" disabled={busy} onClick={() => void cloudAuth.signOut().catch(() => setError('Local sign-out completed, but remote session revocation could not be confirmed.'))}>SIGN OUT</button>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
             <div style={{ border: '1px solid rgba(255,157,73,.22)', padding: 10 }}><small style={muted}>MODEL ROUTE</small><div style={{ marginTop: 5 }}>{provider}</div></div>
