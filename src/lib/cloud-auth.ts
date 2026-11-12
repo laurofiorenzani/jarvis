@@ -32,7 +32,7 @@ type AuthPayload = {
 }
 
 const listeners = new Set<(session: CloudSession | null) => void>()
-let refreshInFlight: Promise<CloudSession | null> | null = null
+const refreshInFlight = new Map<string, Promise<CloudSession | null>>()
 // Invalidates in-flight sign-in/refresh/sign-out completions after an identity
 // transition. A late response must never overwrite a newer household session.
 let authRevision = 0
