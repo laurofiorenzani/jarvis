@@ -538,12 +538,17 @@ async function startCloudVoice(h: VoiceHandlers, transport: 'cloud' | 'bridge'):
       assemble.feed(said, vad?.meter().speaking ?? false)
     } catch (err) {
       diag.restarts++
-      if (err instanceof TypeError) {
-        fallbackToBrowser('cloud speech service unreachable')
+      const status = err && typeof err === 'object' && 'status' in err
+        ? Number((err as { status?: unknown }).status)
+        : 0
+      if (err instanceof TypeError || status === 429 || status >= 500) {
+        fallbackToBrowser(status ? `cloud speech unavailable (${status})` : 'cloud speech service unreachable')
         return
       }
       diag.lastError = String(err)
-      drop('could not reach the speech service')
+      drop(status === 401 || status === 403
+        ? 'cloud session needs attention — sign in again'
+        : 'could not reach the speech service')
     }
   }
 
