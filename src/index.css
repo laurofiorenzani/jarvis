@@ -3,7 +3,7 @@
 :root {
   /* The interface cyan. `--accent` is re-declared per phase and per panel;
      this one stays put and is what anything neutral pins itself to. */
-  --interface: #a78bfa;
+  --interface: #ff9b3d;
   --accent: var(--interface);
   --bg: #01060c;
   font-family: 'Chakra Petch', system-ui, sans-serif;
@@ -34,8 +34,8 @@ body::after {
     radial-gradient(ellipse at center, transparent 30%, rgba(0, 0, 0, 0.55) 100%),
     repeating-linear-gradient(
       0deg,
-      rgba(167, 139, 250, 0.028) 0px,
-      rgba(0, 229, 255, 0.028) 1px,
+      rgba(255, 155, 61, 0.028) 0px,
+      rgba(255, 190, 120, 0.028) 1px,
       transparent 1px,
       transparent 3px
     );
