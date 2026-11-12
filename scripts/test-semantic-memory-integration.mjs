@@ -91,7 +91,7 @@ async function cleanup() {
 }
 
 try {
-  const unauthenticated = await fetch(`${api}/semantic-memory/candidates`)
+  const unauthenticated = await fetch(`${api}/semantic-memory/candidates`, { headers: { apikey: anonKey } })
   assert.equal(unauthenticated.status, 401, 'semantic-memory routes must require authentication')
 
   const userA = await createUser('a')
