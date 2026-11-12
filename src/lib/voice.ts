@@ -448,6 +448,7 @@ async function startElevenVoice(h: VoiceHandlers): Promise<Voice> {
    * now, not the one they interrupted.
    */
   const transcribe = async (blob: Blob) => {
+    if (browserFallback) return
     const mode = h.mode()
     if (mode === 'deaf') return
     const t0 = performance.now()
