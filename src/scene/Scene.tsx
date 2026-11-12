@@ -12,6 +12,7 @@ import * as THREE from 'three'
 import { Core } from './Core'
 import { Particles } from './Particles'
 import { Orbits } from './Orbits'
+import { MemoryWeb } from './MemoryWeb'
 import { useStore, phaseColor, accentFor, type Phase } from '../store'
 
 /** Rings spin harder while JARVIS is working — reads as effort. */
@@ -119,7 +120,7 @@ function Rig() {
         scale: 1,
         intensity: 1,
         spin: 1,
-        style: STYLE_INDEX.ring,
+        style: STYLE_INDEX.sphere,
         visible: true,
       },
     }),
@@ -187,6 +188,7 @@ function Rig() {
     <>
       <Core drive={drive} />
       <Particles drive={drive} />
+      <MemoryWeb drive={drive} />
       <Orbits />
     </>
   )
