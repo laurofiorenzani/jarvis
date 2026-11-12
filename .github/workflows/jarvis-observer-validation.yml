@@ -2,7 +2,7 @@ name: JARVIS Observer Validation
 
 on:
   push:
-    branches: ["work/jarvis-canonical-integration", "main"]
+    branches: ["main"]
     paths:
       - "src/lib/system-observer.ts"
       - "tests/system-observer.test.ts"
