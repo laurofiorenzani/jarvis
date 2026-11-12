@@ -98,6 +98,9 @@ Deno.test('automatic extraction skips a source turn containing sensitive data', 
   equal(isSafeAutoMemorySource('My salary and bank account balance are private'), false, 'financial source')
   equal(isSafeAutoMemorySource('My medical diagnosis is private'), false, 'health source')
   equal(isSafeAutoMemorySource('Contact me at person@example.com'), false, 'contact detail')
+  equal(isSafeAutoMemorySource('My home address is 10 Main Street'), false, 'home address')
+  equal(isSafeAutoMemorySource('My date of birth is 21 August'), false, 'birth date')
+  equal(isSafeAutoMemorySource('My nationality and visa status are private'), false, 'identity and immigration')
 })
 
 Deno.test('automatic capture consent is subordinate to memory retrieval consent', () => {
