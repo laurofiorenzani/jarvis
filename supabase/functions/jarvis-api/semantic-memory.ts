@@ -72,6 +72,12 @@ const AUTO_MEMORY_EMAIL = /\\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\\.[A-Z]{2,}\\b/i
 const AUTO_MEMORY_PHONE = /(?:\\+?\\d[\\d\\s().-]{7,}\\d)/
 
 /** Conservative post-model filter: memory suggestions must never contain secrets or sensitive personal data. */
+export function isSafeAutoMemorySource(value: string): boolean {
+  const source = value.replace(/[\\u0000-\\u001f\\u007f]/g, ' ').trim()
+  if (!source || source.length > 12_000) return false
+  return !AUTO_MEMORY_SENSITIVE.test(source) && !AUTO_MEMORY_EMAIL.test(source) && !AUTO_MEMORY_PHONE.test(source)
+}
+
 export function isSafeAutoMemoryContent(value: string): boolean {
   const content = value.replace(/[\\u0000-\\u001f\\u007f]/g, ' ').replace(/\\s+/g, ' ').trim()
   if (content.length < 12 || content.length > 1_000) return false
