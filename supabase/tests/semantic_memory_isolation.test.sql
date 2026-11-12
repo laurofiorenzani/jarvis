@@ -1,6 +1,6 @@
 begin;
 
-select plan(8);
+select plan(12);
 
 -- Two isolated fixture users, conversations, messages, topics and memory rows.
 insert into auth.users (id, aud, role, email, encrypted_password, email_confirmed_at, created_at, updated_at)
@@ -96,6 +96,22 @@ begin
 end;
 $$;
 
+select throws_ok(
+  $insert into public.jarvis_memory_facts (user_id, fact_type, content)
+    values ('00000000-0000-4000-8000-000000000001', 'fact', 'Direct client write')$,
+  '42501', null,
+  'authenticated user cannot bypass the review API with a direct memory insert'
+);
+select is(
+  (with changed as (
+    update public.jarvis_memory_facts set content = 'Cross-account mutation'
+    where user_id = '00000000-0000-4000-8000-000000000002'
+    returning id
+  ) select count(*)::int from changed),
+  0,
+  'user A cannot update user B memory rows'
+);
+
 select set_config('request.jwt.claim.sub', '00000000-0000-4000-8000-000000000002', true);
 do $$
 begin
@@ -110,6 +126,22 @@ begin
   end if;
 end;
 $$;
+
+select throws_ok(
+  $insert into public.jarvis_memory_facts (user_id, fact_type, content)
+    values ('00000000-0000-4000-8000-000000000002', 'fact', 'Direct client write')$,
+  '42501', null,
+  'second authenticated user also cannot bypass the review API with a direct memory insert'
+);
+select is(
+  (with changed as (
+    update public.jarvis_memory_facts set content = 'Cross-account mutation'
+    where user_id = '00000000-0000-4000-8000-000000000001'
+    returning id
+  ) select count(*)::int from changed),
+  0,
+  'user B cannot update user A memory rows'
+);
 
 reset role;
 select * from finish();
