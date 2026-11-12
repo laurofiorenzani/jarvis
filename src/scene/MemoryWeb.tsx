@@ -77,31 +77,31 @@ export function MemoryWeb({ drive }: { drive: Drive }) {
     <group ref={group}>
       {/* True volumetric central intelligence body with counter-rotating gyro rings. */}
       <mesh rotation={[0.35, 0.1, 0]}>
-        <sphereGeometry args={[0.94, 48, 40]} />
+        <sphereGeometry args={[0.94, 28, 22]} />
         <meshBasicMaterial color="#a94b12" transparent opacity={0.12} />
       </mesh>
       <mesh>
-        <sphereGeometry args={[1.02, 48, 36]} />
+        <sphereGeometry args={[1.02, 28, 20]} />
         <meshBasicMaterial color="#ffad55" wireframe transparent opacity={0.36} depthWrite={false} />
       </mesh>
       <mesh rotation={[0.4, 0.2, 0]}>
-        <sphereGeometry args={[1.12, 36, 28]} />
+        <sphereGeometry args={[1.12, 24, 18]} />
         <meshBasicMaterial color="#ff7b22" wireframe transparent opacity={0.20} depthWrite={false} />
       </mesh>
       <mesh rotation={[Math.PI / 2.7, 0, 0]}>
-        <torusGeometry args={[1.28, 0.012, 8, 180]} />
+        <torusGeometry args={[1.28, 0.012, 6, 96]} />
         <meshBasicMaterial color="#ffd08a" transparent opacity={0.62} />
       </mesh>
       <mesh rotation={[0, Math.PI / 2.5, 0]}>
-        <torusGeometry args={[1.36, 0.008, 8, 180]} />
+        <torusGeometry args={[1.36, 0.008, 6, 96]} />
         <meshBasicMaterial color="#ff8b30" transparent opacity={0.48} />
       </mesh>
       <mesh>
-        <sphereGeometry args={[1.48, 48, 32]} />
+        <sphereGeometry args={[1.48, 28, 20]} />
         <meshBasicMaterial color="#ff9b43" wireframe transparent opacity={0.30} depthWrite={false} />
       </mesh>
       <mesh rotation={[0.35, 0.2, 0]}>
-        <sphereGeometry args={[1.68, 40, 28]} />
+        <sphereGeometry args={[1.68, 24, 18]} />
         <meshBasicMaterial color="#ffc477" wireframe transparent opacity={0.18} depthWrite={false} />
       </mesh>
       <lineSegments geometry={lineGeometry}>
@@ -116,7 +116,7 @@ export function MemoryWeb({ drive }: { drive: Drive }) {
           onPointerOut={() => { document.body.style.cursor = 'auto' }}
         >
           <mesh>
-            <sphereGeometry args={[index % 4 === 0 ? 0.075 : 0.045, 12, 12]} />
+            <sphereGeometry args={[index % 4 === 0 ? 0.075 : 0.045, 8, 8]} />
             <meshBasicMaterial
               color={index % 4 === 0 ? '#ffe0a6' : '#ff9a38'}
               transparent
@@ -124,7 +124,7 @@ export function MemoryWeb({ drive }: { drive: Drive }) {
             />
           </mesh>
           <mesh>
-            <sphereGeometry args={[index % 4 === 0 ? 0.14 : 0.095, 10, 10]} />
+            <sphereGeometry args={[index % 4 === 0 ? 0.14 : 0.095, 8, 6]} />
             <meshBasicMaterial color="#ff8b2c" transparent opacity={0.10} />
           </mesh>
           {selected === DOMAINS[index] && (
