@@ -466,29 +466,32 @@ export function CloudAccess({ onConnected, onDisconnected, onResumeConversation,
     runtimeGeneration.current += 1
     runtimeRef.current = null
     selectConfiguredBrain()
+    // Clear local account-scoped state immediately; never wait for network
+    // sign-out before hiding one family member's private data.
+    onSpeechApiReady?.(null)
+    onTtsApiReady?.(null)
+    setConnected(false)
+    setCanRestoreTabSession(false)
+    setMemories([])
+    setMemoryCandidates([])
+    setMemoryReviewAvailable(false)
+    setMemoryReviewBusy(false)
+    setConversations([])
+    setConversationBusy(false)
+    setMemoryContextEnabled(false)
+    setMemoryContent('')
+    setMemoryCategory('preference')
+    setMemoryBusy(false)
+    setProviderStatus('NOT CHECKED')
+    try { window.sessionStorage.removeItem(TAB_SESSION_CHOICE) } catch { /* Sign-out remains complete if storage is unavailable. */ }
+    onDisconnected?.()
     try {
       await runtime?.auth.signOut()
       setMessage('CLOUD SIGNED OUT · SIGN IN AGAIN TO CONTINUE')
     } catch {
       setMessage('CLOUD SIGNED OUT · LOCAL TOKENS CLEARED')
     } finally {
-      onSpeechApiReady?.(null)
-      onTtsApiReady?.(null)
-      setConnected(false)
-      setCanRestoreTabSession(false)
-      // Do not retain one family member's private memory or conversation data
-      // in component state after sign-out or before the next account connects.
-      setMemories([])
-      setMemoryCandidates([])
-      setMemoryReviewAvailable(false)
-      setConversations([])
-      setMemoryContextEnabled(false)
-      setMemoryContent('')
-      setMemoryCategory('preference')
-      setProviderStatus('NOT CHECKED')
-      try { window.sessionStorage.removeItem(TAB_SESSION_CHOICE) } catch { /* Sign-out remains complete if storage is unavailable. */ }
       setBusy(false)
-      onDisconnected?.()
     }
   }
 
