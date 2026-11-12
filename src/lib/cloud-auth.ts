@@ -37,6 +37,15 @@ let refreshInFlight: Promise<CloudSession | null> | null = null
 // transition. A late response must never overwrite a newer household session.
 let authRevision = 0
 
+// Keep separate browser tabs in sync when either household member signs in,
+// signs out, or rotates a refresh token. Identity changes invalidate stale work.
+let storageSyncAttached = false
+function handleStorage(event: StorageEvent) {
+  if (event.key !== storageKey && event.key !== null) return
+  authRevision++
+  emit(readSession())
+}
+
 function readSession(): CloudSession | null {
   if (typeof localStorage === 'undefined') return null
   try {
@@ -94,8 +103,18 @@ export const cloudAuth = {
 
   subscribe(listener: (session: CloudSession | null) => void): () => void {
     listeners.add(listener)
+    if (!storageSyncAttached && typeof window !== 'undefined') {
+      window.addEventListener('storage', handleStorage)
+      storageSyncAttached = true
+    }
     listener(readSession())
-    return () => listeners.delete(listener)
+    return () => {
+      listeners.delete(listener)
+      if (listeners.size === 0 && storageSyncAttached && typeof window !== 'undefined') {
+        window.removeEventListener('storage', handleStorage)
+        storageSyncAttached = false
+      }
+    }
   },
 
   async signIn(email: string, password: string): Promise<CloudSession> {
