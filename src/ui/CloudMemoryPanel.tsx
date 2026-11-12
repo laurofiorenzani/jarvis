@@ -187,8 +187,9 @@ export function CloudMemoryPanel() {
       if (!token) throw new Error('Sign in again to change automatic memory settings.')
       const saved = await cloudApi.setMemoryPreference(token, { autoCaptureEnabled: !autoCaptureEnabled })
       if (!isCurrentAccount(userId, generation)) return
-      setAutoCaptureEnabled(saved.autoCaptureEnabled)
-      setNotice(saved.autoCaptureEnabled ? 'AUTOMATIC MEMORY SUGGESTIONS ENABLED' : 'AUTOMATIC MEMORY SUGGESTIONS DISABLED')
+      setAutoCaptureEnabled(saved.autoCaptureEnabled === true)
+      setAutoCaptureSupported(typeof saved.autoCaptureEnabled === 'boolean')
+      setNotice(saved.autoCaptureEnabled === true ? 'AUTOMATIC MEMORY SUGGESTIONS ENABLED' : 'AUTOMATIC MEMORY SUGGESTIONS DISABLED')
     } catch (cause) {
       if (isCurrentAccount(userId, generation)) setError(cause instanceof Error ? cause.message : 'Automatic memory setting could not be saved.')
     } finally { if (isCurrentAccount(userId, generation)) setBusy(false) }
