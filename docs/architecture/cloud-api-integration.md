@@ -46,7 +46,7 @@ The production Supabase Edge Function is v32. The preview Edge Function is v10 a
 ## Database and security maintenance
 - All JARVIS application tables have RLS enabled. `jarvis_rate_limits` intentionally has no client policy; only server-side service-role code accesses it.
 - Supabase's performance advisor found eight unindexed semantic-memory foreign keys. The additive migration `20261112182117_jarvis_memory_foreign_key_indexes` was applied and all eight indexes were verified. The advisor no longer reports unindexed foreign keys.
-- The compatible npm lockfile refresh removed all critical and fixable advisories: audit findings fell from 16 (including 2 critical) to 3 high, all in the `kokoro-js` → `@huggingface/transformers` → `sharp` chain where npm currently reports no available fix. DOMPurify, Vite, Zod, and fixable transitive dependencies were patched. The tested lockfile update is committed.
+- The validated npm lockfile refresh removed all 16 reported advisories. Both `npm audit` and `npm audit --audit-level=high` report `found 0 vulnerabilities`; DOMPurify, Vite, Zod, Transformers.js, Sharp, and their affected transitive dependencies are patched. The optional Kokoro runtime import smoke test, production build, Node tests, lint, Edge Function typechecks, and Deno suites passed. The tested lockfile is committed.
 - The separate automatic-capture preference column is applied with default false for new accounts. Current audit: two auth accounts, one account has retrieval and auto-capture enabled, the other remains disabled; there are zero pending candidates and zero approved semantic facts.
 - Supabase's security advisor reports leaked-password protection disabled. Enable it in Supabase Auth settings when an authorized dashboard session is available; no setting was changed by this workflow.
 - Edge Function `verify_jwt=false` is paired with explicit manual bearer-token validation using `auth.getUser(token)` before authenticated routes. Keep this validation if the platform JWT gate remains disabled.
@@ -58,7 +58,7 @@ The cloud test console is intentionally isolated from the default bridge brain. 
 ## Release gates
 1. Validate account-switch, delayed auth response, SSE framing, cancellation, and memory ownership behavior.
 2. Run live browser E2E using both distinct real accounts; verify that conversation, memory, preferences, and candidates never cross identities.
-3. Add opt-in automatic candidate extraction as a separate preference from memory retrieval. It must create pending, provenance-linked candidates only; never auto-approve. Exclude sensitive content and avoid storing secrets or transient chat text.
+3. Verify the existing separate automatic-capture opt-in end-to-end: it is enabled only on the user's own account, defaults false for new accounts, creates provenance-linked pending candidates only, and never auto-approves. Keep the wife's account disabled unless she independently opts in.
 4. Verify provider routing with a real authenticated turn; provider keys must remain server-side and free-tier claims must be verified against billing settings.
 5. Integrate cloud model routing into the main voice/chat brain only after tool/camera/panel/cancellation parity is demonstrated.
 6. Publish a READY Vercel deployment containing the exact validated commit and verify browser CORS/preflight from that deployed origin.
