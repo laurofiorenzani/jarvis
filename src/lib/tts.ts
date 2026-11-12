@@ -7,6 +7,8 @@ import {
   BRIDGE_HTTP_URL,
 } from '../config'
 import { caps } from './capabilities'
+import { cloudAuth } from './cloud-auth'
+import { cloudApi } from './cloud-api'
 
 /**
  * Speech output.
@@ -754,6 +756,17 @@ export function createSpeaker(): Speaker {
 /** Only used when USE_ELEVENLABS is on. Bridge proxy first (it already holds
  *  the key), then a direct key, then null to fall back to the native voice. */
 async function fetchCloudAudio(text: string): Promise<string | null> {
+  if (BACKEND === 'cloud') {
+    try {
+      const token = await cloudAuth.getValidAccessToken()
+      if (!token) return null
+      const blob = await cloudApi.synthesizeAudio(token, text)
+      return URL.createObjectURL(blob)
+    } catch {
+      return null
+    }
+  }
+
   if (BACKEND === 'bridge') {
     try {
       const res = await fetch(`${BRIDGE_HTTP_URL}/tts`, {
