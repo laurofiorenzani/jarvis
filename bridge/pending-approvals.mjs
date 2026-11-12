@@ -39,7 +39,6 @@ export class PendingApprovalRegistry {
       settle, timer: null,
     }
     entry.timer = this.setTimer(() => this.#finish(entry, false), this.ttlMs)
-    entry.timer?.unref?.()
     this.#pending.set(id, entry)
 
     return {
