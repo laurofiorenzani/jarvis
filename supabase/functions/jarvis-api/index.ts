@@ -365,6 +365,7 @@ Deno.serve(async (request) => {
       .eq('user_id', userId)
       .eq('status', 'approved')
       .eq('sensitivity', 'normal')
+      .lte('valid_from', now)
       .or(`valid_until.is.null,valid_until.gt.${now}`)
       .textSearch('content', input.query, { config: 'simple', type: 'websearch' })
       .order('created_at', { ascending: false })
