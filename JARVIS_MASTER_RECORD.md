@@ -197,3 +197,14 @@ At the start of each JARVIS work session:
 - Cloudflare account has no active Cloudflare Tunnel returned by the read-only account query. Therefore a Cloudflare Tunnel is **not configured/verified in the connected account** at this time. No tunnel or DNS was created.
 - Oracle Cloud remains unverified because no OCI connector is available in this session.
 - No resources were deleted, no PR was merged, and no production settings were modified.
+
+
+## 13. Critical correction — no-Shortcuts requirement enforced — 2026-11-12 22:09 UTC
+
+A deeper review of the older `docs/integrations/UNIFIED_ASSISTANT_INTEGRATIONS.md` exposed contradictory legacy text: it described Apple Shortcuts as the first BMW integration route and contained a mistaken Blink heading/paragraph that referred to the BMW Shortcut flow. This directly contradicted the owner's explicit product requirement. The integration document has now been rewritten on branch `work/remove-shortcut-architecture` to remove every Shortcut-based implementation path and require direct JARVIS adapters only. It also makes clear that vendor apps may be used only for initial linking/consent/recovery, never as the ordinary assistant workflow.
+
+- New corrected document commit: `7cdd4868e16ab17a040f348fba02204a5c6acc78`.
+- This change is in an isolated branch and is not merged or deployed.
+- The previous integration plan must be treated as superseded once the corrective PR is reviewed.
+- This finding demonstrates why repository-wide doc/code search is required before declaring the project reconciled.
+- No repositories/branches/accounts/data were deleted or changed.
