@@ -1,7 +1,6 @@
 import { createClient } from '@supabase/supabase-js'
 import { getFreeProviderStatus, startFreeModelStream } from './model-router.ts'
-import { isSemanticMemoryId, parseSemanticMemoryCandidate, parseSemanticMemoryDecision, parseSemanticMemorySearch } from './semantic-memory.ts'
-import { normalizeSemanticMemoryQuery } from './semantic-memory.ts'
+import { isSemanticMemoryId, normalizeSemanticMemoryQuery, parseSemanticMemoryCandidate, parseSemanticMemoryDecision, parseSemanticMemorySearch } from './semantic-memory.ts'
 
 const VERSION = 1
 const MAX_TEXT = 20_000
@@ -693,6 +692,7 @@ Deno.serve(async (request) => {
           .eq('user_id', userId)
           .eq('status', 'approved')
           .eq('sensitivity', 'normal')
+          .lte('valid_from', now)
           .or(`valid_until.is.null,valid_until.gt.${now}`)
           .textSearch('content', semanticQuery, { config: 'simple', type: 'websearch' })
           .order('created_at', { ascending: false })
