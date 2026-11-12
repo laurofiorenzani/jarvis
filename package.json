@@ -50,5 +50,11 @@
     "tsx": "^4.23.1",
     "typescript": "~6.0.2",
     "vite": "^8.2.0"
+  },
+  "overrides": {
+    "kokoro-js": {
+      "@huggingface/transformers": "4.3.2"
+    },
+    "sharp": "0.35.5"
   }
 }
