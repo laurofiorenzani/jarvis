@@ -432,6 +432,10 @@ async function startElevenVoice(h: VoiceHandlers, cloudTranscribe?: CloudTranscr
    */
   const pendingAudio: Blob[] = []
   let draining = false
+  // Provider quota/network failures must not trigger a request for every VAD segment.
+  // Back off exponentially, then resume automatically when the provider recovers.
+  let transcriptionFailures = 0
+  let transcribeBlockedUntil = 0
 
   /**
    * Transcripts become turns here rather than one-per-segment.
@@ -458,6 +462,10 @@ async function startElevenVoice(h: VoiceHandlers, cloudTranscribe?: CloudTranscr
   const transcribe = async (blob: Blob) => {
     const mode = h.mode()
     if (mode === 'deaf') return
+    if (Date.now() < transcribeBlockedUntil) {
+      drop(`speech service cooling down for ${Math.ceil((transcribeBlockedUntil - Date.now()) / 1000)}s`)
+      return
+    }
     const t0 = performance.now()
     try {
       // Resolve the cloud transcriber for each audio segment. Auth/session
@@ -480,6 +488,8 @@ async function startElevenVoice(h: VoiceHandlers, cloudTranscribe?: CloudTranscr
           })()
       diag.idleMs = Math.round(performance.now() - t0)
       diag.lastError = ''
+      transcriptionFailures = 0
+      transcribeBlockedUntil = 0
 
       if (!said) {
         drop('nothing intelligible in the segment')
@@ -514,8 +524,11 @@ async function startElevenVoice(h: VoiceHandlers, cloudTranscribe?: CloudTranscr
       assemble.feed(said, vad?.meter().speaking ?? false)
     } catch (err) {
       diag.restarts++
-      diag.lastError = String(err)
-      drop('could not reach the speech service')
+      transcriptionFailures++
+      const backoffMs = Math.min(60_000, 5_000 * (2 ** Math.min(transcriptionFailures - 1, 4)))
+      transcribeBlockedUntil = Date.now() + backoffMs
+      diag.lastError = `${String(err)} · retry in ${Math.ceil(backoffMs / 1000)}s`
+      drop('speech service failed; automatic backoff active')
     }
   }
 
