@@ -445,7 +445,12 @@ export function createSpeaker(): Speaker {
     setSpeaking(item.text)
     try {
       const url = item.audio ? await item.audio : null
-      if (cancelled) return
+      // Cancellation can win while cloud synthesis is in flight. In that case
+      // this URL never reaches playUrl(), so release the object URL here.
+      if (cancelled) {
+        if (url) URL.revokeObjectURL(url)
+        return
+      }
       // A failed generation is not a failed turn — drop to the system voice.
       if (url) {
         await playUrl(url, item.text)
@@ -727,7 +732,17 @@ export function createSpeaker(): Speaker {
       if (cancelled) return
       cancelled = true
       buffer = ''
-      queue.length = 0
+      // Some queued sentences are already being synthesised one sentence ahead.
+      // Their object URLs must be released when those promises settle, even
+      // though cancellation means they will never be handed to playUrl().
+      const abandoned = queue.splice(0)
+      for (const item of abandoned) {
+        if (item.audio) {
+          void Promise.resolve(item.audio).then((url) => {
+            if (url) URL.revokeObjectURL(url)
+          }).catch(() => undefined)
+        }
+      }
       // Keep the echo tail: the words already in the air still have to be
       // recognised and discarded, even though he has stopped adding to them.
       setSpeaking('')
