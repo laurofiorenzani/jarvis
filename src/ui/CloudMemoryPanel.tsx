@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { cloudAuth, type CloudSession } from '../lib/cloud-auth'
 import { cloudApi, type CloudMemoryCandidate } from '../lib/cloud-api'
 
@@ -17,6 +17,11 @@ export function CloudMemoryPanel() {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
+  const [cloudInput, setCloudInput] = useState('')
+  const [cloudAnswer, setCloudAnswer] = useState('')
+  const [cloudQuestion, setCloudQuestion] = useState('')
+  const [turnBusy, setTurnBusy] = useState(false)
+  const abortTurn = useRef<AbortController | null>(null)
 
   useEffect(() => cloudAuth.subscribe(setSession), [])
 
@@ -53,6 +58,33 @@ export function CloudMemoryPanel() {
     }
     void load()
   }, [session?.user.id, load])
+
+  async function sendCloudTurn(event: React.FormEvent) {
+    event.preventDefault()
+    const question = cloudInput.trim()
+    if (!question || !session || turnBusy) return
+    setTurnBusy(true); setError(''); setCloudAnswer(''); setCloudQuestion(question)
+    const controller = new AbortController()
+    abortTurn.current = controller
+    try {
+      const token = await cloudAuth.getValidAccessToken()
+      if (!token) throw new Error('Sign in again to use the cloud model.')
+      const created = await cloudApi.createConversation(token)
+      await cloudApi.streamTurn(token, created.conversation.id, question, (event) => {
+        if (event.type === 'text.delta') setCloudAnswer((current) => current + event.delta)
+        if (event.type === 'turn.failed') setError(event.message)
+      }, controller.signal)
+      setCloudInput('')
+      setNotice('CLOUD MODEL TURN COMPLETED')
+    } catch (cause) {
+      if (!(cause instanceof DOMException && cause.name === 'AbortError')) {
+        setError(cause instanceof Error ? cause.message : 'Cloud model turn failed.')
+      }
+    } finally {
+      abortTurn.current = null
+      setTurnBusy(false)
+    }
+  }
 
   async function signIn(event: React.FormEvent) {
     event.preventDefault()
@@ -122,6 +154,19 @@ export function CloudMemoryPanel() {
             <span style={muted}>Memory is off until you explicitly enable it. Only approved facts can be retrieved for this account.</span>
             <button style={action} type="button" disabled={busy} onClick={() => void toggleMemory()}>{enabled ? 'DISABLE MEMORY CONTEXT' : 'ENABLE MEMORY CONTEXT'}</button>
             <strong style={{ color: enabled ? '#a7d8a1' : '#e6a36b' }}>{enabled ? 'ENABLED' : 'DISABLED'}</strong>
+          </div>
+          <div style={{ border: '1px solid rgba(255,157,73,.28)', padding: 10, display: 'grid', gap: 8 }}>
+            <b>FREE MODEL CLOUD TEST</b>
+            <span style={muted}>This isolated test sends a prompt through the authenticated cloud route and FreeLLMAPI. It does not replace the main voice conversation yet.</span>
+            {cloudQuestion && <div style={{ color: '#ffd7ad' }}>YOU: {cloudQuestion}</div>}
+            {cloudAnswer && <div style={{ whiteSpace: 'pre-wrap', lineHeight: 1.55 }}>{cloudAnswer}</div>}
+            <form onSubmit={sendCloudTurn} style={{ display: 'grid', gap: 8 }}>
+              <textarea style={{ ...field, minHeight: 76, resize: 'vertical' }} value={cloudInput} onChange={(event) => setCloudInput(event.target.value)} placeholder="Send a test message to the cloud model…" maxLength={12000} />
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button style={action} type="submit" disabled={turnBusy || !cloudInput.trim()}>{turnBusy ? 'MODEL RESPONDING…' : 'SEND CLOUD TEST'}</button>
+                {turnBusy && <button style={action} type="button" onClick={() => abortTurn.current?.abort()}>CANCEL</button>}
+              </div>
+            </form>
           </div>
           <div style={{ display: 'grid', gap: 8 }}>
             <b>FACTS AWAITING YOUR APPROVAL</b>
