@@ -439,6 +439,19 @@ async function startElevenVoice(h: VoiceHandlers): Promise<Voice> {
     partial: (text) => h.onPartial(text),
   })
 
+  const fallbackToBrowser = (reason: string) => {
+    if (browserFallback) return
+    diag.lastError = reason
+    diag.dropped = `${reason} — switching to browser recognition`
+    pendingAudio.length = 0
+    assemble.cancel()
+    vad?.stop()
+    if (guardPoll !== null) clearInterval(guardPoll)
+    browserFallback = startBrowserVoice(h)
+    diag.engine = 'browser'
+    diag.running = browserFallback.live()
+  }
+
   /**
    * Send one captured segment to the bridge and act on the words.
    *
@@ -461,19 +474,9 @@ async function startElevenVoice(h: VoiceHandlers): Promise<Voice> {
       diag.idleMs = Math.round(performance.now() - t0)
       if (!res.ok) {
         diag.restarts++
-        if (res.status === 429) {
-          // The hosted transcription provider is quota-limited. Do not keep
-          // sending queued audio into a known 429 loop: hand the live session
-          // to the browser's native recognizer, which requires no API key.
-          diag.lastError = 'cloud STT quota exhausted (429); switching to browser recognition'
-          diag.dropped = 'cloud speech quota exhausted — using browser recognition'
-          pendingAudio.length = 0
-          assemble.cancel()
-          vad?.stop()
-          if (guardPoll !== null) clearInterval(guardPoll)
-          browserFallback = startBrowserVoice(h)
-          diag.engine = 'browser'
-          diag.running = browserFallback.live()
+        if (res.status === 429 || res.status === 503) {
+          // Quota exhaustion and provider outages should not leave voice deaf.
+          fallbackToBrowser(`cloud STT unavailable (${res.status})`)
           return
         }
         diag.lastError = `stt ${res.status}`
@@ -517,6 +520,10 @@ async function startElevenVoice(h: VoiceHandlers): Promise<Voice> {
       assemble.feed(said, vad?.meter().speaking ?? false)
     } catch (err) {
       diag.restarts++
+      if (err instanceof TypeError) {
+        fallbackToBrowser('cloud speech service unreachable')
+        return
+      }
       diag.lastError = String(err)
       drop('could not reach the speech service')
     }
