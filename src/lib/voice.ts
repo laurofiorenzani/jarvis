@@ -435,6 +435,8 @@ async function startCloudVoice(h: VoiceHandlers, transport: 'cloud' | 'bridge'):
   let draining = false
   let browserFallback: Voice | null = null
   let guardPoll: ReturnType<typeof setInterval> | null = null
+  let identityRevision = 0
+  let activeUserId = transport === 'cloud' ? cloudAuth.getSession()?.user.id ?? null : null
 
   /**
    * Transcripts become turns here rather than one-per-segment.
@@ -449,6 +451,20 @@ async function startCloudVoice(h: VoiceHandlers, transport: 'cloud' | 'bridge'):
     },
     partial: (text) => h.onPartial(text),
   })
+
+  // A speech segment belongs to the account that captured it. If the
+  // household account changes while STT is in flight, discard that result
+  // rather than feeding one person's words into the next account's turn.
+  const unsubscribeAuth = transport === 'cloud'
+    ? cloudAuth.subscribe((session) => {
+        const nextUserId = session?.user.id ?? null
+        if (nextUserId === activeUserId) return
+        activeUserId = nextUserId
+        identityRevision++
+        pendingAudio.length = 0
+        assemble.cancel()
+      })
+    : () => {}
 
   const fallbackToBrowser = (reason: string) => {
     if (browserFallback) return
@@ -473,6 +489,8 @@ async function startCloudVoice(h: VoiceHandlers, transport: 'cloud' | 'bridge'):
    */
   const transcribe = async (blob: Blob) => {
     if (browserFallback) return
+    const requestIdentityRevision = identityRevision
+    const requestUserId = activeUserId
     const mode = h.mode()
     if (mode === 'deaf') return
     const t0 = performance.now()
@@ -481,7 +499,11 @@ async function startCloudVoice(h: VoiceHandlers, transport: 'cloud' | 'bridge'):
       if (transport === 'cloud') {
         const token = await cloudAuth.getValidAccessToken()
         if (!token) throw new Error('Cloud session expired. Sign in again.')
+        if (requestIdentityRevision !== identityRevision ||
+            cloudAuth.getSession()?.user.id !== requestUserId) return
         said = await cloudApi.transcribeAudio(token, blob)
+        if (requestIdentityRevision !== identityRevision ||
+            cloudAuth.getSession()?.user.id !== requestUserId) return
       } else {
         const res = await fetch(`${BRIDGE_HTTP_URL}/stt`, {
           method: 'POST',
@@ -537,6 +559,8 @@ async function startCloudVoice(h: VoiceHandlers, transport: 'cloud' | 'bridge'):
       // is finished, reading the words and whether the room is still noisy.
       assemble.feed(said, vad?.meter().speaking ?? false)
     } catch (err) {
+      if (requestIdentityRevision !== identityRevision ||
+          (transport === 'cloud' && cloudAuth.getSession()?.user.id !== requestUserId)) return
       diag.restarts++
       const status = err && typeof err === 'object' && 'status' in err
         ? Number((err as { status?: unknown }).status)
@@ -625,6 +649,8 @@ async function startCloudVoice(h: VoiceHandlers, transport: 'cloud' | 'bridge'):
   return {
     stop: () => {
       if (guardPoll !== null) clearInterval(guardPoll)
+      unsubscribeAuth()
+      pendingAudio.length = 0
       browserFallback?.stop()
       assemble.cancel()
       vad?.stop()
