@@ -157,7 +157,7 @@ export const cloudAuth = {
         throw error
       } finally {
         // An older account's completion must never clear a newer refresh entry.
-        if (refreshInFlight.get(key) === pending) refreshInFlight.delete(key)
+        refreshInFlight.delete(key)
       }
     })()
     refreshInFlight.set(key, pending)
