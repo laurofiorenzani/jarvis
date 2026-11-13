@@ -25,6 +25,7 @@ Personal-use CarData must not be confused with the BMW third-party service-provi
 - Read-only vehicle mappings
 - Read-only basic vehicle data
 - Read-only telematics data for a customer-configured container
+- Read-only charging history for a bounded ISO-8601 time window with pagination
 - Mandatory injected daily-request-budget interface; fails closed before network access if the budget denies a request
 
 No tokens, VINs or customer data are embedded in source. The client never logs credentials and has no command/mutation methods.
