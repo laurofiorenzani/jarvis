@@ -149,3 +149,19 @@ Unknown, stale, ambiguous, paid, or geographically ineligible entries are disabl
 - Deployment has not occurred: no VM is connected, no provider credentials have been configured, and no inference request or personal prompt has been sent.
 
 The detailed VM procedure and server-side secret shape are in `ops/freellmapi-gateway/README.md`.
+
+
+## Provider and regional data-processing disclosure — 2026-11-13
+
+The Cloud Access consent text must not imply that a selected region guarantees all processing remains in that region, or that self-hosting FreeLLMAPI makes downstream providers zero-retention.
+
+- Supabase project `Jarvis` is configured in `eu-west-3` (Paris). Supabase's Data Residency and Transfers FAQ (version 1, 2026-10-06) says the primary database, Auth, Storage objects and backups are in the selected region, but account/billing information, global support access, usage telemetry/service metadata and Storage CDN delivery can involve processing outside that region. Its DPA/SCCs govern applicable international transfers; region selection alone is not a GDPR compliance determination.
+- Cloudflare Workers AI's data-usage documentation (updated 2026-10-16) states that standard stateless inference inputs/outputs are processed only as needed to provide the service and are not used to train models. It also documents exceptions for stateful features, configured logging/caching and operational metadata. This statement applies to Workers AI, not automatically to AI Gateway routes or third-party models.
+- FreeLLMAPI is a router. Prompts can be forwarded to independent downstream providers whose own retention, training, region, terms and quotas apply. Its encrypted local key store and self-hosted gateway do not change downstream processing terms.
+- Therefore, provider pool consent is per account and per policy version; default off. The UI must explain these boundaries before activation. Provider eligibility remains individually verified; unknown, paid, geographically ineligible or ambiguous providers remain disabled.
+
+Official references checked 2026-11-13:
+- Supabase Data Residency and Transfers FAQ: https://supabase.com/legal/privacy-resources/data-residency-and-transfers-faq
+- Supabase DPA: https://supabase.com/legal/customer-resources/data-processing-addendum
+- Supabase available regions: https://supabase.com/docs/guides/platform/regions
+- Cloudflare Workers AI data usage: https://developers.cloudflare.com/workers-ai/platform/data-usage/
