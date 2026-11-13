@@ -3,6 +3,7 @@ import {
   assertZdrProviderConfig,
   assertEeaProviderEligibility,
   assertProviderPrivacyMode,
+  classifyFreeLlmTask,
   classifyProviderFailure,
   freeLlmApiTaskHeaders,
   isFreeLlmApiModel,
@@ -173,5 +174,21 @@ Deno.test('FreeLLMAPI task hints are explicit and OpenAI-compatible requests sta
   if (Object.keys(freeLlmApiTaskHeaders()).length !== 1 ||
       freeLlmApiTaskHeaders()['X-FreeLLM-Task-Type'] !== 'auto') {
     throw new Error('FreeLLMAPI default task hint must be auto')
+  }
+})
+
+
+Deno.test('FreeLLMAPI task classification handles Brazilian Portuguese and English', () => {
+  if (classifyFreeLlmTask('Preciso corrigir esse código em TypeScript') !== 'code') {
+    throw new Error('Brazilian Portuguese coding request was not classified as code')
+  }
+  if (classifyFreeLlmTask('Debug this Python function') !== 'code') {
+    throw new Error('English coding request was not classified as code')
+  }
+  if (classifyFreeLlmTask('Oi, tudo bem?') !== 'chat') {
+    throw new Error('Short conversation should be classified as chat')
+  }
+  if (classifyFreeLlmTask('x'.repeat(700)) !== 'auto') {
+    throw new Error('Long unclassified request should use automatic routing')
   }
 })
