@@ -1,6 +1,6 @@
 # JARVIS Family CFO — data and capability contract
 
-Status: design contract only; no Family CFO tables, bank connectors, financial imports, balances, or money-moving tools are implemented by this document.
+Status: the domain contract remains the approved design. A minimal owner-scoped, read-only persistence proposal is pending in PR #22 (accounts, transactions, dated balance snapshots); it is not merged or applied to live Supabase. No bank connectors, financial imports, live balances, or money-moving tools are implemented.
 
 ## 1. Purpose and non-goals
 
@@ -158,4 +158,23 @@ Do not create these tables until the schema, indexes, RLS policies, retention/de
 
 The first TypeScript domain layer is now implemented in `src/lib/family-cfo.ts`, with regression coverage in `tests/family-cfo.test.ts`. The full CI run #892 passed on code-equivalent commit `fdbebbd58f229bdd7164ad5e99325178dc46ee5a`, including the new CFO tests, TypeScript build, lint, migration application, SQL isolation tests, and authenticated two-user semantic-memory integration. The following documentation/workflow-only commit updates the Supabase CLI setup action to the current `setup-cli@v3` with the v2 stable CLI line; that workflow adjustment still requires an exact-head CI run.
 
-No CFO database migrations, real bank data, financial imports, or external account connections have been created. All CFO fixtures remain synthetic.
+No CFO database migration has been applied to the live Supabase project. PR #22 proposes three owner-scoped read-only tables; its migration and isolation tests are validated only in disposable CI databases. No real bank data, financial imports, or external account connections have been created. All CFO fixtures remain synthetic.
+
+
+## Minimal persistence proposal — PR #21 (2026-11-13)
+
+The first proposed database layer contains only:
+- owner-scoped financial account metadata;
+- source-backed transactions with review/provenance metadata;
+- dated balance snapshots.
+
+Authenticated clients have SELECT-only access to their own rows. All direct client writes are denied. No household sharing is implicit; no bank connector, import, budget engine, mortgage/pension/investment calculations, or money movement is included. The migration is pending review and exact-head CI; it has not been applied to the live Supabase project.
+
+Financial amount columns use finite `NUMERIC(20,2)`: NaN, positive infinity, and negative infinity are rejected. The SQL regression suite uses synthetic fixtures for two-user isolation, cross-owner references, malformed values and denied client writes.
+
+
+## Minimal persistence proposal — PR #22 (2026-11-13)
+
+The proposed first persistence layer contains only owner-scoped account metadata, source-backed transactions and dated balance snapshots. Authenticated clients have SELECT access to their own records only; direct client INSERT/UPDATE/DELETE is denied. Composite account/owner foreign keys prevent cross-owner references. No household sharing, bank connector, import, budget engine, financial calculations or money movement is included.
+
+Money columns use finite NUMERIC(20,2). NaN is rejected by the finite-value check; positive and negative infinity overflow the bounded numeric type and are rejected by PostgreSQL. CI run #952 passed all 23 synthetic Family CFO SQL isolation assertions, migration application, two-user semantic-memory integration and deployed API/CORS smoke tests on the pre-rebase code head. The PR was subsequently rebased onto the latest canonical documentation head; exact-head CI must pass again before review. The migration remains unapplied to live Supabase.
