@@ -1103,3 +1103,12 @@ The available Supabase connector cannot inspect or set Edge Function secrets. Do
 - Supabase migration history records `20261113125425_jarvis_provider_preferences` and `20261113125437_provider_preferences_rls_initplan`, but the canonical Git branch did not contain the matching first migration source file. Added `supabase/migrations/20261113125425_jarvis_provider_preferences.sql` to the canonical integration branch, matching the live table/consent/RLS baseline; the following `20261113125437` migration applies the initplan-optimized policy. This is source-control provenance repair only; no migration was applied to the live database in this step.
 - PR #13's older migration uses the same logical schema but filename/version `20261113110000`, which is not present in live migration history. Keep PR #13 unmerged; reconcile/remove the duplicate historical migration during selective port so a future db push does not attempt an out-of-order or duplicate migration.
 - No provider preference rows were inserted, no provider pools enabled, no secrets or Edge Functions changed, no production deployment, billing or account mutation.
+
+
+## 2026-11-13 — latest branch heads and validation gate
+
+- Canonical integration branch now includes the migration provenance source file and ledger commit `59148fa77fea523ae06f32b15d71c41facf7a2bb`.
+- PR #15 branch was re-aligned again on that exact canonical head. Current head `c9c242a007c3a3827241cfee3a8b55377acfb782`; compare confirms 1 commit ahead / 0 behind and exactly five intended files. PR remains OPEN/Draft; connected workflow lookup still shows no exact-head CI/Observer run and combined status reports only Vercel Hobby build-rate-limit failure. GitHub metadata still reports `mergeable:false`, so do not promote to Ready or merge until CI is visible and mergeability is rechecked.
+- Live Supabase schema audit for provider preferences is now recorded: RLS enabled; consent CHECK constraint present; only authenticated SELECT policy scoped to `(select auth.uid()) = user_id`; authenticated has SELECT only; service_role retains server-side DML. Zero preference rows; no pools enabled.
+- Current PR #13 divergence is 69 ahead / 34 behind. Its older migration version `20261113110000` must be reconciled against live-applied `20261113125425` before any selective integration. No PR #13 code, provider secret, provider pool, or production function was changed.
+- No production deploy, auth/account mutation, billing change, real finance import or provider inference occurred.
