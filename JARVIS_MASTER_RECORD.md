@@ -1321,3 +1321,8 @@ The canonical branch has three additional documentation-only ledger commits afte
 The three commits after f217 on canonical are ledger-only updates to `JARVIS_MASTER_RECORD.md`; no source-code changes were introduced by them. The divergence is therefore documentation/ancestry drift, not proof of code conflict. Do not force-push or reconstruct full branch trees. Before any merge, inspect the actual PR mergeability/diff and ensure the current canonical ledger remains intact. Exact-head CI remains the merge gate; review remains human-owned.
 
 Latest verified CI at this checkpoint: PR #27 #961 success; PR #22 #959 success; PR #25 #955 and Observer #144 success; PR #23 #966 in progress; PR #26 #971 pending. Canonical CI #970 and Observer #146 were in progress at the prior check. No merge or production change is authorized by this status note.
+
+
+### Family CFO pair-level transfer confirmation — 2026-11-13
+- Tightened the synthetic transfer matcher: record-level `verified` confidence plus equal/opposite amounts is not proof of a transfer pair. The matcher now requires a shared explicit `internalTransferPairId`, in addition to the existing owner/account/currency/date/amount/uniqueness checks. Unpaired records remain included in cash flow.
+- Tests cover unpaired equal/opposite records and different pair IDs; cash-flow regression ensures unrelated bill/refund pairs are retained. Exact-head CI is required.
