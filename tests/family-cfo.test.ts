@@ -144,7 +144,7 @@ test('cash flow excludes matched transfers and includes confirmed posted records
   const onlyCreditInPeriod = calculateCashFlow([
     { ...debit, postedAt: '2026-12-01', transactionAt: '2026-12-01' },
     { ...credit, postedAt: '2026-11-30', transactionAt: '2026-11-30' },
-  ], { start: '2026-11-01', end: '2026-11-30' })
+  ], { start: '2026-11-01', end: '2026-11-30', currency: 'EUR' })
   assert.equal(onlyCreditInPeriod.excludedTransferCount, 1)
 })
 
