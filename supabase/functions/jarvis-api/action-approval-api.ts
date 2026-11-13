@@ -82,7 +82,7 @@ export async function createActionApprovalRecord(
   input: unknown,
   now: Date = new Date(),
   requestId: string = crypto.randomUUID(),
-): Promise<ApprovalEnvelope> {
+): Promise<Omit<ApprovalEnvelope, 'arguments'>> {
   if (!requiredText(verifiedUserId, 128)) throw new ActionApprovalServiceError('unauthenticated', 401)
   assertCreateInput(input)
   if (!Number.isFinite(now.getTime())) throw new ActionApprovalServiceError('invalid_time', 400)
@@ -124,7 +124,24 @@ export async function createActionApprovalRecord(
   if (error || data !== envelope.requestId) {
     throw new ActionApprovalServiceError('approval_persistence_unavailable', 503)
   }
-  return envelope
+  // Never return raw tool arguments to the UI or persist them in the approval row.
+  return {
+    requestId: envelope.requestId,
+    userId: envelope.userId,
+    sessionId: envelope.sessionId,
+    conversationId: envelope.conversationId,
+    invocationId: envelope.invocationId,
+    capabilityId: envelope.capabilityId,
+    argumentDigest: envelope.argumentDigest,
+    title: envelope.title,
+    target: envelope.target,
+    impact: envelope.impact,
+    reversibility: envelope.reversibility,
+    createdAt: envelope.createdAt,
+    expiresAt: envelope.expiresAt,
+    policyVersion: envelope.policyVersion,
+    status: envelope.status,
+  }
 }
 
 function normalizeRpcRow(data: unknown): Record<string, unknown> | null {
