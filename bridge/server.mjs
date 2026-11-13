@@ -1,15 +1,13 @@
 /**
  * JARVIS local bridge.
  *
- * Runs the Claude Agent SDK — Claude Code as a library — and exposes one turn
- * of conversation over a WebSocket. The browser stays the face and the voice;
- * this process is the brain and the hands.
+ * Runs the Claude Agent SDK as a tool/session adapter, but routes inference
+ * exclusively through the local FreeLLMAPI gateway. A Claude account/API
+ * fallback is disabled; startup fails unless FreeLLMAPI is configured.
+ * The browser stays the face and the voice; this process is the brain and hands.
  *
- * Two things this buys over calling the Claude API from the browser:
- *   1. No API key. It authenticates exactly the way `claude` does, off your
- *      existing login, and bills to that same account.
- *   2. Only MCP servers explicitly named in JARVIS_MCP_SERVERS are available.
- *      A server added to Claude Code's config is not silently granted to JARVIS.
+ * Only MCP servers explicitly named in JARVIS_MCP_SERVERS are available.
+ * A server added to Claude Code's config is not silently granted to JARVIS.
  *
  *   node bridge/server.mjs
  */
@@ -177,8 +175,8 @@ const DISABLED = new Set(
 )
 
 /**
- * The orchestrator model. Override with JARVIS_MODEL to trade quality for pace
- * — claude-sonnet-5 is noticeably snappier on camera if Opus feels slow.
+ * The orchestrator model is selected by the FreeLLMAPI gateway profile.
+ * There is no paid Claude model or subscription fallback.
  */
 const PROVIDER = resolveBridgeProvider()
 const MODEL = PROVIDER.model
@@ -241,7 +239,11 @@ function configuredServers() {
  * a mandatory, comma-separated allowlist; unset or empty passes no external
  * configured servers. Add only integrations intentionally approved for JARVIS.
  */
-const MCP_SERVERS = allowedMcpServers(configuredServers(), process.env.JARVIS_MCP_SERVERS)
+const MCP_SERVERS = Object.fromEntries(
+  Object.entries(allowedMcpServers(configuredServers(), process.env.JARVIS_MCP_SERVERS))
+    // ElevenLabs is a metered speech provider and is excluded by the €0 cost policy.
+    .filter(([name]) => !/eleven.?labs/i.test(name)),
+)
 
 /**
  * Account connectors — the mail, drive, calendar and other integrations
@@ -253,10 +255,11 @@ const MCP_SERVERS = allowedMcpServers(configuredServers(), process.env.JARVIS_MC
  * running in read-only mode and their send, share and delete tools one
  * JARVIS_ALLOW_WRITES away.
  *
- * strictMcpConfig limits the session to the servers passed below. Set
- * JARVIS_ACCOUNT_CONNECTORS=1 to let the account's connectors in as well.
+ * strictMcpConfig limits the session to the servers passed below. Subscription-
+ * backed account connectors are disabled; no environment flag can enable them.
  */
-const ACCOUNT_CONNECTORS = process.env.JARVIS_ACCOUNT_CONNECTORS === '1'
+// Claude.ai account connectors require a separate commercial account and are disabled.
+const ACCOUNT_CONNECTORS = false
 
 // Memory is disabled unless a separately installed, tested OS-vault adapter is
 // explicitly configured. If enabled, startup fails closed when that adapter or
@@ -503,29 +506,18 @@ const SYSTEM_PROMPT = [
 ].join('')
 
 /**
- * ElevenLabs credentials, borrowed from the MCP server config.
- *
- * If you've set up the elevenlabs MCP server, the key is already on this
- * machine — no reason to make you paste it into a second .env file. The browser
- * never sees it: it POSTs text to /tts here and gets audio back.
+ * Metered speech credentials are intentionally unavailable under the €0 policy.
+ * Keep this stub fail-closed so no environment or MCP secret can enable billing.
  */
 function elevenKey() {
-  if (process.env.ELEVENLABS_API_KEY) return process.env.ELEVENLABS_API_KEY
-  try {
-    const cfg = JSON.parse(
-      readFileSync(join(homedir(), '.claude.json'), 'utf8'),
-    )
-    return cfg.mcpServers?.elevenlabs?.env?.ELEVENLABS_API_KEY ?? null
-  } catch {
-    return null
-  }
+  // Paid ElevenLabs speech is intentionally disabled. Never read credentials
+  // from the environment or ~/.claude.json, and never issue metered requests.
+  return null
 }
-
 const VOICE_ID = process.env.JARVIS_VOICE_ID ?? 'JBFqnCBsd6RMkjVDRZzb'
 
-// Local, per-process quotas protect the user's paid speech API account from a
-// runaway tab or accidental request loop. This is deliberately independent of
-// Origin validation: an allowed app origin can still issue too many requests.
+// Local, per-process quotas remain as defense in depth even though the metered
+// speech endpoints are disabled. Origin validation is still independent.
 const SPEECH_LIMITS = Object.freeze({
   '/tts': { requests: 30, windowMs: 60_000 },
   '/stt': { requests: 12, windowMs: 60_000 },

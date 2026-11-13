@@ -40,30 +40,20 @@ function choice<T extends string>(
   return fallback
 }
 
-/** Same, for the on/off options. Accepts true/false and 1/0. */
-function flag(name: string, raw: unknown, fallback: boolean): boolean {
-  const value = str(raw)?.toLowerCase()
-  if (value === undefined) return fallback
-  if (value === 'true' || value === '1') return true
-  if (value === 'false' || value === '0') return false
-  console.warn(`[jarvis] ${name}="${value}" is not true or false — using ${fallback}.`)
-  return fallback
-}
-
 /**
  * Which brain to use. Cloud is the production default; the local bridge is an
- * explicit developer/local-tools option. Direct browser-to-provider mode is
- * retained only for isolated local demos and must never be used in production.
+ * explicit developer/local-tools option. Browser-direct provider mode is disabled
+ * by the €0 cost/security policy.
  *
  *   'cloud'  — require an authenticated Supabase CloudBrain. No local server or
  *              provider secret is needed in the browser bundle.
  *   'bridge' — explicit local development mode using the Node bridge.
  *   'direct' — explicit local demo mode; requires a browser-exposed API key.
  */
-export const BACKEND: 'cloud' | 'bridge' | 'direct' = choice(
+export const BACKEND: 'cloud' | 'bridge' = choice(
   'VITE_BACKEND',
   viteEnv.VITE_BACKEND,
-  ['cloud', 'bridge', 'direct'] as const,
+  ['cloud', 'bridge'] as const,
   'cloud',
 )
 
@@ -96,11 +86,8 @@ export const SPEECH_LOCALE = choice(
  *   round trip plus generation, which is the difference between a conversation
  *   and a walkie-talkie. Turn it on when you want the voice more than the pace.
  */
-export const USE_ELEVENLABS = BACKEND !== 'cloud' && flag(
-  'VITE_USE_ELEVENLABS',
-  viteEnv.VITE_USE_ELEVENLABS,
-  false,
-)
+// Paid ElevenLabs speech is disabled to preserve the €0 recurring-cost contract.
+export const USE_ELEVENLABS = false
 
 /**
  * Speech engine.
@@ -140,10 +127,9 @@ export const KOKORO_VOICE = choice(
 )
 
 export const env = {
-  // Browser-exposed provider keys are permitted only in explicit local demo mode.
-  // Cloud and bridge modes never read these VITE_* secrets into the client config.
-  anthropicKey: BACKEND === 'direct' ? str(viteEnv.VITE_ANTHROPIC_API_KEY) ?? '' : '',
-  elevenKey: BACKEND === 'direct' ? str(viteEnv.VITE_ELEVENLABS_API_KEY) ?? '' : '',
+  // Paid provider keys are never read into the browser bundle.
+  anthropicKey: '',
+  elevenKey: '',
   elevenVoiceId:
     str(viteEnv.VITE_ELEVENLABS_VOICE_ID) ?? 'JBFqnCBsd6RMkjVDRZzb',
   porcupineKey: str(viteEnv.VITE_PICOVOICE_ACCESS_KEY) ?? '',
@@ -195,20 +181,9 @@ export type McpServer = {
 }
 
 /**
- * Demo-only remote MCP servers for the explicit browser-direct backend.
- * They are never configured in the cloud or bridge backends. The cloud runtime
- * has its own server-side API boundary; it does not read this list.
- *
- * Only remote HTTP MCP servers work here. Local stdio servers (filesystem,
- * Blender, Playwright) need a machine to run on and are outside this demo path.
- *
- * SECURITY: every value configured here is exposed in the browser bundle.
- * In direct mode Vite inlines tokens and private endpoint URLs into JavaScript.
- * Anyone who can load that build can inspect and reuse those credentials.
- * Never populate these values for a public deployment. Use this mode only for
- * isolated local demos with disposable, least-privilege credentials. For the
- * production cloud backend, add integrations behind authenticated server-side
- * adapters instead of putting vendor credentials in VITE_* variables.
+ * Legacy direct-browser MCP catalog. All entries are intentionally disabled:
+ * browser-direct provider mode is not supported by the €0 cost/security policy.
+ * Add integrations only behind authenticated server-side adapters.
  */
 export const MCP_SERVERS: McpServer[] = [
   // The single highest-leverage integration: one URL, ~8,000 apps, managed
@@ -218,16 +193,16 @@ export const MCP_SERVERS: McpServer[] = [
   {
     name: 'zapier',
     label: 'Zapier',
-    url: str(BACKEND === 'direct' ? viteEnv.VITE_ZAPIER_MCP_URL : undefined) ?? '',
-    enabled: Boolean(str(BACKEND === 'direct' ? viteEnv.VITE_ZAPIER_MCP_URL : undefined)),
+    url: '',
+    enabled: false,
   },
 
   // Alternative/complementary gateway: ~3,000 apps, free for personal use.
   {
     name: 'pipedream',
     label: 'Pipedream',
-    url: str(BACKEND === 'direct' ? viteEnv.VITE_PIPEDREAM_MCP_URL : undefined) ?? '',
-    enabled: Boolean(str(BACKEND === 'direct' ? viteEnv.VITE_PIPEDREAM_MCP_URL : undefined)),
+    url: '',
+    enabled: false,
   },
 
   // Official first-party servers. Each needs its own OAuth token pasted in.
@@ -235,36 +210,36 @@ export const MCP_SERVERS: McpServer[] = [
     name: 'notion',
     label: 'Notion',
     url: 'https://mcp.notion.com/mcp',
-    token: str(BACKEND === 'direct' ? viteEnv.VITE_NOTION_TOKEN : undefined),
-    enabled: Boolean(str(BACKEND === 'direct' ? viteEnv.VITE_NOTION_TOKEN : undefined)),
+    token: undefined,
+    enabled: false,
   },
   {
     name: 'linear',
     label: 'Linear',
     url: 'https://mcp.linear.app/mcp',
-    token: str(BACKEND === 'direct' ? viteEnv.VITE_LINEAR_TOKEN : undefined),
-    enabled: Boolean(str(BACKEND === 'direct' ? viteEnv.VITE_LINEAR_TOKEN : undefined)),
+    token: undefined,
+    enabled: false,
   },
   {
     name: 'github',
     label: 'GitHub',
     url: 'https://api.githubcopilot.com/mcp/',
-    token: str(BACKEND === 'direct' ? viteEnv.VITE_GITHUB_TOKEN : undefined),
-    enabled: Boolean(str(BACKEND === 'direct' ? viteEnv.VITE_GITHUB_TOKEN : undefined)),
+    token: undefined,
+    enabled: false,
   },
   {
     name: 'stripe',
     label: 'Stripe',
     url: 'https://mcp.stripe.com',
-    token: str(BACKEND === 'direct' ? viteEnv.VITE_STRIPE_TOKEN : undefined),
-    enabled: Boolean(str(BACKEND === 'direct' ? viteEnv.VITE_STRIPE_TOKEN : undefined)),
+    token: undefined,
+    enabled: false,
   },
   {
     name: 'sentry',
     label: 'Sentry',
     url: 'https://mcp.sentry.dev/mcp',
-    token: str(BACKEND === 'direct' ? viteEnv.VITE_SENTRY_TOKEN : undefined),
-    enabled: Boolean(str(BACKEND === 'direct' ? viteEnv.VITE_SENTRY_TOKEN : undefined)),
+    token: undefined,
+    enabled: false,
   },
   // Home Assistant is self-hosted, so this needs a publicly reachable URL
   // (Nabu Casa Cloud, or a Cloudflare tunnel). Worth the setup — "Jarvis, dim
@@ -275,21 +250,17 @@ export const MCP_SERVERS: McpServer[] = [
   {
     name: 'home',
     label: 'Home',
-    url: str(BACKEND === 'direct' ? viteEnv.VITE_HOMEASSISTANT_MCP_URL : undefined) ?? '',
-    token: str(BACKEND === 'direct' ? viteEnv.VITE_HOMEASSISTANT_TOKEN : undefined),
-    enabled: Boolean(
-      str(BACKEND === 'direct' ? viteEnv.VITE_HOMEASSISTANT_MCP_URL : undefined) &&
-        str(BACKEND === 'direct' ? viteEnv.VITE_HOMEASSISTANT_TOKEN : undefined),
-    ),
+    url: '',
+    token: undefined,
+    enabled: false,
   },
 ]
 
 export const activeServers = () => MCP_SERVERS.filter((s) => s.enabled && s.url)
 
 /**
- * The persona for the browser-direct path only. The bridge carries its own,
- * fuller version in bridge/server.mjs — that's the one that gets used by
- * default, and the one worth editing.
+ * Legacy persona for the removed browser-direct provider path. The active
+ * bridge persona lives in bridge/server.mjs; cloud policy lives server-side.
  */
 export const SYSTEM_PROMPT = `You are JARVIS, Tony Stark's assistant. You are speaking out loud.
 

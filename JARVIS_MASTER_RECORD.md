@@ -1840,3 +1840,76 @@ G. User action: none immediately. Mac/Xcode and physical iPhone will eventually 
 H. Next: implement CFO schema compatibility in an isolated branch; inspect production/Preview handler route branches and compare auth; review PR #23 fallback-before-dispatch behavior and provider policy evidence.
 I. GitHub: `laurofiorenzani/jarvis`; canonical `work/jarvis-canonical-integration`; PR #31 `work/observer-ci-refresh-20261113`; no merge or deployment.
 J. Next conversation: Continue from this checkpoint. PR #31 exact-head CI #1014 and Observer #172 both SUCCESS; PR remains Draft/non-mergeable. Supabase prod v32 lacks Preview's /provider-preferences route; route parity review required. PR #22 numeric(20,2) conflicts with PR #29 currency exponent registry; no live CFO migration. PR #23 provider pools remain disabled pending per-provider EEA/free-quota/retention/no-overage evidence. Vercel Hobby daily deployment cap reached; do not upgrade/bypass. Continue multitask under €0 recurring cost.
+
+
+## 2026-11-13 — Multitrack continuation: cost lockout, provider billing gate, CFO and Observer
+
+### A. State
+- Continued from the existing canonical JARVIS repository; no new repository, database, auth system or memory store created.
+- The only project-wide continuity ledger found in the current repository tree is `JARVIS_MASTER_RECORD.md`. The separately named `PROJECT_MASTER.md`, `PROJECT_STATUS.md`, `DECISIONS_LOG.md`, `TASK_REGISTRY.md`, `CHANGELOG.md`, `TEST_REPORTS.md`, `DEPLOYMENT_STATUS.md` and `NEXT_SESSION.md` do not currently exist. No duplicate docs were created.
+- No production deployment, live migration, provider activation, inference request, bank connection, real financial import or money movement was performed.
+
+### B. Completed / source changes
+**Family CFO — PR #32**
+- Exact-head GitHub Actions CI #1039 (`43505906597`) passed on `dfea9b296647ed257915932998700ce0fbe4ac39`, including build/tests/lint, isolated Supabase migration, pgTAP owner isolation/currency exponent tests, authenticated integration and CORS checks.
+- Exact PostgreSQL numeric amount storage and versioned currency exponent registry are source/CI validated. Migration has NOT been applied to production; registry remains unseeded.
+- Domain arithmetic uses BigInt at a four-place internal scale; actual currency exponent remains registry/DB controlled. JPY/EUR/KWD and explicit empty-period currency tests added.
+- PR #22 base migration is byte-identical to the migration in PR #32; PR #29 design contract is extended in PR #32. Both older PRs are marked superseded and should not merge independently.
+
+**Cloud Brain / Multi-AI — PR #23**
+- Exact-head CI #1038 (`43505827312`) passed on `e01e11ceb4f97b3037c1da603e2aae3286b8d026` before the later billing-attestation changes. It included provider privacy, server-side ZDR speech consent, semantic-memory tests, Edge Function typecheck, isolated migrations, SQL isolation, two-user API integration and CORS smoke checks.
+- Added a second, operator-level billing gate in `model-router.ts`: no cloud model or speech provider is exposed/invoked until `JARVIS_FREE_PROVIDER_BILLING_ATTESTATION=2026-11-13-v1` is set after actual account plan and no-overage verification. Missing/stale attestation returns no providers and `startFreeModelStream` fails closed before network I/O. This is separate from each user's provider/data-transfer consent.
+- Added tests for missing, boolean, stale, paid and current billing-attestation values; updated Cloudflare and FreeLLMAPI integration docs. Latest PR #23 head `ead81317ba70c9a88a61cf7bc477540eb44e7763`; exact-head CI #1052 is running. CI #1038 does not validate this later code.
+- Live Supabase read-only audit: project `undmhmdwhxvjgvezvucy` is ACTIVE_HEALTHY in eu-west-3; production `jarvis-api` v32 and Preview `jarvis-preview-api` v23 remain materially different. Production still has the older Google speech path and lacks Preview's provider-preferences/ZDR auto-capture protections. No Edge Function was deployed or changed.
+
+**Cloudflare billing verification**
+- Read-only Cloudflare account lookup identified one standard account. `GET /accounts/{id}/workers/account-settings` returned `default_usage_model: standard`; this field alone does not prove the account is Workers Free or Workers Paid.
+- Current Cloudflare Workers AI pricing docs (updated 12 Nov 2026) state Workers Free includes 10,000 Neurons/day and further operations fail when that quota is exhausted; Workers Paid starts at $5/month and charges usage above the daily free allocation at $0.011/1,000 Neurons. Some large models require Workers Paid.
+- Subscription/billing API inspection returned 403 because the connected Cloudflare OAuth session lacks Billing Read. No permission change or billing mutation was attempted. Account plan, payment method/auto-top-up and spend controls remain unverified. Do NOT set the new billing attestation or activate provider pools until the owner confirms Workers Free and no paid/overage path.
+- Source: https://developers.cloudflare.com/workers-ai/platform/pricing/ and https://developers.cloudflare.com/changelog/post/2026-07-28-models-require-workers-paid/.
+
+**Zero-cost local provider guard — PR #33**
+- New isolated branch `work/no-paid-provider-guard-20261113` and Draft PR #33: https://github.com/laurofiorenzani/jarvis/pull/33.
+- Bridge now defaults to loopback FreeLLMAPI only and rejects Claude/Anthropic direct billing. Inherited Claude OAuth/auth-token/Bedrock/Vertex environment values are stripped before the SDK receives the FreeLLMAPI key and loopback endpoint.
+- Browser-direct Anthropic backend and browser-exposed provider keys are disabled. Paid ElevenLabs speech endpoints fail closed; the ElevenLabs MCP server is excluded even if explicitly named. Claude.ai account connectors remain disabled even if the legacy environment flag is set. MCP allowlist docs now correctly state unset means none.
+- Tests updated to provide a dummy local FreeLLMAPI key for bridge subprocesses (no inference), remove the obsolete `usingDirect` expectation, assert paid connectors stay disabled, and verify metered speech returns 503. Additional MCP allowlist coverage excludes ElevenLabs.
+- Earlier CI #1040/#1044 failed and exposed TypeScript and integration-fixture issues; those were corrected. Exact-head CI for the newest branch head `b31c1df7c49834a35b83cc698aa281a020f27dd0` is still pending (runs #1047/#1048). Do not mark PR #33 validated until an exact-head run succeeds.
+- This change intentionally requires a valid existing local FreeLLMAPI key/config; if absent, bridge startup refuses rather than falling back to a paid Claude account. Local .env values were not inspected in this session.
+
+**Self-Evolution / Observer — PR #31**
+- Exact-head CI #1014 (`43477580864`) passed on `56f9871d92aa3a45fed02bbd7944af5774e64f67`; Observer validation #172 (`43477580659`) completed SUCCESS on the exact Observer branch head. PR remains Draft; no scheduled automation was created and no production release occurred.
+
+**iOS / action approvals**
+- Existing PR #28 contains a fail-closed Capacitor secure-storage adapter and unit tests, but no Capacitor dependency, iOS target, Xcode project, signing or physical-device validation exists. No native build claimed.
+- Existing PR #26 action-approval module remains pure/domain-only; no persistent server approval table, atomic decision RPC or action execution service exists. No external action enabled.
+
+### C. Validation / release controls
+- PR #32 exact-head CI #1039: SUCCESS.
+- PR #23 exact-head CI #1038: SUCCESS for the pre-attestation head only; #1052 running for the current head.
+- PR #31 exact-head CI #1014 and Observer #172: SUCCESS.
+- PR #33 exact-head CI #1047/#1048: pending; earlier #1040/#1044 failures were corrected but not yet superseded by a passing exact-head run.
+- Supabase production migration history is unchanged; production Edge Functions unchanged; no Vercel deployment made; no paid service/upgrade/credit purchased; no provider inference attempted.
+
+### D. Decisions
+- Keep PRs #23, #31, #32, #33 Draft/open as currently configured; no batch merge.
+- Do not set `JARVIS_FREE_PROVIDER_BILLING_ATTESTATION` until the account owner verifies Workers Free and no paid subscription/auto-top-up/overage route. Cloudflare Billing Read permission is currently unavailable to this session.
+- Do not activate either provider pool until both the operator billing attestation and each user's separate current policy consent are valid.
+- Keep FreeLLMAPI local gateway restricted to loopback and provider list verified as free-only. No Claude/Anthropic account or API fallback.
+- No production or Auth/RLS/billing settings changed.
+
+### E. Next actions
+1. Monitor exact-head CI #1052 for PR #23 and #1047/#1048 for PR #33; fix only evidence-backed failures and rerun on exact head.
+2. After CI green, update this ledger with final run IDs and current heads; do not merge or deploy without review.
+3. Ask owner to verify Cloudflare Workers Free plan, no subscription/auto-top-up and billing controls, or reconnect Cloudflare with read-only Billing Read permission. Do not request Billing Write.
+4. After verification only, owner may set the server-side billing attestation; keep per-user privacy consent independent.
+5. Continue action-approval persistence design and route parity; native iOS still requires Mac/Xcode and physical iPhone.
+6. Keep €0 recurring cost, no paid API, no quota bypass, no background-work promises.
+
+### F. Handoff
+- GitHub repo: `laurofiorenzani/jarvis`.
+- PR #23 branch `work/provider-consent-app-integration`, latest code head `ead81317ba70c9a88a61cf7bc477540eb44e7763`; CI #1052 in progress.
+- PR #32 branch `work/cfo-currency-exponent-schema-20261113`, latest head `dfea9b296647ed257915932998700ce0fbe4ac39`; CI #1039 SUCCESS.
+- PR #31 Observer head `56f9871d92aa3a45fed02bbd7944af5774e64f67`; CI #1014 SUCCESS; Observer #172 SUCCESS.
+- PR #33 branch `work/no-paid-provider-guard-20261113`, latest code head `b31c1df7c49834a35b83cc698aa281a020f27dd0`; exact-head CI #1047/#1048 pending.
+- Production Supabase: API v32; Preview: v23; no changes made.
+- Next conversation: resume from this section. Do not repeat successful CFO/Observer validation. First inspect CI #1052 and #1047/#1048; then continue route parity and action approval persistence. Cloudflare billing plan remains unverified; do not enable providers. PR #33 disables paid local provider fallbacks and is not yet exact-head CI green. No production deploy/merge.

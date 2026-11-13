@@ -20,7 +20,7 @@ const SERVER = fileURLToPath(new URL('../bridge/server.mjs', import.meta.url))
 /** Start a bridge on a free port; resolves once it says where it is listening. */
 function startBridge(env = {}) {
   const child = spawn(process.execPath, [SERVER], {
-    env: { ...process.env, JARVIS_BRIDGE_PORT: '0', ...env },
+    env: { ...process.env, JARVIS_PROVIDER: 'freellmapi', FREELLMAPI_API_KEY: 'ci-local-test-key', JARVIS_BRIDGE_PORT: '0', ...env },
     stdio: ['ignore', 'pipe', 'pipe'],
   })
   let log = ''
@@ -169,6 +169,37 @@ test('paid speech proxy rejects requests without a browser Origin', async () => 
   }
 })
 
+test('metered speech endpoints fail closed even for an allowed browser origin', async () => {
+  const isolated = await startBridge()
+  try {
+    for (const [route, body] of [['/tts', '{"text":"test"}'], ['/stt', '{}']]) {
+      const status = await new Promise((resolve, reject) => {
+        const req = request({
+          host: '127.0.0.1',
+          port: isolated.port,
+          path: route,
+          method: 'POST',
+          headers: {
+            host: `127.0.0.1:${isolated.port}`,
+            origin: 'http://localhost:5173',
+            'content-type': 'application/json',
+          },
+          timeout: 3000,
+        }, (res) => {
+          res.resume()
+          resolve(res.statusCode)
+        })
+        req.on('error', reject)
+        req.on('timeout', () => req.destroy(new Error('timeout')))
+        req.end(body)
+      })
+      assert.equal(status, 503, `${route} must remain unavailable without paid speech credentials`)
+    }
+  } finally {
+    isolated.child.kill()
+  }
+})
+
 test('paid speech proxy enforces per-minute request quotas', async () => {
   const post = (route) => new Promise((resolve, reject) => {
     const req = request({
@@ -242,7 +273,7 @@ test('refuses a WebSocket with a forged-looking foreign Origin', async () => {
 
 test('an occupied port is reported plainly and exits non-zero', async () => {
   const child = spawn(process.execPath, [SERVER], {
-    env: { ...process.env, JARVIS_BRIDGE_PORT: String(bridge.port) },
+    env: { ...process.env, JARVIS_PROVIDER: 'freellmapi', FREELLMAPI_API_KEY: 'ci-local-test-key', JARVIS_BRIDGE_PORT: String(bridge.port) },
     stdio: ['ignore', 'pipe', 'pipe'],
   })
   let log = ''
