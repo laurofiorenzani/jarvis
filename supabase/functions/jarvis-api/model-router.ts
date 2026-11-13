@@ -25,6 +25,14 @@ export function hasFreeProviderBillingAttestation(value: unknown): boolean {
   return value === FREE_PROVIDER_BILLING_ATTESTATION_VERSION
 }
 
+export function assertFreeProviderBillingAttestation(value: unknown): void {
+  if (!hasFreeProviderBillingAttestation(value)) {
+    throw new ProviderUnavailableError(
+      'Cloud inference is disabled until the operator verifies the provider account is on a no-overage free plan and sets the current billing attestation.',
+    )
+  }
+}
+
 function freeProviderBillingAttested(): boolean {
   return hasFreeProviderBillingAttestation(
     Deno.env.get('JARVIS_FREE_PROVIDER_BILLING_ATTESTATION'),
@@ -323,11 +331,7 @@ export async function startFreeModelStream(
   signal: AbortSignal,
   options: { pool?: ModelProviderPool; taskType?: FreeLlmApiTaskType } = {},
 ): Promise<{ response: Response; provider: string; diagnostics: ProviderRouteDiagnostics }> {
-  if (!freeProviderBillingAttested()) {
-    throw new ProviderUnavailableError(
-      'Cloud inference is disabled until the operator verifies the provider account is on a no-overage free plan and sets the current billing attestation.',
-    )
-  }
+  assertFreeProviderBillingAttestation(Deno.env.get('JARVIS_FREE_PROVIDER_BILLING_ATTESTATION'))
   const secretName = options.pool === 'standard'
     ? 'JARVIS_MODEL_PROVIDERS_STANDARD'
     : 'JARVIS_MODEL_PROVIDERS'
