@@ -34,6 +34,7 @@ export const CfoTransactionSchema = z.object({
   id: z.string().uuid(),
   ownerUserId: z.string().uuid(),
   accountId: z.string().uuid(),
+  internalTransferPairId: z.string().uuid().nullable().default(null),
   postedAt: IsoDateSchema.nullable(),
   transactionAt: IsoDateSchema,
   description: z.string().trim().min(1).max(500),
@@ -90,17 +91,19 @@ export function sumMoney(values: readonly z.infer<typeof CfoMoneySchema>[]): z.i
 export type CfoTransaction = z.infer<typeof CfoTransactionSchema>
 
 /**
- * Pair only high-confidence internal transfers. Matching is deliberately
- * conservative: exact opposite amount/currency, same owner, different accounts,
- * posted + confirmed records, within three calendar days, and unique on both sides.
- * Ambiguous candidates remain ordinary transactions for manual review.
+ * Pair only explicitly user-confirmed transfer pairs. Record-level confidence,
+ * equal/opposite amounts and timing are not enough to prove pair identity.
+ * A shared internalTransferPairId is assigned only after the pair itself is
+ * reviewed; the remaining amount/currency/owner/account/date/uniqueness checks
+ * are secondary integrity guards. Unpaired records remain in cash flow.
  */
 export function matchInternalTransfers(
   transactions: readonly CfoTransaction[],
 ): Array<{ debitId: string; creditId: string }> {
   const eligible = transactions.filter((tx) =>
     tx.status === 'posted' && tx.recordStatus === 'confirmed' &&
-    tx.postedAt !== null,
+    (tx.confidence === 'verified' || tx.confidence === 'user_confirmed') &&
+    typeof tx.internalTransferPairId === 'string' && tx.postedAt !== null,
   )
   const candidates = new Map<string, Set<string>>()
   for (let i = 0; i < eligible.length; i += 1) {
@@ -109,7 +112,8 @@ export function matchInternalTransfers(
     if (leftAmount === 0n) continue
     for (let j = i + 1; j < eligible.length; j += 1) {
       const right = eligible[j]
-      if (left.ownerUserId !== right.ownerUserId ||
+      if (left.internalTransferPairId !== right.internalTransferPairId ||
+          left.ownerUserId !== right.ownerUserId ||
           left.accountId === right.accountId ||
           left.money.currency !== right.money.currency ||
           leftAmount + decimalToMinorUnits(right.money.amount) !== 0n) continue
