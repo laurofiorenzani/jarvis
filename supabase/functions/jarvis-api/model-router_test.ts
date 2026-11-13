@@ -3,7 +3,10 @@ import {
   assertZdrProviderConfig,
   assertEeaProviderEligibility,
   assertProviderPrivacyMode,
+  classifyFreeLlmTask,
   classifyProviderFailure,
+  freeLlmApiTaskHeaders,
+  isFreeLlmApiModel,
   redactProviderDiagnostic,
   rotateProviderOrder,
   ProviderUnavailableError,
@@ -153,4 +156,39 @@ Deno.test('Cloudflare Workers AI must declare its native ZDR privacy mode', () =
   try { assertProviderPrivacyMode('api.cloudflare.com', undefined) } catch (error) { caught = error }
   if (!(caught instanceof ProviderUnavailableError)) throw new Error('Cloudflare provider without ZDR was accepted')
   assertProviderPrivacyMode('api.groq.com', undefined)
+})
+
+
+Deno.test('FreeLLMAPI accepts only router strategies and named auto profiles', () => {
+  for (const model of ['auto', 'auto:fast', 'auto:smart', 'auto:reliable', 'auto:jarvis-code', 'fusion']) {
+    if (!isFreeLlmApiModel(model)) throw new Error('valid FreeLLMAPI route rejected: ' + model)
+  }
+  for (const model of ['gemini-2.5-flash', 'http://localhost:3001', 'auto:../admin', '', 'fusion:paid']) {
+    if (isFreeLlmApiModel(model)) throw new Error('invalid FreeLLMAPI route accepted: ' + model)
+  }
+})
+
+Deno.test('FreeLLMAPI task hints are explicit and OpenAI-compatible requests stay unchanged', () => {
+  const headers = freeLlmApiTaskHeaders('code')
+  if (headers['X-FreeLLM-Task-Type'] !== 'code') throw new Error('FreeLLMAPI code task hint missing')
+  if (Object.keys(freeLlmApiTaskHeaders()).length !== 1 ||
+      freeLlmApiTaskHeaders()['X-FreeLLM-Task-Type'] !== 'auto') {
+    throw new Error('FreeLLMAPI default task hint must be auto')
+  }
+})
+
+
+Deno.test('FreeLLMAPI task classification handles Brazilian Portuguese and English', () => {
+  if (classifyFreeLlmTask('Preciso corrigir esse código em TypeScript') !== 'code') {
+    throw new Error('Brazilian Portuguese coding request was not classified as code')
+  }
+  if (classifyFreeLlmTask('Debug this Python function') !== 'code') {
+    throw new Error('English coding request was not classified as code')
+  }
+  if (classifyFreeLlmTask('Oi, tudo bem?') !== 'chat') {
+    throw new Error('Short conversation should be classified as chat')
+  }
+  if (classifyFreeLlmTask('x'.repeat(700)) !== 'auto') {
+    throw new Error('Long unclassified request should use automatic routing')
+  }
 })

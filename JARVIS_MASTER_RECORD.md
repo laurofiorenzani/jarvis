@@ -768,3 +768,178 @@ The available Supabase connector cannot inspect or set Edge Function secrets. Do
 - Owner authorization applies to the owner's account and data only. Preserve strict owner/spouse account isolation; the spouse must separately authorize routing her personal content to any external provider. Never route her data through the owner's authorization.
 - Provider selection must account for each provider's current terms, geographic eligibility, privacy/retention, data transfer, model capabilities, quotas and reliability. If a provider cannot legally or contractually serve the request, skip it and continue to the next eligible provider.
 - This decision authorizes engineering work and eligible free-provider activation; it does not claim that credentials have been configured, an endpoint is reachable, quotas are available, or production has been deployed. Verify each state independently and record evidence.
+
+
+## 2026-11-13 — FreeLLMAPI adapter and pt-BR correction
+
+### Implementation commits on work/jarvis-freellmapi-cloud-gateway
+
+- Added the FreeLLMAPI gateway provider kind to supabase/functions/jarvis-api/model-router.ts.
+- Added routing-profile validation for auto, auto:fast, auto:smart, auto:reliable, fusion, and named auto:<profile> routes.
+- Added the FreeLLMAPI task hint header X-FreeLLM-Task-Type with auto, chat, and code values.
+- Added the separate JARVIS_MODEL_PROVIDERS_STANDARD pool. FreeLLMAPI is accepted only in that standard-privacy pool, with HTTPS and a server-side API key. It is not falsely labelled ZDR. Existing default pool behavior remains unchanged.
+- Provider status now identifies FreeLLMAPI and the pool without exposing secrets. Main chat still uses the default pool; per-account acceptance and standard-pool selection remain to be implemented before user content can be routed through FreeLLMAPI.
+- Added router unit tests for FreeLLMAPI model profiles and task headers.
+- Corrected user-facing cloud API messages to Brazilian Portuguese and added regression tests.
+- Commits: ae9d95bf316334026d74f911e7ba440a139a495b, 119bb48168977fce5f81d83d90182c925f11b036, 937b6b3fc637aaa8f131319368e5bff81ab4e222, 04c5ab75ab6848bf036f89b67292a5f3d7f03c68, 276d1373e2c935c9651eb28523ec8d27a14d9fcd.
+- PR #13 remains open and Draft. CI #842 was still running at the time of this record update; do not treat the new commits as validated until a full exact-head run succeeds.
+
+### Cloudflare and hosting refresh
+
+- Cloudflare account inventory: zero Workers scripts. Workers AI catalog endpoint returned 75 models on page 1 (40 text-generation models); 9 text-generation entries explicitly require Workers Paid. Thirty-one entries lack that paid-only flag, but they are candidates only, not a fully verified free allowlist. The API reported 334 total models but page 2 onward returned no records in this connector call.
+- Official Cloudflare Free-plan notice confirms Gemma 4 26B, GLM 4.7 Flash and Nemotron 3 120B as Free-plan-available models. The account's actual billing plan cannot be verified because Billing Read permission is absent. No Workers AI inference request was sent and no usage was consumed.
+- Supabase Preview remains jarvis-preview-api v21; Production remains jarvis-api v32. No function deployment or secrets were changed.
+- Vercel's latest READY deployment is still the documentation-only FreeLLMAPI branch commit a2c1248e5a193436e33fd4a8e3b63f27df731909. The adapter code commit has not yet been deployed to Vercel.
+- No Oracle Cloud connector is available in this session; the historical VM remains unverified.
+- No provider host, FreeLLMAPI unified key, provider credentials, or secure tunnel is configured. No user prompts or personal data were sent to a provider.
+- No production resources, accounts, billing, secrets, branches or repositories were changed or deleted.
+
+### Next work
+
+1. Complete full CI on the latest PR #13 head.
+2. Add per-account provider-consent storage and UI so the owner's account can enable the standard pool while the spouse's account remains off until her own acceptance.
+3. Connect the standard pool to authenticated turns with safe fallback to the strict pool only before streaming begins.
+4. Verify a persistent private host for the Node/SQLite FreeLLMAPI service; do not expose its dashboard or port 3001 publicly.
+5. Deploy the updated Edge Function to Preview only, then test a synthetic prompt and controlled quota/error failover.
+6. Add only provider credentials and models with verified zero-billing limits and eligible terms.
+
+
+## 2026-11-13 — Per-account provider pools and consent
+
+### Implemented on work/jarvis-freellmapi-cloud-gateway
+
+- Added migration 20261113110000_jarvis_provider_preferences.sql. Provider pool preferences are per user, default off, RLS-enabled, and readable only by that authenticated user. Only the server-side Edge Function writes preferences.
+- Added authenticated GET/PUT /v1/provider-preferences with a versioned policy acceptance, rate limits, bounded request bodies, and explicit revocation.
+- Added two-user integration assertions: both accounts default off; enabling standard/ZDR pools for user A does not enable them for user B; user A can revoke both; user B remains unchanged.
+- Added CloudAccess controls for each account to independently enable/revoke the strict-ZDR pool and standard multi-provider pool. The standard pool notice explains that FreeLLMAPI's downstream providers have different retention/training/region terms and that paid fallback is prohibited.
+- Main authenticated turns use the standard pool only when that account enabled it. If it fails before streaming begins, JARVIS falls back to the default pool only when the same account also enabled that pool. Default pool entries are now accepted only when explicitly marked ZDR. FreeLLMAPI remains standard-only and cannot claim ZDR.
+- Automatic memory extraction is restricted to the separately accepted ZDR pool; it never sends private conversation text to FreeLLMAPI or another standard-retention provider.
+- Added multilingual task classification (pt-BR/English) for FreeLLMAPI routing and regression tests.
+- Corrected cloud API error messages to Brazilian Portuguese, including a specific provider-consent instruction.
+- New commits after the previous checkpoint: 49ccabea8bf63171a7fe412752475569a7bdacef (migration), 96a5c72a265be51cf9ac9b8cfb3492ba8e9f44e0 (strict default pool), 1a45cab711808f9ad8d525d34f4d60fc63259cd1 (provider API and turn routing), f144524e5cda462806358f888d9f5879bc51ef44 (contract), ed03a48618607f2dcacb681f75dde736f5db0095 (client), 45e7aece657662a3fc9cb234df27f256186760fc (client tests), a636e1b092d44a564e8121c47faa7464ea0ab348 (CloudAccess UI), cb26f2736fbf5d0b60bf6ce872bf4445094dfb98 (consent error handling), 7d27bd5062ed9d1bb23af801fddd02bfc8f6801b (two-user integration test), b6bb3c59c857499ff03aba99f59bcb8d3f1f6ffa (task classifier), a398229ee8f3c9132c41a61351006505c87511da (classifier tests), 4447f9aeb90a4213f1d8028d7aa61510d44a4369 (turn integration), 144b24bb80dc4ba391cbc5b4ff1f4545fea26ebd (pt-BR provider error), 6e1426baa4cac157c03316c496b88b8bad14103d (locale test), 028dff7c4aff45103f45952b0f9520cf6d48de3c (ZDR-only auto-memory extraction).
+
+### Current validation and deployment state
+
+- PR #13 remains OPEN/DRAFT, base work/jarvis-canonical-integration, current head 028dff7c4aff45103f45952b0f9520cf6d48de3c.
+- CI run #853 was cancelled after new commits superseded its checkout. A new full CI run for the current head has not yet been confirmed; do not deploy until it passes.
+- Supabase Preview remains jarvis-preview-api v21; Production remains jarvis-api v32. The provider-preferences migration and new Edge Function code have not been deployed to Supabase yet.
+- Vercel's latest READY preview remains the earlier documentation-only commit a2c1248e5a193436e33fd4a8e3b63f27df731909. No Vercel deployment of the latest provider code is confirmed.
+- FreeLLMAPI's private host, unified key and provider keys are still unconfigured. Cloudflare inventory has zero Workers scripts; Oracle VM state cannot be checked through a connected OCI tool.
+- No provider inference request or personal prompt has been sent. No secret, production resource, account, billing plan, branch or repository was changed or deleted.
+
+### Next actions
+
+1. Obtain exact-head CI success for 028dff7c4aff45103f45952b0f9520cf6d48de3c; rerun if necessary.
+2. Deploy the exact validated Edge Function source and migration to Supabase Preview only, preserving Production v32.
+3. Verify the authenticated provider-preferences endpoints and two-account isolation on Preview.
+4. Establish a persistent private Node/SQLite host for FreeLLMAPI. Oracle is not inspectable through current connectors; do not assume the VM is running.
+5. Configure the FreeLLMAPI endpoint and unified API key only in server-side secrets, then run a synthetic non-personal inference and force controlled quota/fallback tests.
+6. Verify provider-specific free caps and terms before enabling individual providers; no paid fallback or paid overage.
+
+
+## 2026-11-13 — Multi-provider integration validation and connected-app refresh
+
+### Exact code validation
+
+- Code head validated: 637dbe5b02bd636b65bd3fcf3484a9d166b0b853 on branch work/jarvis-freellmapi-cloud-gateway.
+- GitHub Actions CI run #861 (run ID 43408232534) completed SUCCESS on that exact code head. Successful stages: dependency audit, TypeScript/Vite production build, app tests, lint, provider privacy tests, semantic-memory validation, Supabase Edge Function typecheck, speech transcript tests, isolated Supabase startup, all migrations applied locally, SQL account-isolation tests, authenticated two-user semantic-memory/provider-preference integration tests, cleanup, production API/CORS smoke test and canonical preview CORS smoke test.
+- The two-user integration test verifies both accounts default to no provider pools; user A can enable and revoke ZDR/standard pools; user B remains disabled throughout. Automatic memory extraction is guarded by that account's separate ZDR preference.
+- A later documentation-only commit 47d6ae38b9d78531f8b66bc7c9ad67362a0fc1c7 updated the FreeLLMAPI catalog/API capability notes. It does not alter the code validated by CI #861.
+- PR #13 remains OPEN/DRAFT, based on work/jarvis-canonical-integration. No merge to main has occurred.
+
+### Vercel branch configuration and deployment limit
+
+- Created branch-scoped Preview variables for work/jarvis-freellmapi-cloud-gateway: VITE_BACKEND=cloud, VITE_SUPABASE_URL, the public VITE_SUPABASE_ANON_KEY and VITE_SUPABASE_FUNCTION_NAME=jarvis-preview-api. All four are Preview-only and contain no service-role/provider secret.
+- The latest READY Vercel deployment on this branch is still commit a636e1b092d44a564e8121c47faa7464ea0ab348. It was created before the branch-scoped environment variables were added, so it is not a valid configured end-to-end preview for the current branch.
+- A new Preview deployment for code head 637dbe5 was attempted after setting the environment variables. Vercel rejected it with HTTP 402: free-tier API deployment limit exceeded (more than 100 deployments/day), retryAfter=86400. No billing upgrade or paid action was taken. The next Preview deployment must wait for quota reset.
+
+### Supabase migration/deployment boundary
+
+- Live migration inventory still contains 11 migrations through 20261112182639_jarvis_memory_auto_capture_opt_in. The new 20261113110000_jarvis_provider_preferences migration is not applied to the live project.
+- Supabase Preview function remains jarvis-preview-api v21; Production remains jarvis-api v32. The new Edge Function code is not deployed. Because Preview and Production share the same Supabase Postgres project, applying the provider-preferences migration changes the shared production database schema even though the function deployment target is Preview. The migration is additive and creates a new RLS-protected table, but it must not be applied until the owner explicitly approves this schema change.
+- No production function, production data, Auth accounts, passwords, secrets or billing settings were changed.
+
+### Cloudflare and FreeLLMAPI status
+
+- Cloudflare account read-only inventory shows zero Workers scripts. The Workers AI model catalog returned 75 records in the first page, including 40 text-generation entries; 9 explicitly require Workers Paid and must be excluded. Thirty-one text-generation entries lack that paid-only flag, but that is only a candidate set, not a verified free allowlist. The API reported 334 total records but later pages were not returned by the connected endpoint.
+- Cloudflare's published Free-plan notice lists Gemma 4 26B, GLM 4.7 Flash and Nemotron 3 120B as Workers Free-available models. The actual Cloudflare account billing plan remains unverified because the connected OAuth permission lacks Billing Read. No Workers AI inference was sent and no usage was consumed.
+- Official FreeLLMAPI README currently advertises 87 providers, 736 model families and 1,313 free endpoints. Free self-hosted installs use a monthly signed catalog snapshot; the live catalog is Premium ($19/year) and is not enabled. The upstream gateway supports OpenAI-compatible chat, Responses, completions, models, embeddings, image/video generation and audio speech/transcription; JARVIS currently integrates chat completions only.
+- FreeLLMAPI is explicitly local-first, single-user and not multi-tenant; the official docs say not to expose it directly to the internet. Its SQLite database stores encrypted provider keys, and its API clients use one unified bearer key. JARVIS therefore needs a private host and authenticated ingress/proxy; the Windows machine cannot be the production host.
+- The available connected tools do not include Oracle Cloud Infrastructure management. The previously mentioned Oracle VM state, SSH access and network configuration are unverified. No FreeLLMAPI host, tunnel, unified key or provider credentials are configured. No inference request or personal prompt has been sent.
+
+### Current blockers and next actions
+
+1. Obtain explicit approval to apply the additive provider-preferences migration to the shared Supabase database. Without it, the new provider-preferences API cannot be deployed to Preview because the table does not exist.
+2. After approval, apply the migration, deploy the exact validated Edge Function source to jarvis-preview-api only, and verify authenticated preference endpoints plus two-account isolation. Keep Production jarvis-api v32 unchanged.
+3. Wait for Vercel's free deployment quota reset, then create a Preview from the current branch head so the four branch-scoped environment variables are used.
+4. Connect the existing Oracle VM or another genuinely free persistent host. Do not use Render/Railway free trials or ephemeral disks as a 24/7 SQLite gateway.
+5. Install FreeLLMAPI privately, add a route-limited authenticated ingress, store the unified key and provider keys server-side, then test synthetic inference and controlled quota/fallback behavior.
+6. Surface FreeLLMAPI's X-Routed-Via and X-Fallback-Attempts metadata in JARVIS diagnostics; then expand audio/vision/media integrations separately.
+
+**Current truth:** provider router, per-account consent controls and isolation tests are implemented and CI-green on code head 637dbe5. The cloud gateway is not yet live because the shared-database migration, private persistent host and server-side secrets are not configured. No production deployment has been made.
+
+
+## 2026-11-13 — Private FreeLLMAPI proxy and exact-head validation
+
+### Private proxy package implemented
+
+- Added `ops/freellmapi-gateway/proxy.mjs`, Dockerfile, Compose overlay, `.env.jarvis.example`, deployment README and `test/freellmapi-gateway-proxy.test.mjs`.
+- The proxy exposes only `GET /v1/models` and `POST /v1/chat/completions`; dashboard/admin/MCP and all other routes return 404. It validates a separate 256-bit JARVIS bearer token, replaces it with the private FreeLLMAPI unified API key, forwards the task hint, streams responses and forwards safe routed-via/fallback headers.
+- Limits: 2 MiB request body and 120 requests/minute per proxy instance. Logs contain method/route/status/duration/served-model/fallback-count only; never prompts, request bodies or credentials.
+- The official FreeLLMAPI compose file publishes port 3001 to `127.0.0.1` by default. The deployment overlay leaves that host binding untouched; the proxy connects over the private Docker network. Optional Cloudflare Quick Tunnel exposes only the proxy. Its temporary hostname may change after a restart.
+- Detailed deployment instructions are in `ops/freellmapi-gateway/README.md`. The existing Oracle VM is still unverified; the connected tools do not expose OCI account/instance/SSH management.
+
+### Exact-head CI result
+
+- Current code head `495549ade7c5777fca0f0dd5b0b5c38ec6f0eac7` passed GitHub Actions CI #871 (run ID `43409447032`): https://github.com/laurofiorenzani/jarvis/actions/runs/43409447032
+- Successful checks: dependency audit, TypeScript/Vite production build, all Node tests including the new proxy tests, lint, provider privacy tests, semantic-memory/auto-capture tests, Supabase Edge Function typecheck, speech transcript tests, isolated local Supabase startup, all migrations applied, SQL account-isolation tests, authenticated two-user API integration (including provider preference isolation), teardown, production API/CORS smoke and canonical Preview CORS smoke.
+- PR #13 remains OPEN/DRAFT on `work/jarvis-freellmapi-cloud-gateway`; no merge or production deployment.
+
+### Connected infrastructure and blockers unchanged
+
+- Vercel branch-scoped Preview variables are configured. The last READY Preview is older and predates those variables. New deployment attempts hit the free API deployment cap (100/day, retry after 24h); no paid upgrade.
+- Supabase Preview remains `jarvis-preview-api` v21 and Production remains `jarvis-api` v32. The additive `jarvis_provider_preferences` migration is not applied to the live database. Preview and Production share the same Postgres project; explicit approval is required before applying this shared-schema change.
+- Cloudflare account inventory shows zero Workers scripts; billing plan remains unverified. No Worker or Tunnel was created.
+- No Oracle Cloud connector is available; VM state, public IP and SSH access are unverified. No FreeLLMAPI host, unified key, provider keys or JARVIS gateway token are configured.
+- No provider inference, personal prompt, account change, production function change, billing change or secret update has occurred.
+
+### Next action gates
+
+1. Obtain explicit owner approval to apply the additive RLS-protected `jarvis_provider_preferences` table to the shared Supabase database.
+2. After approval, apply the migration, deploy the exact Edge Function bundle to Preview only, and verify provider preference isolation against the two existing accounts. Keep Production `jarvis-api` v32 unchanged.
+3. Wait for Vercel quota reset and create the configured Preview from the current branch.
+4. Connect the existing Oracle VM or provide a secure one-time deployment path; install FreeLLMAPI and the private proxy using the deployment package. Do not send SSH private keys or provider keys in chat.
+5. Configure server-side secrets and run synthetic inference plus controlled quota/fallback tests before enabling the standard pool.
+
+
+## 2026-11-13 — connected-platform verification from ChatGPT session (12:30 UTC)
+
+### Verified live state (read-only inspection)
+
+- Canonical application repository confirmed: `laurofiorenzani/jarvis`. Private `jarvis-personal-cloud` remains a planning/workbench repository; it is not the executable application repo and must not be deleted.
+- At inspection start, the FreeLLMAPI gateway branch head was `d499419a1586586429b7265b953496868b5edb9e`. PR #13 remains open/draft. PR #12 remains open and is the broader amber/cloud-auth integration line. No PR was merged. This session added documentation-only ledger commits to the existing PR #13 branch; no application code was changed.
+- Vercel project `jarvis` is readable. A READY Preview deployment exists at `jarvis-7g68mgue9-lauro-fiorenzani.vercel.app`, built from ancestor commit `9265f7c44de2630b48fdda5cee18f614a141e04b`. GitHub compare confirms this deployment commit is an ancestor of the gateway branch head observed at inspection start; it is not exact-head validation. The branch has since received documentation-only ledger commits in this session. Branch-scoped Preview variables for `work/jarvis-freellmapi-cloud-gateway` are present and target Preview only. No values are recorded here.
+- Supabase project `undmhmdwhxvjgvezvucy` is `ACTIVE_HEALTHY`, region `eu-west-3`. Production `jarvis-api` is v32; Preview `jarvis-preview-api` is v21. Live migration inventory ends at `20261112182639_jarvis_memory_auto_capture_opt_in`; `20261113110000_jarvis_provider_preferences` is not applied.
+- Live public-schema inventory: 13 conversations, 42 messages, 33 turns, 87 rate-limit rows, 0 approved personal-memory rows, 1 memory-preference row, and 0 rows in the semantic-memory summaries/topics/facts/topic-links tables. All listed tables have RLS enabled. These counts are a point-in-time snapshot, not a product readiness claim.
+- The provider-preferences migration in PR #13 is additive and RLS-protected, but Preview and Production share the same Postgres database. Do not apply it without explicit owner approval; deploying Preview code alone cannot isolate the schema change.
+- Supabase security advisor reports leaked-password protection disabled (WARN). It also reports RLS enabled/no policy for `jarvis_rate_limits`; direct table grants were checked and only `postgres` and `service_role` have privileges, with no `anon` or `authenticated` grant. This appears consistent with service-role-only rate-limit access; do not add a permissive policy. Password-protection configuration remains a separate Auth security decision and was not changed.
+- Supabase performance advisor reports 18 unused indexes. Given low current row counts and new semantic-memory tables, do not remove indexes based on this snapshot.
+- Cloudflare account is authenticated and account inventory returns one account. Workers Scripts inventory is empty (zero scripts). No Worker was created.
+- No provider inference, personal prompt, secret readback, account change, production function deployment, migration, billing change, or external action was performed in this inspection.
+
+### Updated immediate next actions
+
+1. Obtain explicit owner approval before applying the additive provider-preferences migration to the shared Supabase database.
+2. After approval, deploy the exact validated Edge Function to Preview only and test provider preference read/write and two-account isolation. Keep production `jarvis-api` v32 unchanged.
+3. Create a fresh Vercel Preview from the current gateway branch head when deployment quota allows; do not treat the ancestor Preview as exact-head verification.
+4. Verify or provision the existing persistent Oracle VM through an authorised OCI/SSH route; current connected tools do not expose OCI management, and Cloudflare has zero Worker scripts.
+5. Configure the private FreeLLMAPI host/proxy and server-side secrets only after host verification; run synthetic inference and controlled quota/fallback tests before enabling any provider pool.
+6. Address the Supabase leaked-password-protection warning through a separately approved Auth security change; do not change it silently.
+
+
+### Additional deployment-source verification (12:35 UTC)
+
+- Vercel production deployment history was checked separately from Preview. The newest production-target record is CANCELED on `main` commit `da4e4591a0fe364ba5823d44ee2954b88ffd3383`. The newest READY production-target deployment in the returned history is from `work/memory-integration-ready`, commit `36781884d0555b21b525549940b97035e64832e8`. This is not the current amber/canonical-integration or FreeLLMAPI gateway branch. Do not infer that PR #12/#13 is deployed to Production.
+- Read-only source inspection of deployed Supabase functions confirms: Preview v21 contains semantic-memory and Cloudflare Workers AI code, but no provider-preferences route and no FreeLLMAPI gateway-token integration. Production v32 contains semantic-memory code, but no Cloudflare Workers AI or FreeLLMAPI gateway-token integration. Thus the PR #13 provider-preferences and FreeLLMAPI code is not live in either deployed function.
+- The latest READY Preview deployment on the gateway branch is built from commit `9265f7c`, an ancestor of the branch head observed before this session's documentation-only commits. It is not proof that the current PR #13 head or its FreeLLMAPI gateway path is running.
+- Direct HTTP checks of the Preview page and public health URLs could not be completed with the available web fetch capability. Deployment readiness and Supabase function inventory/source are verified; end-to-end browser/API health is not newly verified.
