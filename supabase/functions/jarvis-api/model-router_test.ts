@@ -7,6 +7,8 @@ import {
   classifyFreeLlmTask,
   classifyProviderFailure,
   freeLlmApiTaskHeaders,
+  FREE_PROVIDER_BILLING_ATTESTATION_VERSION,
+  hasFreeProviderBillingAttestation,
   isFreeLlmApiModel,
   isAllowedStandardProvider,
   redactProviderDiagnostic,
@@ -15,6 +17,16 @@ import {
   providerRoutingOptions,
   toChatCompletionsUrl,
 } from './model-router.ts'
+
+Deno.test('cloud inference requires an exact, current free-plan billing attestation', () => {
+  if (hasFreeProviderBillingAttestation(undefined)) throw new Error('missing attestation was accepted')
+  if (hasFreeProviderBillingAttestation('true')) throw new Error('boolean attestation was accepted')
+  if (hasFreeProviderBillingAttestation('2026-11-13-v0')) throw new Error('stale attestation was accepted')
+  if (hasFreeProviderBillingAttestation('paid-plan')) throw new Error('paid plan was accepted')
+  if (!hasFreeProviderBillingAttestation(FREE_PROVIDER_BILLING_ATTESTATION_VERSION)) {
+    throw new Error('current free-plan attestation was rejected')
+  }
+})
 
 Deno.test('default provider routing does not add privacy overrides', () => {
   const options = providerRoutingOptions()
