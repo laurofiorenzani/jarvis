@@ -11,7 +11,7 @@ test('production default is cloud and does not start the local bridge', async ()
   assert.equal(env.anthropicKey, '')
   assert.equal(env.elevenKey, '')
   assert.equal(isConnected(), false)
-  assert.deepEqual(connectedLabels(), ['CLOUD SIGN-IN REQUIRED'])
+  assert.deepEqual(connectedLabels(), [])
 
   // A cloud-mode boot must not attempt a localhost bridge or provider call.
   await warm()

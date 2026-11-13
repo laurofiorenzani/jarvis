@@ -418,3 +418,10 @@ The current work has not yet produced one official `main`, and it has not comple
 - Updated `src/lib/brain.ts`: a signed-in cloud session no longer reports a live connected brain or a live SYSTEMS rail service label. The cloud API is stateless HTTPS; authentication proves identity only. Persistent live connectivity remains reportable only for the local bridge socket.
 - Updated `tests/brain-cloud-selection.test.ts` to assert the cloud connection indicator remains false/empty both while an authenticated cloud brain is selected and after sign-out.
 - These changes are on `work/jarvis-canonical-integration`; a fresh full CI run must pass on the new head before the correction is considered validated.
+
+
+## 19. CI regression repair — 2026-11-13
+- CI #803 failed only because `tests/cloud-default.test.ts` still expected the obsolete label `CLOUD SIGN-IN REQUIRED`. The implementation deliberately no longer claims a stateless HTTPS cloud API is connected before a request has succeeded. Updated the test expectation to an empty live-connection label list; authentication remains separately visible in Cloud Access.
+- All other 207 tests in that run passed or were skipped as configured. CI #803: https://github.com/laurofiorenzani/jarvis/actions/runs/43379063821
+- Observer Validation #52 passed on the same candidate head. Re-run the full CI after this test correction before treating the branch as green.
+- Mainline comparison has narrowed to 3 commits on `main` not yet in the candidate and 517 candidate-only commits. Preserve and explicitly reconcile those 3 mainline commits before changing PR #12's base or promoting to `main`.
