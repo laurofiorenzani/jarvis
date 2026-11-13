@@ -60,10 +60,10 @@ function flag(name: string, raw: unknown, fallback: boolean): boolean {
  *   'bridge' — explicit local development mode using the Node bridge.
  *   'direct' — explicit local demo mode; requires a browser-exposed API key.
  */
-export const BACKEND: 'cloud' | 'bridge' | 'direct' = choice(
+export const BACKEND: 'cloud' | 'bridge' = choice(
   'VITE_BACKEND',
   viteEnv.VITE_BACKEND,
-  ['cloud', 'bridge', 'direct'] as const,
+  ['cloud', 'bridge'] as const,
   'cloud',
 )
 
@@ -96,11 +96,8 @@ export const SPEECH_LOCALE = choice(
  *   round trip plus generation, which is the difference between a conversation
  *   and a walkie-talkie. Turn it on when you want the voice more than the pace.
  */
-export const USE_ELEVENLABS = BACKEND !== 'cloud' && flag(
-  'VITE_USE_ELEVENLABS',
-  viteEnv.VITE_USE_ELEVENLABS,
-  false,
-)
+// Paid ElevenLabs speech is disabled to preserve the €0 recurring-cost contract.
+export const USE_ELEVENLABS = false
 
 /**
  * Speech engine.
@@ -140,10 +137,9 @@ export const KOKORO_VOICE = choice(
 )
 
 export const env = {
-  // Browser-exposed provider keys are permitted only in explicit local demo mode.
-  // Cloud and bridge modes never read these VITE_* secrets into the client config.
-  anthropicKey: BACKEND === 'direct' ? str(viteEnv.VITE_ANTHROPIC_API_KEY) ?? '' : '',
-  elevenKey: BACKEND === 'direct' ? str(viteEnv.VITE_ELEVENLABS_API_KEY) ?? '' : '',
+  // Paid provider keys are never read into the browser bundle.
+  anthropicKey: '',
+  elevenKey: '',
   elevenVoiceId:
     str(viteEnv.VITE_ELEVENLABS_VOICE_ID) ?? 'JBFqnCBsd6RMkjVDRZzb',
   porcupineKey: str(viteEnv.VITE_PICOVOICE_ACCESS_KEY) ?? '',
