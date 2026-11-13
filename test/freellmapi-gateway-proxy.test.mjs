@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { createServer } from 'node:http'
-import { after, test } from 'node:test'
+import { test } from 'node:test'
 import { createGatewayProxy, isAllowedRoute, isAuthorized } from '../ops/freellmapi-gateway/proxy.mjs'
 
 async function listen(server) {
