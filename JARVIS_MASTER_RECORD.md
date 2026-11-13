@@ -2177,3 +2177,9 @@ G. User action: none for current code validation. BMW client registration/device
 H. Next: complete CI #1088/#1089; then add isolated Edge Function two-user integration test for approvals and continue BMW OAuth server adapter only with safe persisted PKCE/device state. No deployment or production migrations.
 I. GitHub: `laurofiorenzani/jarvis`; PR #26, #33 open Draft; no merge/deploy.
 J. Next conversation: Continue from this handoff. PR #26 has a new authenticated pending-action approval UI/client; it only records approve/reject and never executes. Exact-head CI #1088 in progress. OpenClaw is documented as a reference for device pairing/capability approval, not a dependency. PR #33 doc/ledger update CI #1089 in progress. PR #34 BMW CarData CI #1084 green in isolated CI only; no account/credentials/live route. Keep production untouched and €0 recurring cost.
+
+
+## 2026-11-13 — CI rerun status correction
+- PR #26 UI/client exact-head run #1088 (`43522861440`) FAILED only because a synchronous validation test used `assert.rejects` rather than `assert.throws`; the happy-path API client test passed. Corrected the test in commit `ec286b6b835609f45d018d1d6d490c1e605582fb`. Exact-head CI #1091 (`43523028466`) is now IN_PROGRESS on that commit; no green claim yet.
+- PR #33 OpenClaw/master-ledger commit #1085 and #1089 were cancelled by workflow concurrency. Latest exact-head CI #1090 (`43523001655`) is IN_PROGRESS on ledger head `116132cfa0789c3175b083b830f4c49082b22b51`. Provider-lockout code remains validated by prior CI #1083 SUCCESS; the new changes are documentation/ledger only.
+- Current JARVIS package manifest was checked on PR #33 branch: no OpenClaw dependency. The OpenClaw review did not install packages or create runtime infrastructure.
