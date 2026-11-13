@@ -2,7 +2,7 @@ name: JARVIS Observer Validation
 
 on:
   push:
-    branches: ["main", "work/self-evolution-readonly-observer"]
+    branches: ["main", "work/self-evolution-readonly-observer", "work/jarvis-canonical-integration"]
     paths:
       - "src/lib/system-observer.ts"
       - "tests/system-observer.test.ts"

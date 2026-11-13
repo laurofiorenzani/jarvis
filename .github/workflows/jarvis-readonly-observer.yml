@@ -5,7 +5,7 @@ on:
   schedule:
     - cron: "17,47 * * * *"
   push:
-    branches: ["main", "work/self-evolution-readonly-observer"]
+    branches: ["main", "work/self-evolution-readonly-observer", "work/jarvis-canonical-integration"]
 
 permissions:
   contents: read
@@ -39,6 +39,35 @@ jobs:
             const healthy = response.ok;
             console.log(JSON.stringify({
               signal: 'production_api_http',
+              status: response.status,
+              healthy,
+              observedAt: new Date().toISOString(),
+            }));
+            if (!healthy) process.exitCode = 1;
+          } finally {
+            clearTimeout(timer);
+          }
+          NODE
+
+      - name: Check canonical Preview cloud API health
+        env:
+          JARVIS_PREVIEW_API_URL: https://undmhmdwhxvjgvezvucy.supabase.co/functions/v1/jarvis-preview-api/health
+        run: |
+          node --input-type=module <<'NODE'
+          const url = process.env.JARVIS_PREVIEW_API_URL;
+          const controller = new AbortController();
+          const timer = setTimeout(() => controller.abort(), 10000);
+          try {
+            const response = await fetch(url, {
+              method: 'GET',
+              headers: { accept: 'application/json' },
+              signal: controller.signal,
+              redirect: 'error',
+            });
+            const payload = response.ok ? await response.json().catch(() => null) : null;
+            const healthy = response.ok && payload?.status === 'ok';
+            console.log(JSON.stringify({
+              signal: 'canonical_preview_api_http',
               status: response.status,
               healthy,
               observedAt: new Date().toISOString(),
