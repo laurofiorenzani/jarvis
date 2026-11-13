@@ -1426,3 +1426,32 @@ No PR #22–#27 was merged. No new deployment, live migration, provider activati
 6. Preserve PR #12 as the current integrated candidate and keep Production unchanged until every release gate is satisfied.
 
 This checkpoint is a read-only state reconciliation plus documentation update. It does not mark any unshipped capability as complete.
+
+
+## 2026-11-13 — live continuation checkpoint (17:xx UTC)
+
+### Verified repository state
+- Active implementation repository: `laurofiorenzani/jarvis`; default branch `main` remains at `da4e4591a0fe364ba5823d44ee2954b88ffd3383` (separate from the canonical development branch).
+- Canonical development branch `work/jarvis-canonical-integration` is currently at `86fd7cc6c52f23b3eaa206f9e3ac5b0ff0d46588`. The branch inventory confirms many parallel work branches; do not bulk merge/rebase them.
+- PR #12 represents the canonical integration branch and is still open. Its latest Observer Validation run #159 (GitHub Actions run 43468758192) completed SUCCESS on exact head `86fd7cc6...`; job 132034792079 passed observer privacy/triage tests, typecheck/build and lint. This is validation of the observer workflow, not a production release or full deployment validation.
+- Current open PR heads observed: #22 CFO schema `c3d3edc...`; #23 provider consent `2e9f3de...`; #25 Observer `725e1bb...`; #26 action approval `59e4549...`; #27 transfer pairing `4c31dc2...`; #28 iOS secure storage `abac40a...`. Their descriptions and previous validation claims remain as recorded above; no PR was merged in this pass.
+
+### Newly confirmed details / release boundaries
+- PR #25 latest head is `725e1bb...`, and its body records exact-head CI #994 / Observer #156 success on an earlier code head `431cb78...`; do not transfer that pass to the current head without exact-head CI evidence.
+- PR #28 remains adapter-level preparation only. No Capacitor app wiring, Xcode build, physical iPhone test, IPA or TestFlight build is evidenced. Apple Developer Program distribution would violate the recurring-cost target; do not introduce it.
+- Canonical Observer Validation #159 is green, but Vercel Hobby deployment quota, stale production/preview mismatch and provider-consent/secret/device gates remain release blockers as already documented.
+- The standard project docs `PROJECT_STATUS.md`, `NEXT_SESSION.md`, `TASK_REGISTRY.md`, `DECISIONS_LOG.md`, and `DEPLOYMENT_STATUS.md` were not found at repository root on the canonical branch. Do not create duplicates until repository tree confirms whether they live under another directory. This master record remains the only confirmed continuity ledger in this check.
+
+### Work performed in this pass
+- Read-only reconciliation of repository branches, open PR metadata, canonical Observer run/job and the existing master record.
+- No code, live Supabase data/schema, production deployment, secrets, billing or account settings were changed. No new code commit or PR was created.
+
+### Next actions (parallel, safe)
+1. Locate the canonical documentation directory/tree and map the requested continuity documents without creating duplicates.
+2. Obtain exact-head CI for PR #25 `725e1bb...`; keep it Draft until the exact head passes.
+3. Review PR #26 action-approval domain tests and identify the next server-side persistence/UI slice without enabling execution.
+4. Resolve the Family CFO currency minor-unit contract before approving PR #22; preserve the synthetic-only/read-only boundary.
+5. Continue provider manifest and zero-cost eligibility verification before any provider activation; both provider pools remain default-off.
+6. Keep all production resources unchanged until release gates and human review are complete.
+
+This checkpoint is an evidence-based status update, not a declaration that JARVIS is complete or production-ready.
