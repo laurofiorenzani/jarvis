@@ -1379,3 +1379,9 @@ No new PRs were merged, no live migrations were run, and no production deploymen
 - Tests cover iOS/Android configuration, web fail-closed behaviour, missing values, Keychain read failures and invalid inputs. Exact-head CI #996 passed on code commit `56c6e5cccf1337e25388e3a1a1683ac1b2915c6d`; documentation-only follow-ups `05aa0e3e18f546064d71b92b6af906b403523dd3` and `fbba6962a23cfb9f9aeab61f62e84d2da82e70fa` add the plugin decision and handoff without changing source.
 - Apple free-account testing on a personal device is possible through Xcode, but requires macOS and provisioning expires after seven days. TestFlight/App Store require the $99/year Apple Developer Program and are excluded under the €0 recurring-cost rule.
 - No Capacitor dependency/configuration, iOS project, signing identity, TestFlight build or physical iPhone test has been created. No production/auth settings, tokens or user data were changed.
+
+
+### Canonical/deployment refresh — 2026-11-13
+- Canonical development advanced from PR #28's base `6a49b18309dd5a07465875877248d15f365b395f` to `069664cd5bcccdbf28d85b91a44cb3de6503cbaa` through a documentation-only ledger commit; PR #28 is now one documentation commit behind. Do not force-update or merge until the master ledger is reconciled.
+- Vercel's Production alias is still on legacy `main` commit `9ae5ec846b6b20a17b2d264e699d6234c4284b23`; the latest canonical Preview is an older commit `b18af5a36938a5ae3521d277075957527f16c9c6`. No preview exists for PR #28's head because the Hobby deployment limit (>100/day) is reached. Do not use the legacy Production alias as validation for the current native adapter.
+- Canonical CI #995 and Observer Validation #157 passed on `069664cd...`; PR #28's code CI #996 passed on `56c6e5cc...`. Later PR #28 commits are documentation-only.
