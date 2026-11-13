@@ -590,3 +590,35 @@ test('cloud API user-facing errors use Brazilian Portuguese', () => {
   assert.equal(portugueseApiMessage('x', 'forbidden'), 'Você não tem permissão para esta operação.')
   assert.equal(portugueseApiMessage('x', 'invalid_request'), 'Não consegui processar esta mensagem. Verifique o conteúdo e tente novamente.')
 })
+
+
+test('cloud client reads and updates account-scoped provider preferences', async () => {
+  let captured: { input: RequestInfo | URL; init?: RequestInit } | undefined
+  const response = {
+    version: 1,
+    currentPolicyVersion: '2026-11-13-v1',
+    zdrPoolEnabled: true,
+    standardPoolEnabled: false,
+    acceptedAt: '2026-11-13T10:00:00.000Z',
+  }
+  const client = createCloudApiClient({
+    baseUrl: 'https://api.example.test',
+    publishableKey: 'test-publishable-key',
+    getAccessToken: async () => 'provider-preference-token',
+    fetchImpl: async (input, init) => {
+      captured = { input, init }
+      return new Response(JSON.stringify(response), { status: 200, headers: { 'Content-Type': 'application/json' } })
+    },
+  })
+  const updated = await client.setProviderPreferences({
+    zdrPoolEnabled: true,
+    standardPoolEnabled: false,
+    policyVersion: '2026-11-13-v1',
+  })
+  assert.equal(updated.zdrPoolEnabled, true)
+  assert.equal(updated.standardPoolEnabled, false)
+  assert.equal(String(captured?.input), 'https://api.example.test/v1/provider-preferences')
+  assert.equal(captured?.init?.method, 'PUT')
+  assert.equal(JSON.parse(String(captured?.init?.body)).version, 1)
+  assert.equal(new Headers(captured?.init?.headers).get('Authorization'), 'Bearer provider-preference-token')
+})
