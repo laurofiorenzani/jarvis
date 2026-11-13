@@ -129,9 +129,20 @@ async function readBoundedJson(request: Request, maxBytes: number): Promise<unkn
 Deno.serve(async (request) => {
   const origin = request.headers.get('origin')
   const cors = corsHeaders(origin)
-  if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors })
-
   const url = new URL(request.url)
+  const isPublicHealthPath = url.pathname.endsWith('/v1/health') || url.pathname.endsWith('/health')
+  if (request.method === 'OPTIONS') {
+    const preflightHeaders = isPublicHealthPath
+      ? {
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Headers': 'apikey, authorization, content-type, x-jarvis-api-version',
+          'Access-Control-Allow-Methods': 'GET, OPTIONS',
+          'Access-Control-Max-Age': '86400',
+          Vary: 'Origin',
+        }
+      : cors
+    return new Response(null, { status: 204, headers: preflightHeaders })
+  }
   const rawPath = url.pathname.replace(/\/$/, '') || '/'
   // Supabase mounts the same handler under both jarvis-api and
   // jarvis-preview-api. Strip the actual function mount generically; hardcoding
@@ -163,7 +174,12 @@ Deno.serve(async (request) => {
     // must remain reachable before a bearer token exists for every deployment.
     url.pathname.endsWith('/v1/health')
   if (request.method === 'GET' && isHealthRoute) {
-    return response({ version: VERSION, status: 'ok' }, 200, cors)
+    // Health contains no account data or credentials. A wildcard CORS response
+    // keeps this public bootstrap check readable from immutable Preview origins.
+    return response({ version: VERSION, status: 'ok' }, 200, {
+      'Access-Control-Allow-Origin': '*',
+      Vary: 'Origin',
+    })
   }
 
   const authHeader = request.headers.get('authorization') ?? ''
