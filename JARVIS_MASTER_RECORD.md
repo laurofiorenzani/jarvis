@@ -882,3 +882,13 @@ The available Supabase connector cannot inspect or set Edge Function secrets. Do
 6. Continue Self-Evolution on its isolated branch: read-only CI/deployment observation and proposal-only planning first. No production writes, self-approval, or automatic merges.
 7. Continue independent work on the iOS delivery specification, Family CFO data contract and official integration capability research without duplicating the existing Supabase memory/auth architecture.
 
+
+
+## 2026-11-13 — Cloudflare account inventory refresh
+
+- Cloudflare connection resolves to one account. Read-only `GET /accounts` confirms the account is accessible; account settings currently report `enforce_twofactor: false`. This is an account-wide security setting, not changed in this pass. Owner should review enabling 2FA in Cloudflare dashboard, especially before storing inference credentials or deploying a gateway.
+- Read-only `GET /accounts/{account_id}/workers/scripts` returns an empty list. There is currently no deployed Cloudflare Worker script in this account. This independently confirms that no JARVIS Worker/gateway has been deployed there.
+- The Cloudflare billable-usage info endpoint returned HTTP 403 Authentication error for the connected token; exact current usage/spend data therefore remains unavailable through this connection. Do not infer zero spend or quota remaining from this failure. The previously owner-provided Workers Free subscription evidence remains the only plan evidence; it does not prove remaining Workers AI Neurons.
+- No Worker was created, no AI inference was invoked, no billing setting changed, and no secret was read or written.
+- Next: verify Workers AI free allocation and the correct least-privilege token permission through Cloudflare dashboard or a separately authorized read-only billing/usage connection. Keep all inference disabled until the free quota and zero-billing guard are verified.
+
