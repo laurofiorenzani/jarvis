@@ -1060,3 +1060,34 @@ The available Supabase connector cannot inspect or set Edge Function secrets. Do
 - The provider preference table is empty and defaults both pools to false. No provider consent was created automatically. To activate the current code path, the account holder must explicitly enable the ZDR pool in CloudAccess after the configured ZDR provider list is available. This is account-specific; Isabelle's account remains untouched.
 - Follow-up engineering issue: evaluate whether Cloudflare Whisper should have a separate per-account speech-consent flag rather than being coupled to the model ZDR pool toggle. Do not weaken privacy or enable STT automatically. First verify the provider-status payload in the UI and whether the required Cloudflare secrets are present via a safe configured/not-configured check.
 - Production `jarvis-api` remains v32; Preview `jarvis-preview-api` v23. No deployment or paid service activation occurred.
+
+
+## 2026-11-13 — continuation: provider inventory, Cloudflare free-tier guardrails and CI reconciliation
+
+### Confirmed Cloudflare account inventory
+- Connected Cloudflare account read-only GET /accounts returned one standard account. Read-only GET /accounts/{id}/workers/scripts returned zero Workers scripts. No Worker was created.
+- Read-only Workers AI model search returned 40 Text Generation catalog records on page 1 (334 total catalog records). Several records explicitly include require_workers_paid=true; catalog presence is not evidence of free-plan eligibility.
+- Official Cloudflare Workers AI pricing documentation (updated 2026-11-12) states that Workers AI is included on Workers Free and Paid plans, with a Free allocation of 10,000 Neurons per day. On Workers Free, requests above the daily allocation fail until reset; on Workers Paid, usage above the free allocation is billed at $0.011 per 1,000 Neurons. Daily reset is 00:00 UTC. Therefore the Free plan is the only safe Cloudflare route under the project's €0 recurring-cost requirement; a Paid account cannot be assumed safe merely because the first 10,000 Neurons are included.
+- Cloudflare documentation identifies @cf/openai/whisper-large-v3-turbo as Cloudflare-hosted, Zero Data Retention, and priced at $0.000513 per audio minute. This is a metered model using the Free daily allocation where available, not an unlimited free service. Do not send audio until account plan is confirmed as Workers Free and the quota/fail-closed guard is implemented.
+- Attempted read-only Cloudflare billing profile, billing usage and spend-policy endpoints. All returned HTTP 403 because the connected OAuth session lacks Billing Read permission. Actual account plan and spend policies remain unverified. No billing changes or inference requests were made.
+
+### Supabase and provider configuration
+- Preview jarvis-preview-api remains ACTIVE v23; Production jarvis-api remains ACTIVE v32.
+- Authenticated iPhone requests at 13:03 UTC returned HTTP 200 for both /v1/provider-status and /v1/provider-preferences. The migration failure is resolved for the tested account.
+- The 13:09 iPhone panel explicitly displays NO AI PROVIDER CONFIGURED · CLOUD CHAT DISABLED; both provider pools show not configured. This is consistent with no configured usable provider entries in the Preview function environment.
+- Supabase connector exposes no Edge Function secret-list/presence action. Source code checks CLOUDFLARE_ACCOUNT_ID and CLOUDFLARE_API_TOKEN for STT, but presence/validity cannot be verified through the available connector. Secret values were never accessed. No provider consent was enabled for either household account.
+- The STT gate is still fail-closed: CloudAccess only supplies the Whisper transcriber when the current account's ZDR pool is enabled and provider-status reports Cloudflare Whisper configured. No authenticated /v1/stt call or end-to-end speech success has been confirmed.
+
+### GitHub and validation reconciliation
+- PR #13 remains OPEN/DRAFT on work/jarvis-freellmapi-cloud-gateway; latest head is documentation-only commit 855ea5b80146c3069f52f5d81c0e51a2aa2b7e85, base a0e083a77a202e231550153aaca6890d1e65d87f.
+- Confirmed GitHub Actions CI run #871 (run ID 43409447032) completed SUCCESS for code head 495549ade7c5777fca0f0dd5b0b5c38ec6f0eac7. It covers build, lint, app tests, Edge Function typecheck, migrations, SQL account-isolation, authenticated two-user provider-preference/memory tests, private FreeLLMAPI proxy tests and API/CORS smoke tests. The latest commit 855ea5b changes documentation only; no workflow run is associated with it.
+- The PR's FreeLLMAPI private proxy implementation is present in ops/freellmapi-gateway/ with an allowlist limited to chat completions/model discovery, separate bearer token, upstream unified key replacement, request-size/rate limits, safe metadata forwarding and tests. This is implemented and CI-tested, but not deployed or hosted.
+- No Cloudflare Worker, FreeLLMAPI host, gateway credentials or provider API secrets were created/configured. No paid upgrade, paid inference, production function deployment, or change to Production v32 occurred.
+
+### Next executable work and explicit blockers
+1. Inspect current Supabase Preview provider-status payload through the authenticated app (the UI currently confirms no providers configured); do not infer secret presence from HTTP 200.
+2. Owner must confirm Cloudflare account is on Workers Free, or grant a least-privilege Billing Read inspection path. Do not run Workers AI inference while plan is unknown.
+3. A secure Supabase Edge Function secret-presence check must be added through a supported settings surface or the owner can verify the names directly in Supabase settings; never request values in chat.
+4. Configure only eligible provider endpoints and server-side secrets after verifying zero-billing limits and terms; keep both account preferences off until each account holder explicitly consents.
+5. Keep Production v32 unchanged. Preview v23 may be updated only after exact-source validation and a safe deployment boundary review.
+6. Continue independent inspection of native iOS, memory and Family CFO implementation; do not claim those fronts are complete without repository evidence.
