@@ -1,6 +1,6 @@
 begin;
 
-select plan(9);
+select plan(11);
 
 -- Synthetic registry fixtures only. Production currency metadata remains unseeded
 -- until the official pinned SIX/ISO List One snapshot is reviewed and committed.
@@ -15,6 +15,8 @@ select ok(public.jarvis_cfo_amount_matches_currency_exponent(12.34, 'EUR', '2026
 select ok(public.jarvis_cfo_amount_matches_currency_exponent(1200, 'JPY', '2026-11-13', 'synthetic-test-v1'), 'JPY accepts zero fractional digits');
 select ok(public.jarvis_cfo_amount_matches_currency_exponent(1.234, 'KWD', '2026-11-13', 'synthetic-test-v1'), 'KWD accepts three fractional digits');
 select ok(not public.jarvis_cfo_amount_matches_currency_exponent(12.345, 'EUR', '2026-11-13', 'synthetic-test-v1'), 'EUR rejects more than two fractional digits');
+select ok(not public.jarvis_cfo_amount_matches_currency_exponent(1.2300000001, 'EUR', '2026-11-13', 'synthetic-test-v1'), 'EUR rejects precision beyond the currency exponent without scale rounding');
+select ok(not public.jarvis_cfo_amount_matches_currency_exponent(1.2300000000000000001, 'EUR', '2026-11-13', 'synthetic-test-v1'), 'EUR preserves and rejects high-precision decimal input');
 select ok(not public.jarvis_cfo_amount_matches_currency_exponent(1200.01, 'JPY', '2026-11-13', 'synthetic-test-v1'), 'JPY rejects fractional amounts');
 select ok(not public.jarvis_cfo_amount_matches_currency_exponent(1.2345, 'KWD', '2026-11-13', 'synthetic-test-v1'), 'KWD rejects more than three fractional digits');
 select ok(not public.jarvis_cfo_amount_matches_currency_exponent(1.00, 'XXX', '2026-11-13', 'synthetic-test-v1'), 'unknown currency is rejected');
