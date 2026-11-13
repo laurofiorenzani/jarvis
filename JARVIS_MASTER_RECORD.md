@@ -1076,3 +1076,13 @@ The available Supabase connector cannot inspect or set Edge Function secrets. Do
 - PR #12 remains OPEN/Ready for Review/unmerged; production `jarvis-api` v32 remains unchanged.
 - PR #13 requires branch reconciliation, full exact-head CI, private persistent €0 gateway host verification, provider eligibility/consent and authenticated two-account E2E before merge or activation.
 - Native iOS, physical device PT/EN voice E2E, BMW/home/messaging integrations and real Family CFO bank imports remain unimplemented/unvalidated.
+
+
+## 2026-11-13 — Self-Evolution observer incremental port
+
+- Created isolated branch `work/self-evolution-readonly-observer` from canonical commit `2e7134e45042adf9cd9a6cc8a00c0909ef6ec462` and opened PR #15: https://github.com/laurofiorenzani/jarvis/pull/15 (OPEN/Draft, unmerged).
+- Ported incremental changes from the previously validated observer foundation: canonical ISO timestamp formatting in triage evidence, regression tests for CI/deployment metadata redaction, and a read-only scheduled observer workflow that checks only public API/PWA HTTP health plus latest repository CI status. Workflow permissions remain `contents: read` and `actions: read`; no raw logs, prompts, private conversation content, credentials, production writes or automated remediation.
+- Preserved existing `main` workflow triggers and added the isolated branch trigger. Scheduled execution remains inactive until the workflow reaches the default branch.
+- Exact-head CI/Observer run has not been confirmed for PR #15; combined status shows Vercel Hobby build-rate-limit failure only. Keep PR Draft until its validation workflow is confirmed. No merge or deployment.
+- The earlier observer branch was 135 commits behind canonical and was not merged/rebased; only the five-file incremental patch was ported to a clean branch from the current canonical head. The temporary tree-construction attempt was rolled back to the exact base commit before a corrected base-tree commit was created; final compare confirms only five intended files differ and no repository files are deleted.
+- Observer Validation #120 passed on Family CFO merge commit `7dac36fbcaf1e0fbb13f017a8e397ac538fe4b10`. CI #910 for the subsequent canonical docs head was cancelled by later branch updates; it is not a full CI result. PR #14 remains closed/merged into canonical development branch only.
