@@ -768,3 +768,37 @@ The available Supabase connector cannot inspect or set Edge Function secrets. Do
 - Owner authorization applies to the owner's account and data only. Preserve strict owner/spouse account isolation; the spouse must separately authorize routing her personal content to any external provider. Never route her data through the owner's authorization.
 - Provider selection must account for each provider's current terms, geographic eligibility, privacy/retention, data transfer, model capabilities, quotas and reliability. If a provider cannot legally or contractually serve the request, skip it and continue to the next eligible provider.
 - This decision authorizes engineering work and eligible free-provider activation; it does not claim that credentials have been configured, an endpoint is reachable, quotas are available, or production has been deployed. Verify each state independently and record evidence.
+
+
+## 2026-11-13 — FreeLLMAPI adapter and pt-BR correction
+
+### Implementation commits on work/jarvis-freellmapi-cloud-gateway
+
+- Added the FreeLLMAPI gateway provider kind to supabase/functions/jarvis-api/model-router.ts.
+- Added routing-profile validation for auto, auto:fast, auto:smart, auto:reliable, fusion, and named auto:<profile> routes.
+- Added the FreeLLMAPI task hint header X-FreeLLM-Task-Type with auto, chat, and code values.
+- Added the separate JARVIS_MODEL_PROVIDERS_STANDARD pool. FreeLLMAPI is accepted only in that standard-privacy pool, with HTTPS and a server-side API key. It is not falsely labelled ZDR. Existing default pool behavior remains unchanged.
+- Provider status now identifies FreeLLMAPI and the pool without exposing secrets. Main chat still uses the default pool; per-account acceptance and standard-pool selection remain to be implemented before user content can be routed through FreeLLMAPI.
+- Added router unit tests for FreeLLMAPI model profiles and task headers.
+- Corrected user-facing cloud API messages to Brazilian Portuguese and added regression tests.
+- Commits: ae9d95bf316334026d74f911e7ba440a139a495b, 119bb48168977fce5f81d83d90182c925f11b036, 937b6b3fc637aaa8f131319368e5bff81ab4e222, 04c5ab75ab6848bf036f89b67292a5f3d7f03c68, 276d1373e2c935c9651eb28523ec8d27a14d9fcd.
+- PR #13 remains open and Draft. CI #842 was still running at the time of this record update; do not treat the new commits as validated until a full exact-head run succeeds.
+
+### Cloudflare and hosting refresh
+
+- Cloudflare account inventory: zero Workers scripts. Workers AI catalog endpoint returned 75 models on page 1 (40 text-generation models); 9 text-generation entries explicitly require Workers Paid. Thirty-one entries lack that paid-only flag, but they are candidates only, not a fully verified free allowlist. The API reported 334 total models but page 2 onward returned no records in this connector call.
+- Official Cloudflare Free-plan notice confirms Gemma 4 26B, GLM 4.7 Flash and Nemotron 3 120B as Free-plan-available models. The account's actual billing plan cannot be verified because Billing Read permission is absent. No Workers AI inference request was sent and no usage was consumed.
+- Supabase Preview remains jarvis-preview-api v21; Production remains jarvis-api v32. No function deployment or secrets were changed.
+- Vercel's latest READY deployment is still the documentation-only FreeLLMAPI branch commit a2c1248e5a193436e33fd4a8e3b63f27df731909. The adapter code commit has not yet been deployed to Vercel.
+- No Oracle Cloud connector is available in this session; the historical VM remains unverified.
+- No provider host, FreeLLMAPI unified key, provider credentials, or secure tunnel is configured. No user prompts or personal data were sent to a provider.
+- No production resources, accounts, billing, secrets, branches or repositories were changed or deleted.
+
+### Next work
+
+1. Complete full CI on the latest PR #13 head.
+2. Add per-account provider-consent storage and UI so the owner's account can enable the standard pool while the spouse's account remains off until her own acceptance.
+3. Connect the standard pool to authenticated turns with safe fallback to the strict pool only before streaming begins.
+4. Verify a persistent private host for the Node/SQLite FreeLLMAPI service; do not expose its dashboard or port 3001 publicly.
+5. Deploy the updated Edge Function to Preview only, then test a synthetic prompt and controlled quota/error failover.
+6. Add only provider credentials and models with verified zero-billing limits and eligible terms.
