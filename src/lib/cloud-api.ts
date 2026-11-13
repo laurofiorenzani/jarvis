@@ -38,6 +38,29 @@ export function portugueseApiMessage(message: string, code: string): string {
   return message
 }
 
+export type ActionApprovalRecord = {
+  request_id: string
+  session_id: string
+  conversation_id: string
+  invocation_id: string
+  capability_id: string
+  argument_digest: string
+  title: string
+  target: string
+  impact: string
+  reversibility: string
+  policy_version: string
+  status: 'pending' | 'approved' | 'rejected' | 'expired' | 'cancelled' | 'executing' | 'executed' | 'failed'
+  created_at: string
+  expires_at: string
+  decided_at: string | null
+}
+
+export type ActionApprovalListResponse = {
+  version: typeof CLOUD_API_VERSION
+  approvals: ActionApprovalRecord[]
+}
+
 export type CloudApiOptions = {
   baseUrl: string
   publishableKey: string
@@ -223,6 +246,51 @@ export function createCloudApiClient(options: CloudApiOptions) {
         `/v1/conversations/${encodeURIComponent(requireText(conversationId, 'conversation ID'))}`,
         { method: 'DELETE' },
       ),
+    listActionApprovals: () => request<ActionApprovalListResponse>('/v1/action-approvals'),
+    decideActionApproval: (
+      approval: Pick<ActionApprovalRecord, 'request_id' | 'session_id' | 'invocation_id' | 'capability_id' | 'argument_digest'>,
+      decision: 'approved' | 'rejected',
+    ) => {
+      if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(approval.request_id) ||
+          !/^[a-f0-9]{64}$/i.test(approval.argument_digest) ||
+          (decision !== 'approved' && decision !== 'rejected')) {
+        throw new CloudApiError('Invalid action approval.', 400, 'invalid_request')
+      }
+      return request<{ version: typeof CLOUD_API_VERSION; result: { valid: boolean; reason: string; decision?: string } }>(
+        `/v1/action-approvals/${encodeURIComponent(approval.request_id)}/decision`,
+        {
+          method: 'POST',
+          body: JSON.stringify({
+            version: CLOUD_API_VERSION,
+            sessionId: approval.session_id,
+            invocationId: approval.invocation_id,
+            capabilityId: approval.capability_id,
+            argumentDigest: approval.argument_digest,
+            decision,
+          }),
+        },
+      )
+    },
+    cancelActionApproval: (
+      approval: Pick<ActionApprovalRecord, 'request_id' | 'session_id' | 'invocation_id' | 'argument_digest'>,
+    ) => {
+      if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(approval.request_id) ||
+          !/^[a-f0-9]{64}$/i.test(approval.argument_digest)) {
+        throw new CloudApiError('Invalid action approval.', 400, 'invalid_request')
+      }
+      return request<{ version: typeof CLOUD_API_VERSION; cancelled: boolean }>(
+        `/v1/action-approvals/${encodeURIComponent(approval.request_id)}/cancel`,
+        {
+          method: 'POST',
+          body: JSON.stringify({
+            version: CLOUD_API_VERSION,
+            sessionId: approval.session_id,
+            invocationId: approval.invocation_id,
+            argumentDigest: approval.argument_digest,
+          }),
+        },
+      )
+    },
     getProviderStatus: () => request<{
       version: typeof CLOUD_API_VERSION
       configured: boolean
