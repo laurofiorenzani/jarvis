@@ -969,3 +969,22 @@ The available Supabase connector cannot inspect or set Edge Function secrets. Do
 - Vercel created a Preview deployment from an intermediate fix commit and later queued/began builds for the branch. Its combined status reported the Free plan build-rate-limit failure. The existing screenshot deployment remains READY and now points to the updated shared Preview Edge Function, so a new frontend deployment is not required to retest this server-side fix.
 - Supabase function source/version verification passed. A browser-origin OPTIONS + subsequent health GET and a fresh authenticated sign-in / memory bootstrap are still required to confirm end-to-end recovery. The owner can refresh the existing screenshot URL and use the same existing account; do not clear account data or create a new account.
 - PR #12's latest canonical integration head `0cf362fd8e6fbf95303cf38e124631f74596f3ac` has CI #876 SUCCESS and Observer Validation #89 SUCCESS. It remains separate from PR #13 and is not merged or promoted.
+
+
+## 2026-11-13 — Preview v22 boot failure diagnosis and v23 recovery
+
+### Exact boot failure from Supabase runtime logs
+
+- User reported a new generic “Cloud service returned an unexpected error” after the previous CORS change.
+- Supabase function logs for Preview v22 show a `BootFailure` at 2026-11-13 12:44:42 UTC:
+  `Uncaught SyntaxError: The requested module './model-router.ts' does not provide an export named 'classifyFreeLlmTask'` at `source/index.ts:5:10`.
+- Root cause: the v22 deployment mixed the current gateway-branch `index.ts` with older `model-router.ts` retained from the existing Preview bundle. The previous deployment procedure updated only selected files, not the complete, mutually compatible function source set. This was a deployment packaging error, not an account/password/user-device problem.
+- Compared actual live v22 exports with the current PR #13 branch. Live model-router was missing five gateway symbols, including `classifyFreeLlmTask`; current branch source exports all five.
+ 
+### Recovery deployed to Preview only
+
+- Rebuilt the complete Edge Function bundle from the same exact PR #13 branch for every runtime file: `index.ts`, `cors.ts`, `route-path.ts`, `speech-transcript.ts`, `model-router.ts`, `semantic-memory.ts`, and `deno.json`.
+- Checked that every relative import in `index.ts` exists in the bundle and that `model-router.ts` exports `classifyFreeLlmTask` before deployment.
+- Deployed `jarvis-preview-api` successfully as ACTIVE version 23. Production `jarvis-api` remains v32 and was not touched. No migration, auth/account update, secret change, provider inference or billing change was performed.
+- This fixes the known module-export mismatch at source/package level. End-to-end boot and health still require a fresh request to the Preview function; no successful runtime request after v23 has yet been observed in logs at the time of this entry.
+- Follow-up: owner should refresh the same Vercel Preview URL and sign in with the existing account. Inspect Supabase `function_logs` and `function_edge_logs` for v23 boot/runtime results before proceeding to chat/memory/model tests.
