@@ -9,6 +9,7 @@ on:
 
 permissions:
   contents: read
+  actions: read
 
 concurrency:
   group: jarvis-readonly-observer-${{ github.ref }}
@@ -72,6 +73,46 @@ jobs:
               observedAt: new Date().toISOString(),
             }));
             if (!healthy) process.exitCode = 1;
+          } finally {
+            clearTimeout(timer);
+          }
+          NODE
+
+      - name: Observe latest repository CI metadata
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_API_URL: ${{ github.api_url }}
+          GH_REPOSITORY: ${{ github.repository }}
+        run: |
+          node --input-type=module <<'NODE'
+          const endpoint = `${process.env.GH_API_URL}/repos/${process.env.GH_REPOSITORY}/actions/workflows/ci.yml/runs?per_page=1`;
+          const controller = new AbortController();
+          const timer = setTimeout(() => controller.abort(), 10000);
+          try {
+            const response = await fetch(endpoint, {
+              headers: {
+                accept: 'application/vnd.github+json',
+                authorization: `Bearer ${process.env.GH_TOKEN}`,
+                'x-github-api-version': '2022-11-28',
+              },
+              signal: controller.signal,
+              redirect: 'error',
+            });
+            if (!response.ok) throw new Error(`GitHub CI metadata request failed: HTTP ${response.status}`);
+            const payload = await response.json();
+            const run = Array.isArray(payload.workflow_runs) ? payload.workflow_runs[0] : undefined;
+            let status = 'unknown';
+            if (run?.status !== 'completed' && run?.status) status = 'running';
+            else if (run?.conclusion === 'success') status = 'healthy';
+            else if (run?.conclusion === 'failure' || run?.conclusion === 'timed_out') status = 'failed';
+            else if (run?.conclusion) status = 'degraded';
+            console.log(JSON.stringify({
+              signal: 'latest_repository_ci',
+              source: 'ci',
+              status,
+              runNumber: Number.isInteger(run?.run_number) ? run.run_number : undefined,
+              observedAt: new Date().toISOString(),
+            }));
           } finally {
             clearTimeout(timer);
           }
