@@ -74,6 +74,12 @@ jobs:
       - name: Test per-account ZDR speech consent enforcement
         run: deno test supabase/functions/jarvis-api/provider-consent_test.ts
 
+      - name: Test BMW CarData Vault token store
+        run: deno test supabase/functions/jarvis-api/bmw-cardata-token-store_test.ts
+
+      - name: Test BMW CarData daily rate budget
+        run: deno test supabase/functions/jarvis-api/bmw-cardata-budget_test.ts
+
       - name: Test semantic-memory validation and auto-capture policy
         run: deno test supabase/functions/jarvis-api/semantic-memory.deno.ts
 
