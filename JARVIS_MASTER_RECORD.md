@@ -1803,3 +1803,40 @@ G. User action: none now; Mac/Xcode and physical iPhone later for native accepta
 H. Next: fetch PR #31 workflow runs and job steps; fix only evidence-backed failures; inspect provider-consent PR #23 and design CFO currency schema in an isolated branch.
 I. GitHub: `laurofiorenzani/jarvis`; canonical `work/jarvis-canonical-integration`; feature `work/observer-ci-refresh-20261113`; PR #31 Draft.
 J. Next conversation: Continue from this latest ledger. PR #30 CI #1009 is fully SUCCESS across all steps. PR #31 ports reviewed Observer changes onto current canonical base, head `56f9871d92aa3a45fed02bbd7944af5774e64f67`; check exact-head CI/Observer, do not merge before green. Keep Vercel deploys paused due free-tier rate limit. CFO currency contract, provider consent, iOS and approval persistence remain pending; maintain €0 recurring-cost rule and account isolation.
+
+## 2026-11-13 — Observer CI green and cross-front checkpoint
+
+### Self-Evolution / PR #31 — exact-head validation complete
+- PR #31 head `56f9871d92aa3a45fed02bbd7944af5774e64f67`, base `work/jarvis-canonical-integration` at `5430babd6191bd09d3393fc7597592ec953eb2ab`.
+- GitHub Actions CI run #1014 (`43477580864`), job `132065335423`: COMPLETED SUCCESS; all 47 steps succeeded. Includes dependency/security checks, typecheck/build, tests, lint, Deno provider privacy, semantic-memory policy, Edge Function typecheck, speech tests, isolated Supabase startup/migrations, SQL isolation regression, two-user authenticated semantic-memory API, production API/CORS and canonical Preview CORS smoke tests.
+- Observer workflow run #172 (`43477580659`), job `132065335423`? (see run jobs; Observer job completed SUCCESS): privacy/triage tests, typecheck/build and lint all succeeded.
+- Updated PR #31 description to record exact-head CI and Observer success. PR remains Draft/open and GitHub reports mergeable=false; no merge. The PR is validated at code/CI level, not approved or released.
+- Vercel bot reported the Hobby daily deployment cap (>100 deployments/day; retry after 24 hours). No upgrade, bypass or retry spam. Observer and CI checks did not require a new Vercel deployment.
+
+### Cloud Brain — live production/Preview route inventory
+- Re-read Supabase functions: production `jarvis-api` ACTIVE v32; Preview `jarvis-preview-api` ACTIVE v23; both report `verify_jwt=false`, with handler-level bearer validation still required before authenticated routes; public health is intentionally pre-auth.
+- Route inventory difference confirmed: Preview includes `/provider-preferences`; production route inventory does not. Both expose STT/TTS, provider status, semantic-memory candidates/search, memory preferences, memories, conversations, turn cancellation and turns. Preview additionally packages separate CORS, route-path and speech-transcript modules. Production/Preview are not yet feature-identical. Do not deploy Preview to production without a reviewed route/auth/provider diff.
+- Live migration inventory remains through `20261113125437_provider_preferences_rls_initplan`; no Family CFO migration exists in live Supabase.
+
+### Family CFO / currency precision
+- PR #22 remains Draft/open/non-mergeable; owner-scoped read-only accounts, transactions and dated balance snapshots; synthetic isolation/security tests only. Its proposed `NUMERIC(20,2)` is incompatible with PR #29's ISO 4217 currency-exponent contract (0/2/3 decimal currencies). No migration applied.
+- Next implementation should reconcile amount precision with a versioned currency exponent registry and exact decimal strings before any CFO schema is eligible for review. Keep synthetic fixtures only; no financial data import.
+
+### Multi-AI / consent
+- PR #23 remains open/non-mergeable. Provider pools default-off; no inference or provider-secret access. The code's consent model is not sufficient for release until each downstream provider's current free quota/reset, EEA eligibility, personal-use terms, retention/training, processing region, no-payment-method and no-overage behavior are independently evidenced. Provider diagnostics are not proof that a provider was approved before receiving prompt content.
+
+### Safety / operations
+- No merge, production deployment, live migration, provider activation/inference, secret/auth/billing change, personal financial data access, external action or paid service.
+- €0 recurring-cost constraint and user/account isolation remain hard gates.
+
+### Handoff
+A. State: Observer integration has passed exact-head CI and Observer workflow; JARVIS remains in development, not production-ready.
+B. Validated: PR #31 CI #1014 SUCCESS (47/47 steps); Observer #172 SUCCESS; PR #30 CI #1009 SUCCESS from prior checkpoint.
+C. In progress: production/Preview route parity; CFO currency exponent reconciliation; provider downstream policy attestations; native iOS target/device validation; persistent atomic action approvals.
+D. Evidence: repo `laurofiorenzani/jarvis`; canonical branch `work/jarvis-canonical-integration`; PR #31 head `56f9871d92aa3a45fed02bbd7944af5774e64f67`; CI run `43477580864`; Observer run `43477580659`; Supabase production v32/Preview v23; migrations through `20261113125437`.
+E. Decisions: PR #31 remains Draft; no merge on green CI alone. No Vercel deploy while free cap active. No CFO migration until currency exponent schema reconciled. No provider activation without downstream no-cost/privacy/EEA verification.
+F. Pending: Self-Evolution—human review/merge decision and eventual default-branch schedule activation; Cloud Brain—route-by-route auth/response/CORS parity; CFO—versioned currency exponent schema and tests for JPY/EUR/KWD; Multi-AI—provider attestation; iOS—Mac/Xcode/native device tests; Actions—DB-backed one-time approval lifecycle.
+G. User action: none immediately. Mac/Xcode and physical iPhone will eventually be needed for native iOS acceptance.
+H. Next: implement CFO schema compatibility in an isolated branch; inspect production/Preview handler route branches and compare auth; review PR #23 fallback-before-dispatch behavior and provider policy evidence.
+I. GitHub: `laurofiorenzani/jarvis`; canonical `work/jarvis-canonical-integration`; PR #31 `work/observer-ci-refresh-20261113`; no merge or deployment.
+J. Next conversation: Continue from this checkpoint. PR #31 exact-head CI #1014 and Observer #172 both SUCCESS; PR remains Draft/non-mergeable. Supabase prod v32 lacks Preview's /provider-preferences route; route parity review required. PR #22 numeric(20,2) conflicts with PR #29 currency exponent registry; no live CFO migration. PR #23 provider pools remain disabled pending per-provider EEA/free-quota/retention/no-overage evidence. Vercel Hobby daily deployment cap reached; do not upgrade/bypass. Continue multitask under €0 recurring cost.
