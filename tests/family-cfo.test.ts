@@ -88,6 +88,14 @@ test('sums only matching currencies and never performs implicit FX', () => {
     { amount: '-2.35', currency: 'EUR' },
     { amount: '0.25', currency: 'EUR' },
   ]), { amount: '8', currency: 'EUR' })
+  assert.deepEqual(sumMoney([
+    { amount: '1200', currency: 'JPY' },
+    { amount: '-200', currency: 'JPY' },
+  ]), { amount: '1000', currency: 'JPY' })
+  assert.deepEqual(sumMoney([
+    { amount: '1.234', currency: 'KWD' },
+    { amount: '-0.234', currency: 'KWD' },
+  ]), { amount: '1', currency: 'KWD' })
   assert.throws(() => sumMoney([
     { amount: '10.00', currency: 'EUR' },
     { amount: '10.00', currency: 'USD' },
@@ -104,6 +112,16 @@ test('pairs only unique, confirmed internal transfers', async () => {
   assert.deepEqual(matchInternalTransfers([debit, credit]), [{ debitId: debit.id, creditId: credit.id }])
   assert.deepEqual(matchInternalTransfers([debit, { ...credit, recordStatus: 'pending_review' }]), [])
   assert.deepEqual(matchInternalTransfers([debit, { ...credit, money: { amount: '49.99', currency: 'EUR' } }]), [])
+})
+
+test('cash flow requires an explicit currency when the period has no eligible records', async () => {
+  const { calculateCashFlow } = await import('../src/lib/family-cfo.ts')
+  const period = { start: '2026-11-01', end: '2026-11-30' }
+  assert.throws(() => calculateCashFlow([], period), /explicit currency/)
+  assert.deepEqual(calculateCashFlow([], { ...period, currency: 'JPY' }), {
+    currency: 'JPY', inflows: '0', outflows: '0', net: '0',
+    includedCount: 0, excludedTransferCount: 0,
+  })
 })
 
 test('cash flow excludes matched transfers and includes confirmed posted records only', async () => {
