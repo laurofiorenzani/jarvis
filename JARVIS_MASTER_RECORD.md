@@ -858,3 +858,27 @@ The available Supabase connector cannot inspect or set Edge Function secrets. Do
 - Self-Evolution foundation is implemented only as a read-only observer/triage prototype on its own branch; production activation and proposal/development automation remain gated. Continue read-only observer coverage and isolated tests.
 - Family CFO remains a planned agent, not an implemented live financial integration. Do not invent balances or connect household accounts without explicit authorized data sources.
 - No production Edge Function, secrets, provider settings, user accounts, memory facts, or billing settings were changed during this revalidation.
+
+
+## 2026-11-13 — security advisor and release-gate refresh (13:42 UTC)
+
+### Live security advisor findings
+- Supabase Security Advisor currently reports two findings. `public.jarvis_rate_limits` has RLS enabled with no policies (INFO). This is intentionally fail-closed for client roles; rate-limit records are server-managed. Do not add client policies merely to silence the linter. Confirm service-role/Edge Function access remains the only intended write path in a separate reviewed check.
+- Supabase Auth leaked-password protection is disabled (WARN). Enabling it changes authentication behavior and requires owner review/approval in Auth settings. Do not toggle it automatically; assess impact on both existing accounts and document the decision.
+- No security setting, auth configuration, production data or secrets were changed in this pass.
+
+### PR and validation state
+- PR #12 is OPEN, Ready for Review (not Draft), mergeable, head `3f74af2a5c9bc001e86a156d09cc00fcb90f7eae`, base `work/intelligent-memory-foundation`. It remains stacked and has not been merged to `main` or production. The head commit is documentation-only after the last fully green code head `9d0b5f436b5a24ce2fd526180715d17645c7e1ea` (CI #823 and Observer Validation successful). The exact current head has only a Vercel status failure caused by the free-tier deployment rate limit; do not treat that as a code regression, but do not claim a fresh exact-head deployment.
+- PR #13 remains OPEN/DRAFT at `a770b0fb3150e7abf7fa127fdf01184512e52ae8`, based on `work/jarvis-canonical-integration`. Its FreeLLMAPI gateway remains a deployment/integration proposal, not a live gateway. No exact-head CI or deployment has validated the latest PR #13 code.
+- Latest live Supabase project is ACTIVE_HEALTHY (`eu-west-3`); Preview function v23 and Production function v32. Keep Production v32 unchanged.
+- Latest live authenticated Preview reads of health, memory preferences, conversations, memories, semantic-memory candidates, provider preferences and provider status returned HTTP 200. Provider preferences are still empty and Cloud Chat is disabled. HTTP 200 means the API path responds, not that inference is available.
+
+### Execution priorities and guardrails
+1. Keep PR #12 as the canonical cloud-auth/memory/voice integration candidate; review its open threads and exact-head code-equivalence before any merge. Do not merge stacked PRs automatically.
+2. Keep PR #13 separate until persistent private FreeLLMAPI hosting is actually verified, provider policy acceptance exists per account, and exact-head CI passes.
+3. Resolve the leaked-password protection warning through a documented owner decision, not an unattended setting change.
+4. Preserve deny-all client access on the rate-limit table; investigate only if a server-side access regression is evidenced.
+5. Do not request a new iPhone voice retest while provider status is disabled. Once an eligible provider is securely configured, verify a synthetic PT-BR and English transcript, a real authenticated model turn, and audible device TTS.
+6. Continue Self-Evolution on its isolated branch: read-only CI/deployment observation and proposal-only planning first. No production writes, self-approval, or automatic merges.
+7. Continue independent work on the iOS delivery specification, Family CFO data contract and official integration capability research without duplicating the existing Supabase memory/auth architecture.
+
