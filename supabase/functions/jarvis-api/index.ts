@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js'
+import { getPublicHealthPreflightHeaders } from './cors.ts'
 import { getApiRoutePathCandidates } from './route-path.ts'
 import { extractSpeechTranscript } from './speech-transcript.ts'
 import { classifyFreeLlmTask, getFreeProviderStatus, startFreeModelStream } from './model-router.ts'
@@ -137,13 +138,7 @@ Deno.serve(async (request) => {
   const isPublicHealthPath = url.pathname.endsWith('/v1/health') || url.pathname.endsWith('/health')
   if (request.method === 'OPTIONS') {
     const preflightHeaders = isPublicHealthPath
-      ? {
-          'Access-Control-Allow-Origin': '*',
-          'Access-Control-Allow-Headers': 'apikey, authorization, content-type, x-jarvis-api-version',
-          'Access-Control-Allow-Methods': 'GET, OPTIONS',
-          'Access-Control-Max-Age': '86400',
-          Vary: 'Origin',
-        }
+      ? getPublicHealthPreflightHeaders()
       : cors
     return new Response(null, { status: 204, headers: preflightHeaders })
   }
