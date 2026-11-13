@@ -85,9 +85,9 @@ jobs:
 
       - name: Set up Supabase CLI
         id: setup_supabase_cli
-        uses: supabase/setup-cli@v1
+        uses: supabase/setup-cli@v3
         with:
-          version: latest
+          version: v2.stable
 
       - name: Start isolated local Supabase database
         run: supabase start
