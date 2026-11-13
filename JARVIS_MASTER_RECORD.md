@@ -1091,3 +1091,21 @@ The available Supabase connector cannot inspect or set Edge Function secrets. Do
 4. Configure only eligible provider endpoints and server-side secrets after verifying zero-billing limits and terms; keep both account preferences off until each account holder explicitly consents.
 5. Keep Production v32 unchanged. Preview v23 may be updated only after exact-source validation and a safe deployment boundary review.
 6. Continue independent inspection of native iOS, memory and Family CFO implementation; do not claim those fronts are complete without repository evidence.
+
+
+## 2026-11-13 — repository tree audit: native iOS, CFO and existing memory
+
+- Read-only recursive Git tree inspection at PR #13 head b727bae965536a0586d11899f2bdebfabb108744 returned 218 paths.
+- No .swift files, Package.swift, .xcodeproj, .xcworkspace or Capacitor config exists in this branch tree. Native iOS implementation is therefore not present in this branch; the browser/PWA must not be described as the native app.
+- No paths matching CFO, finance, budget, mortgage or family-specific financial implementation were found. Family CFO remains a planned front, not a shipped agent in this branch.
+- Existing memory implementation is materially present: bridge memory runtime, approval broker/transport, encrypted payload handling, key provider, memory MCP/tool handlers, Supabase semantic-memory functions and migrations, plus SQL and TypeScript integration/isolation tests. Continue from these modules; do not create a duplicate memory system.
+- Only JARVIS_MASTER_RECORD.md exists among the required canonical status/handoff docs in this branch tree. Do not create parallel PROJECT_STATUS/README status copies; use the existing master record unless a canonical docs migration is deliberately approved.
+- No source files were changed during this tree audit. It is repository evidence only, not an implementation or runtime test.
+
+### Parallel-front priorities from this audit
+1. Cloud Brain/provider config: unblock only after confirming Cloudflare plan and adding provider secrets through the secure Supabase settings surface.
+2. Self-Evolution: continue with existing CI, provider routing and proxy tests; no new CI run is associated with the latest docs-only commit.
+3. Memory: extend the existing encrypted/approval-based memory modules and preserve existing RLS/account isolation.
+4. Native iOS: prepare a separate, isolated app target only after reviewing the existing architecture and signing/build constraints; do not call the current PWA a native app.
+5. Family CFO: implement as an agent/service within the existing JARVIS backend and memory/permissions architecture, not as a separate project or database.
+6. Integrations: verify official API feasibility and permission boundaries before building vendor connectors.
