@@ -25,19 +25,18 @@ export type { ConnectionState } from './bridge'
  * Picks the brain. Both backends answer a question and stream text and tool
  * events back; they differ in where they run and what they can reach.
  *
- *   bridge — a local Node process running the Claude Agent SDK. Uses your
- *            existing Claude Code login, so no API key, and every MCP server
- *            you have configured is available, including local stdio ones.
- *
+ *   bridge — a local Node process running the Agent SDK through FreeLLMAPI.
+ *            Model inference is loopback-routed; only explicitly allowlisted MCP
+ *            servers are exposed. No Claude account fallback is permitted.
  */
 
 export const usingBridge = BACKEND === 'bridge'
 
 /** Bridge and cloud keep conversation state server-side; only direct demo mode
- *  needs the browser to thread the transcript history through each request. */
+ *  keeps its own session state; history remains available to the cloud API adapter. */
 export async function ask(
   prompt: string,
-  _history: Msg[],
+  history: Msg[],
   handlers: AskHandlers,
 ): Promise<{ text: string; tools: string[] }> {
   if (activeCloudBrain) return activeCloudBrain.ask(prompt, history, handlers)
