@@ -13,6 +13,25 @@
  */
 export type ChatMessage = { role: 'system' | 'user' | 'assistant'; content: string }
 
+export const FREE_PROVIDER_BILLING_ATTESTATION_VERSION = '2026-11-13-v1'
+
+/**
+ * The operator must verify the actual account plan and no-overage behaviour
+ * before any cloud model or speech provider can be used. Provider JSON labels
+ * alone are not proof. Keep the gate closed until this exact version is set as
+ * the server-side JARVIS_FREE_PROVIDER_BILLING_ATTESTATION secret.
+ */
+export function hasFreeProviderBillingAttestation(value: unknown): boolean {
+  return value === FREE_PROVIDER_BILLING_ATTESTATION_VERSION
+}
+
+function freeProviderBillingAttested(): boolean {
+  return hasFreeProviderBillingAttestation(
+    Deno.env.get('JARVIS_FREE_PROVIDER_BILLING_ATTESTATION'),
+  )
+}
+
+
 type ProviderConfig = {
   name: string
   baseUrl: string
@@ -170,22 +189,25 @@ function configuredProviders(secretName = 'JARVIS_MODEL_PROVIDERS'): Provider[] 
 /** Exposes only safe provider identity metadata for the client-side fail-closed activation check. */
 export function getFreeProviderStatus(): {
   configured: boolean
+  billingVerified: boolean
   providers: { name: string; model: string; providerType: string; privacyMode: 'zdr' | 'standard'; pool: 'default' | 'standard' }[]
   speechProvider: 'cloudflare-whisper' | 'unconfigured'
 } {
-  const defaultProviders = configuredProviders('JARVIS_MODEL_PROVIDERS')
-  const standardProviders = configuredProviders('JARVIS_MODEL_PROVIDERS_STANDARD')
+  const billingVerified = freeProviderBillingAttested()
+  const defaultProviders = billingVerified ? configuredProviders('JARVIS_MODEL_PROVIDERS') : []
+  const standardProviders = billingVerified ? configuredProviders('JARVIS_MODEL_PROVIDERS_STANDARD') : []
   const providers = [
     ...defaultProviders.map((provider) => ({ ...provider, pool: 'default' as const })),
     ...standardProviders.map((provider) => ({ ...provider, pool: 'standard' as const })),
   ]
   const accountId = Deno.env.get('CLOUDFLARE_ACCOUNT_ID')?.trim()
   const apiToken = Deno.env.get('CLOUDFLARE_API_TOKEN')?.trim()
-  const speechProvider = /^[a-f0-9]{32}$/i.test(accountId ?? '') && apiToken
+  const speechProvider = billingVerified && /^[a-f0-9]{32}$/i.test(accountId ?? '') && apiToken
     ? 'cloudflare-whisper'
     : 'unconfigured'
   return {
-    configured: providers.length > 0,
+    configured: billingVerified && providers.length > 0,
+    billingVerified,
     providers: providers.map(({ name, model, baseUrl, privacyMode, gateway, pool }) => ({
       name,
       model,
@@ -301,6 +323,11 @@ export async function startFreeModelStream(
   signal: AbortSignal,
   options: { pool?: ModelProviderPool; taskType?: FreeLlmApiTaskType } = {},
 ): Promise<{ response: Response; provider: string; diagnostics: ProviderRouteDiagnostics }> {
+  if (!freeProviderBillingAttested()) {
+    throw new ProviderUnavailableError(
+      'Cloud inference is disabled until the operator verifies the provider account is on a no-overage free plan and sets the current billing attestation.',
+    )
+  }
   const secretName = options.pool === 'standard'
     ? 'JARVIS_MODEL_PROVIDERS_STANDARD'
     : 'JARVIS_MODEL_PROVIDERS'
