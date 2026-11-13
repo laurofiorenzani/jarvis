@@ -596,3 +596,13 @@ The older `docs/PROJECT_DECISIONS.md`, `docs/architecture/IMPLEMENTATION_STATUS_
 - Also corrected the Jarvis Preview hostname matcher to use a literal escaped dot in the regex.
 - Deployed `jarvis-preview-api` v16. Production `jarvis-api` remains v32 and was not changed. No account/auth data or secrets were modified.
 - New Vercel Preview for commit `3ccda6096cceaf14a9810db54e4a5250dea0f033` is building; do not retest until it is READY. Verify health CORS response and authenticated follow-up before requesting another device test.
+
+
+## 2026-11-13 — iPhone authenticated API route normalization
+
+- The 06:58 iPhone Safari logs prove authentication is now successful: requests carry a valid Supabase `authenticated` JWT and user subject; `/v1/health` returns HTTP 200 on Preview function v16.
+- The screenshot's remaining “Não consegui processar esta mensagem” is downstream of login. Authenticated GET requests to `/v1/conversations`, `/v1/memories`, and `/v1/memory-preferences` were reaching Preview function v16 but returning HTTP 404. No credential reset or duplicate account is indicated.
+- Updated route normalization to extract the route suffix after the final API `/v1/` segment, accommodating Supabase Edge Runtime path variants without depending on a specific function slug. Commit: `5da0146c858ab57b8a4087c45d0779ddee4d664d`.
+- Deployed this handler to non-production `jarvis-preview-api` v17 only. Production `jarvis-api` remains v32. No Auth accounts, credentials, production data, secrets, or production functions were changed.
+- Vercel Preview for the code commit is READY: `https://jarvis-b1ctjg3in-lauro-fiorenzani.vercel.app`. CI #817 and Observer #66 are running; do not treat runtime route behavior as verified until exact-head CI and an authenticated device/API check pass.
+- Next check: observe fresh authenticated iPhone requests on v17. If 404 persists, add a temporary safe diagnostic for the actual handler pathname and normalized route candidates before any further route changes. Keep PR #12 Draft.
