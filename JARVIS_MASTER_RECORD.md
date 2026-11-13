@@ -923,3 +923,15 @@ The available Supabase connector cannot inspect or set Edge Function secrets. Do
 5. Continue native iOS implementation preparation, but do not claim a native app until a macOS/Xcode build and physical-device validation exist.
 6. Continue integration registry design and vendor API feasibility checks without claiming BMW/Blink/Dreame/WhatsApp/CarPlay operations are live.
 
+
+
+## 2026-11-13 — Self-Evolution observer CI signal (read-only)
+
+- Continued the isolated `work/self-evolution-engine-foundation` branch; latest commit `762488c23845c81cf1a5195fda3bc2716c0a5b76`.
+- Extended `.github/workflows/jarvis-readonly-observer.yml` with read-only GitHub Actions metadata retrieval for the latest repository CI run. Workflow permissions are limited to `contents: read` and `actions: read`; output is restricted to CI status, run number and observation timestamp. No logs, workflow payloads, prompts, user data, or tokens are emitted.
+- Verified the new observer workflow completed successfully (run ID `43436701988`) and logged `latest_repository_ci` with status `running` and run number 888 at observation time.
+- Added a regression test proving CI/deployment metadata is reduced to allowlisted fields and that repository names, deployment IDs and bearer-like strings are not retained.
+- The first validation attempt exposed a pre-existing test expectation bug: the triage test manually supplied an ISO timestamp without milliseconds but expected milliseconds. Corrected the assertion to match the explicit input; no production logic was changed.
+- Exact latest-head Observer Validation #100 passed on `762488c23845c81cf1a5195fda3bc2716c0a5b76` (tests, typecheck/build and lint all successful). Full repository CI #889 was still running at last check. This branch is not merged or production-enabled; scheduled observation will not become active until the workflow is merged to the default branch.
+- Deployment metadata observation remains pending; no Vercel token or deployment write permission was added. No automated remediation, database persistence, self-approval, merge, or production deployment was introduced.
+
