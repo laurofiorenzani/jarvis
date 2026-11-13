@@ -1,6 +1,6 @@
 import { createClient } from '@supabase/supabase-js'
 import { getApiRoutePathCandidates } from './route-path.ts'
-import { extractSpeechTranscript } from './speech-transcript.ts'
+import { extractSpeechTranscript, isCloudflareDailyQuotaExhausted } from './speech-transcript.ts'
 import { getFreeProviderStatus, startFreeModelStream } from './model-router.ts'
 import { isSemanticMemoryId, isSafeAutoMemorySource, mergeSemanticMemoryPreferences, normalizeSemanticMemoryQuery, parseAutoMemoryCandidates, parseSemanticMemoryCandidate, parseSemanticMemoryDecision, parseSemanticMemorySearch } from './semantic-memory.ts'
 
@@ -318,8 +318,7 @@ Deno.serve(async (request) => {
     if (!upstream) return error('service_unavailable', 'Speech transcription service could not be reached.', 503, true, cors)
     const payload = await upstream.json().catch(() => null)
     if (!upstream.ok) {
-      const providerErrors = isRecord(payload) && Array.isArray(payload.errors) ? payload.errors : []
-      const dailyQuotaExhausted = providerErrors.some((item) => isRecord(item) && String(item.code) === '3036')
+      const dailyQuotaExhausted = isCloudflareDailyQuotaExhausted(payload)
       console.warn('[jarvis] Cloudflare speech provider returned non-success status', { status: upstream.status, code: dailyQuotaExhausted ? 'daily_free_allocation_exhausted' : 'provider_error' })
       if (dailyQuotaExhausted) {
         const now = new Date()
