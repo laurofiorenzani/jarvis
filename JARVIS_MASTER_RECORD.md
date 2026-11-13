@@ -1019,3 +1019,27 @@ The available Supabase connector cannot inspect or set Edge Function secrets. Do
 - Source review confirmed the voice loop intentionally does not fall back to browser/OS Web Speech when cloud STT is unavailable, because that could send microphone audio to a different vendor and violate the configured cloud-only privacy boundary.
 - The prior missing-transcriber error incorrectly told an already-authenticated user to sign in again. Updated src/lib/voice.ts on PR #13 to say that cloud transcription is unavailable and to verify the account connection plus an approved speech provider. This changes diagnostic wording only; it does not enable a provider, change privacy routing, or claim voice is fixed.
 - Commit: f22fce69dd0645ff8e10b9125c2b9e7687ad6891. Automated validation of this latest commit is pending; Vercel's Hobby build-rate-limit remains an external blocker.
+
+
+## 2026-11-13 — continuation session: live Preview evidence and PR state reconciliation (12:59 UTC)
+
+### Attachment evidence reviewed
+- The supplied browser screenshot shows the Cloud Brain login UI returning the generic message “Cloud service returned an unexpected error”. The iPhone voice diagnostics screenshot shows Cloud Account Connected, recogniser running, 5 sessions, 3 transcription failures, 0 accepted utterances/wakes, and 0 audio handed to the OS. Its displayed “sign in again” detail is stale relative to the source-level wording correction committed later; it is not proof that the new wording has shipped to the device.
+
+### Live logs after the previous deployment
+- Authenticated iPhone requests against Preview v23 at 12:49:50 UTC returned HTTP 200 for health, conversations, memories, memory preferences, semantic-memory candidates and provider-status.
+- The same session's provider-preferences GET returned HTTP 503 because the shared table did not yet exist at 12:49:50 UTC. This predates migration 20261113125425, applied at 12:54 UTC. No fresh authenticated request after migration has yet been observed; do not mark that endpoint as verified until it is re-requested.
+- The 12:44:42 UTC Preview v22 BootFailure is historical and resolved by active Preview v23. Do not repeat that diagnosis unless a new v23 boot error appears.
+
+### Current branch/PR record
+- PR #13 body was corrected to remove stale claims that the migration was pending and Preview was v21. It now records the actual shared-schema migration, Preview v23 / Production v32, the post-migration verification gate, voice-provider configuration requirements, Vercel Hobby build-rate-limit, and exact-head CI status.
+- PR #13 remains OPEN/DRAFT and unmerged. Head at update: e172ab66d9932b5b73fba6c6c207d6879030582b.
+- Current combined status reports Vercel failure due to Hobby build-rate-limit. GitHub Actions connector returned no run for the exact head. Earlier CI #871 at code head 495549ade7c5777fca0f0dd5b0b5c38ec6f0eac7 is historical evidence only and does not validate current commits.
+- Latest READY Vercel Preview remains jarvis-mjbu1qt4d-lauro-fiorenzani.vercel.app from earlier commit 73f8ad7a5bc7d5e6e4aaf0116ec6044504459ac8; it is not the current branch head.
+
+### Next actions
+1. Obtain a fresh authenticated Preview request from the existing owner session and verify provider-preferences returns 200; repeat with the second existing account and confirm per-user isolation without creating or enabling preference rows.
+2. Verify presence (not value) of CLOUDFLARE_ACCOUNT_ID and CLOUDFLARE_API_TOKEN in Supabase Edge Function secrets through a supported secure settings surface. If missing, ask the owner to add them directly in Supabase; never collect secrets in chat.
+3. Verify token scope and Cloudflare Workers AI free allocation; test short non-sensitive PT-BR and English audio only after the provider is configured.
+4. Keep Production jarvis-api v32 unchanged; rerun exact-head CI after the free build quota recovers.
+5. Continue independent work on FreeLLMAPI private hosting, memory, native iOS, web and Family CFO without creating duplicate projects or recurring costs.
