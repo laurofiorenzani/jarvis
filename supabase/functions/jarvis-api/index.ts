@@ -152,8 +152,10 @@ Deno.serve(async (request) => {
     ? rawPath.slice(functionMount.index! + functionMount[0].length) || '/'
     : rawPath
   const stripVersion = (value: string) => value.replace(/^\/v1(?=\/|$)/, '').replace(/\/$/, '') || '/'
-  const lastApiVersion = rawPath.lastIndexOf('/v1/')
-  const apiRoutePath = lastApiVersion >= 0 ? rawPath.slice(lastApiVersion + 3) : stripVersion(suffixPath)
+  // The first /v1/ in a Supabase URL belongs to the function mount
+  // (/functions/v1/<slug>), not the Jarvis API. Prefer the path after the
+  // actual function mount and strip only the optional API version there.
+  const apiRoutePath = stripVersion(suffixPath)
   const pathCandidates = [...new Set([
     rawPath, suffixPath, stripVersion(rawPath), stripVersion(suffixPath), apiRoutePath,
   ])]
@@ -311,7 +313,13 @@ Deno.serve(async (request) => {
       if (cause instanceof Error && cause.message === 'body_too_large') return error('invalid_request', 'Audio segment is too large.', 413, false, cors)
       return error('invalid_request', 'Audio segment is missing.', 400, false, cors)
     }
-    if (audio.byteLength < 1_200) return response({ version: VERSION, text: '' }, 200, cors)
+    // Short utterances on iOS Safari can produce compact MP4 segments.
+    // Do not silently acknowledge them as successful empty transcripts; only
+    // discard truly empty/tiny payloads and let the provider decode short speech.
+    if (audio.byteLength < 256) {
+      console.info('[jarvis] ignored near-empty speech segment', { bytes: audio.byteLength, mimeType })
+      return response({ version: VERSION, text: '' }, 200, cors)
+    }
     const upstream = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-transcribe:generateContent', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
