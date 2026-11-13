@@ -25,6 +25,10 @@ Workers Free includes 10,000 Neurons per day. When that daily free allocation is
 
 If the account is on Workers Free, the daily limit fails closed rather than converting the JARVIS app into a paid service. Do not upgrade or enable paid billing to bypass quota exhaustion.
 
+## Supabase execution region
+
+JARVIS sends `x-region: eu-west-3` on all Preview Edge Function requests, matching the Supabase Postgres project region (Paris). The function's CORS policy explicitly permits this header. Verify the response `x-sb-edge-region` or Edge Function log metadata shows `eu-west-3`; this pins Supabase execution to the database region, but does not make the subsequent Cloudflare inference request EU-only.
+
 ## Data handling and cross-border processing
 
 Cloudflare states that standard, stateless Workers AI inference requests have zero data retention and that Customer Content is not used to train AI models. Operational metadata such as model IDs, timestamps, sizes, latency and neuron counts may still be retained. Do not enable AI Gateway content logging/caching or stateful features for this route. Third-party model licenses still apply; review the selected model's license.

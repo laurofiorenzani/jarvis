@@ -144,7 +144,7 @@ jobs:
             --header "apikey: $apikey" \
             --header "Origin: https://jarvis-lauro-fiorenzani.vercel.app" \
             --header "Access-Control-Request-Method: GET" \
-            --header "Access-Control-Request-Headers: apikey,authorization,x-jarvis-api-version")"
+            --header "Access-Control-Request-Headers: apikey,authorization,x-jarvis-api-version,x-region")"
           grep -Fqi "access-control-allow-origin: https://jarvis-lauro-fiorenzani.vercel.app" <<< "$headers"
           grep -Eqi "access-control-allow-headers:.*apikey" <<< "$headers"
 
