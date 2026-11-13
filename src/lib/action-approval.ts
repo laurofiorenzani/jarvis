@@ -1,12 +1,10 @@
 /**
- * Pure, fail-closed primitives for the future cloud action-approval service.
- *
- * This module does not persist approvals or execute integrations. The cloud
- * service must still enforce atomic one-time transitions, account-scoped RLS,
- * expiry, session binding, and server-side execution.
+ * Pure, fail-closed client/domain primitives for the cloud action-approval service.
+ * Persistence, atomic transitions and execution claims live in the server-only
+ * Supabase RPC layer; this module never executes integrations itself.
  */
 export type ApprovalRiskClass = 'READ' | 'ROUTINE' | 'APPROVAL_REQUIRED' | 'DENY'
-export type ApprovalStatus = 'pending' | 'approved' | 'rejected' | 'expired' | 'cancelled' | 'executed'
+export type ApprovalStatus = 'pending' | 'approved' | 'rejected' | 'expired' | 'cancelled' | 'executing' | 'executed' | 'failed'
 
 export type JsonValue =
   | null
