@@ -728,3 +728,9 @@ The older `docs/PROJECT_DECISIONS.md`, `docs/architecture/IMPLEMENTATION_STATUS_
 4. Then run synthetic chat and PT/EN Whisper smoke tests before any personal content is routed.
 
 The available Supabase connector cannot inspect or set Edge Function secrets. Do not request or paste the token in chat. No production function, production secret, billing plan, user account or personal data was changed.
+
+
+### 2026-11-13 CI correction and deployment boundary
+- CI #828 on commit `830c44d261ecd2fbf0cfd92f180140223357c980`: frontend typecheck/build/tests/lint and provider-privacy tests passed; Supabase Edge Function typecheck failed only because TypeScript treats the request audio as `Uint8Array<ArrayBufferLike>`, not a valid `BodyInit`. Corrected in commit `d88dabd43dc3c40ef4b6c972bd1a01f215c6db4a` by copying the bytes into a concrete `ArrayBuffer` before the Cloudflare Whisper fetch. A fresh full CI run is still required on the corrected head.
+- Observer Validation #77 passed on `830c44d`. Vercel Preview for `830c44d` is READY; Vercel Preview for `d88dabd` is building. Neither is production.
+- Important deployment boundary: the Cloudflare provider changes are committed to the PR #12 source branch and the Vercel frontend Preview only. Supabase `jarvis-preview-api` remains deployed at v19 and production `jarvis-api` remains v32. The new Edge Function code has NOT yet been deployed to either Supabase function. Do not describe the Cloudflare provider as active, and avoid personal voice tests against the old preview backend until the new function is deployed with the owner's Cloudflare secrets.
