@@ -24,7 +24,7 @@ create or replace function public.jarvis_cfo_amount_matches_currency_exponent(
 ) returns boolean
 language sql
 stable
-security definer
+security invoker
 set search_path = public
 as $$
   select exists (
