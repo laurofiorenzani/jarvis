@@ -1919,3 +1919,13 @@ J. Next conversation: Resume from this ledger. PR #32 prior head CI #1019 passed
 - Current PR #32 exact head must be queried after these commits; earlier CI #1022 failure must not be represented as an SQL test failure or as validation success. The migration application itself did complete before the optional container collision.
 - Vercel Hobby cap is still active; no deployment retries/upgrades. Existing bot note showed a preview ready for the previous commit but no new deployment should be triggered by manual action.
 - Next: wait for exact-head CI after these two isolated commits; if startup succeeds, inspect SQL test assertions and two-user isolation result. Keep PR Draft; no merge, live migration, registry seed or financial data.
+
+
+## 2026-11-13 — CFO validator privilege hardening follow-up
+
+- Reviewed PR #32 migration `20261113190000_jarvis_cfo_currency_exponent.sql` against the Supabase security guidance. The amount-validation function reads the private currency registry and was initially declared `SECURITY DEFINER` in the exposed `public` schema.
+- Changed the function to `SECURITY INVOKER`. The registry grants SELECT only to `service_role`; the function's EXECUTE privilege is revoked from PUBLIC, anon and authenticated and granted only to service_role. This avoids an unnecessary RLS-bypass execution context while preserving the intended service-role-only check.
+- Commit: `125aa9e881c833ec086c3fb7ee3813d169b7a36e` on `work/cfo-currency-exponent-schema-20261113`; PR #32 remains Draft and open. The updated migration was re-fetched from the branch and confirmed to contain `SECURITY INVOKER` and no `SECURITY DEFINER`.
+- Validation status: source-level verification only. No local Supabase CLI/database is available in this connector session, and GitHub Actions run details were not returned by the connected workflow-runs endpoint. GitHub combined status for this new commit currently reports only Vercel pending. Do not claim SQL/CI success until exact-head CI and SQL tests complete.
+- Safety: no production migration, deployment, registry seed, financial data, account access or provider activation. No paid upgrade or deployment-limit bypass.
+- Next: confirm exact-head GitHub Actions CI for commit `125aa9e881c833ec086c3fb7ee3813d169b7a36e`; verify SQL tests and two-user RLS isolation; then review any new security-advisor findings. Keep PR #32 Draft until human review.
