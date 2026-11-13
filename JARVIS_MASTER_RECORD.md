@@ -778,3 +778,30 @@ The available Supabase connector cannot inspect or set Edge Function secrets. Do
 - Supabase Auth logs during the screenshot time window show a password-grant token request returned HTTP 200, followed by a logout HTTP 204; Preview function logs show a health preflight OPTIONS 204. This does not identify a failed password or prove the GET health request completed. Vercel runtime error aggregation returned no errors for the requested window, and no Preview runtime error logs were returned. Treat the screenshot as a stale-Preview/client bootstrap symptom until retested on the exact-head canonical Preview.
 - User requests parallel autonomous progress and has broadly authorized project decisions. Continue reversible implementation and validation; preserve spouse account's separate consent for external provider routing. Do not merge or deploy to production, change shared production schema, or expose secrets/data without the appropriate explicit release gate.
 - Next physical validation: open only the exact-head canonical Preview above, sign in using the existing account, verify dashboard bootstrap/conversations, then test PT/EN voice. Do not re-enter credentials into the stale gateway Preview. Never request the password or ask the user to paste tokens into chat.
+
+## 2026-11-13 12:50 Dublin — live continuity checkpoint
+
+### Verified repository and release state
+- Canonical application repository remains `laurofiorenzani/jarvis`; current integrated candidate is PR #12, branch `work/jarvis-canonical-integration`, HEAD `0cf362fd8e6fbf95303cf38e124631f74596f3ac`.
+- Exact-head GitHub Actions CI #876 and JARVIS Observer Validation #89 both completed successfully. Vercel status is successful and the exact-head Preview is READY: https://jarvis-oi80rlfsj-lauro-fiorenzani.vercel.app.
+- PR #12 remains OPEN and Ready for Review; it is not merged to main. Production remains separate.
+- PR #13 is the FreeLLMAPI/STT quota-guard workstream, OPEN/DRAFT. Its previous latest code commit `93195eba801ea40525476e1f53913e10f2cf327c` had no exact-head Actions run returned and Vercel was blocked by the Hobby build-rate limit. A subsequent documentation-only checkpoint commit `a770b0fb3150e7abf7fa127fdf01184512e52ae8` records the comparison; do not treat the older READY preview as containing the STT test changes.
+- Comparing PR #13's recorded base `a0e083a77a202e231550153aaca6890d1e65d87f` to PR #12's current head found one documentation-only commit (10 lines); no code divergence in that comparison. This does not itself authorize merging either PR.
+- The latest read of the master record confirms the remaining mobile target is a native iOS deliverable (Capacitor wrapper/native adapters are the documented first route); the native iOS target, Keychain adapter, physical device E2E and TestFlight signing remain outstanding.
+- Family CFO is not documented as implemented in the canonical app branch. The only located CFO tracking issue is in the private planning/workbench repository; do not duplicate the database, auth, or memory backend. CFO must be implemented as an account-scoped agent/module over existing Supabase identity and approved data sources, not direct bank access.
+- Existing semantic-memory foundation and account separation remain the selected memory architecture. No second memory store is to be introduced.
+- Cloudflare Workers Free remains the confirmed tier; no paid plan, billing change, provider activation, audio inference, production deployment or production data mutation was performed in this checkpoint.
+
+### Next execution gates
+1. Keep PR #12 as the validated integrated candidate; perform physical iPhone PT-BR/en-GB voice → transcript → authenticated turn → audible TTS validation only against its exact READY Preview.
+2. Restore exact-head automated validation for PR #13 without upgrading Vercel or weakening free-tier limits. Deno tests remain unexecuted until a supported runner is available.
+3. Reconcile FreeLLMAPI gateway hosting using only already-available free infrastructure; no cloud VM availability or secure production hosting is yet verified.
+4. Start native iOS work only on a branch based on the validated integration line, preserving the amber HUD and current auth/memory clients; require macOS/Xcode signing for a genuine device/TestFlight build.
+5. Define Family CFO domain interfaces and consented file-import path on the existing backend; do not connect bank accounts or move money. Treat financial figures as user-supplied/imported records with provenance and freshness.
+6. Continue BMW, Blink, Dreame, messaging and navigation capability discovery through official APIs and account-level authorization; no unsupported control claims.
+
+### Handoff
+- Repo: `laurofiorenzani/jarvis`.
+- Validated integrated candidate: PR #12, `work/jarvis-canonical-integration`, HEAD `0cf362fd8e6fbf95303cf38e124631f74596f3ac`.
+- Gateway/STT workstream: PR #13, `work/jarvis-freellmapi-cloud-gateway`; its latest recorded documentation checkpoint is `a770b0fb3150e7abf7fa127fdf01184512e52ae8`; exact-head code validation and deploy are still pending.
+- No merge, production promotion, account changes, secrets, billing or irreversible cleanup.
