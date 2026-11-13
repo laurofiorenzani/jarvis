@@ -576,3 +576,13 @@ The older `docs/PROJECT_DECISIONS.md`, `docs/architecture/IMPLEMENTATION_STATUS_
 - Corrected supabase/functions/jarvis-api/index.ts on work/jarvis-canonical-integration to strip the actual Supabase function mount generically, covering both production and preview slugs. Commit: 2b5bb37abd6c427b44c8139d421f4f76cb08c167.
 - This is a source/PR change only. It has not been deployed to Supabase production and no account, password, session, auth setting, or production data was changed.
 - Required validation: exact-head CI and Observer checks, new Vercel preview, and then physical iPhone sign-in again. After that, confirm authenticated health, conversation creation, PT/EN STT and TTS. Keep PR #12 Draft and do not promote to production until these gates pass.
+
+
+## 2026-11-13 — follow-up after iPhone screenshot (health route and Preview CORS)
+
+- The latest iPhone screenshot shows the sign-in form remains visible and the message is now “Cloud service could not be reached.” This is different from the earlier “session expired” message and indicates activation is failing during the post-login health request, not proof that credentials are wrong.
+- Supabase request logs for the iPhone showed GET /functions/v1/jarvis-preview-api/v1/health reaching Edge Function version 12 with HTTP 401 at 06:50:38 Dublin time. The first route-normalization change was therefore insufficient.
+- Added an explicit public health-route match for any mounted function path ending in /v1/health, then deployed jarvis-preview-api v13.
+- Also found that every immutable Vercel Preview gets a new hostname. Added a narrowly scoped CORS rule accepting only HTTPS hosts matching this Jarvis project's Vercel deployment naming pattern (jarvis-…-lauro-fiorenzani.vercel.app), not arbitrary Vercel origins. Deployed jarvis-preview-api v14.
+- Production jarvis-api remains v32 and has not been deployed or modified. No Auth accounts, credentials, production data, or Auth settings were changed.
+- Current code commits: route match 53c200a3f34b18b6da16926622bb3e7a45f5f2c6; Preview CORS 25bd55b45a2a2676a3bed7f4d40a0a454eefae92. Require a new Preview build and verify OPTIONS/CORS + GET health returns 200 before asking for another iPhone retest. PR #12 remains Draft.
