@@ -1330,9 +1330,8 @@ Latest verified CI at this checkpoint: PR #27 #961 success; PR #22 #959 success;
 ## 2026-11-13 — multi-front continuation checkpoint
 
 ### Canonical branch and PR integrity
-- Canonical development remains `work/jarvis-canonical-integration`; latest observed head is `6a49b18309dd5a07465875877248d15f365b395f`. The commit after `86d171b3e869bee138795342963995adaa302b93` is documentation-only. Do not treat `main` as the current app integration branch or merge the divergent histories wholesale.
-- PRs #22, #23, #25, #26 and #27 were based on the earlier canonical head `86d171b3e869bee138795342963995adaa302b93`; they are now one documentation commit behind. Their ledger edits overlap the canonical master record. Do not force-push or bulk-update branches; inspect and reconcile the ledger before any merge.
-- PR #28 (`work/ios-secure-storage-v8`) was created from the latest canonical head `6a49b18309dd5a07465875877248d15f365b395f`; it is a separate iOS adapter change and remains Draft.
+- Canonical development remains `work/jarvis-canonical-integration`; latest observed head is `069664cd5bcccdbf28d85b91a44cb3de6503cbaa`. Commits `6a49b183...` and `069664cd...` after `86d171b3...` are documentation-only. Canonical CI #995 and Observer Validation #157 both SUCCESS on `069664cd...`. Do not treat `main` as the current app integration branch or merge the divergent histories wholesale.
+- PRs #22, #23, #25, #26 and #27 were based on `86d171b3...`; they are now two documentation-only commits behind canonical. Their ledger edits overlap the canonical master record. PR #28 (`work/ios-secure-storage-v8`) was based on `6a49b183...` and is now one documentation-only commit behind. Do not force-push or bulk-update branches; inspect and reconcile the ledger before any merge. PR #28 remains Draft.
 
 ### Exact-head validation snapshot
 - PR #22 CFO read-only persistence: head `c3d3edc2ed91f88994cb93bb6acc7843f09992c0`; exact-head CI #984 SUCCESS. Migration remains unapplied to the live Supabase project.
@@ -1352,7 +1351,7 @@ Latest verified CI at this checkpoint: PR #27 #961 success; PR #22 #959 success;
 ### Self-Evolution and hosting
 - The read-only Observer now reads the canonical branch's GitHub commit-status API and selects only the `Vercel` context. It emits only normalized status and observation time, uses `statuses: read`, and does not request a Vercel token or log deployment URLs/payloads.
 - The workflow is triggered by pushes to the canonical development branch. GitHub scheduled workflows run only from the repository default branch, so periodic monitoring is not active until this workflow is deliberately integrated into `main`. Do not merge the divergent app branch into `main` just to activate the schedule.
-- Current Vercel Hobby project hit the free API deployment limit (>100 deployments/day). Vercel status is failing for the current candidate; no paid upgrade was attempted. The latest confirmed deployments are previews, not a verified production release. Avoid repeated deployment attempts until the free limit resets.
+- The connected Vercel Hobby project hit the free API deployment limit (>100 deployments/day); current canonical and PR candidate Vercel checks are failing. No paid upgrade was attempted. A Production deployment is READY from legacy `main` commit `9ae5ec846b6b20a17b2d264e699d6234c4284b23` and still owns aliases `jarvis-lauro-fiorenzani.vercel.app` and `jarvis-git-main-lauro-fiorenzani.vercel.app`; this is the old app, not the current canonical candidate. The latest canonical-branch Preview is READY only at older commit `b18af5a36938a5ae3521d277075957527f16c9c6`, not current canonical `069664cd...`. No current PR #22/#23/#25/#26/#27/#28 head has a verified Vercel Preview. Keep the existing Production alias unchanged; do not attempt more deployments or upgrades until free capacity resets and a reviewed release is ready.
 - Cloudflare has no JARVIS Worker or AI Gateway. Workers Free limits are 100,000 requests/day and 10 ms CPU per invocation; Workers AI has 10,000 Neurons/day, after which Free requests fail rather than silently becoming paid. No paid plan or billing change is authorized.
 - Oracle Always Free A1 offers up to 2 OCPUs/12 GB RAM, but Oracle may reclaim an instance when CPU p95, network and (for A1) memory utilization are each below 20% over seven days. The Oracle tenancy is not connected/verified. It is a recovery-prone candidate, not a proven 24/7 host.
 - No production deployment, migration, data mutation, secret access, provider inference, billing change or paid upgrade occurred during this checkpoint.
@@ -1367,8 +1366,8 @@ Latest verified CI at this checkpoint: PR #27 #961 success; PR #22 #959 success;
 - A free Apple Developer account supports testing on personal devices through Xcode, but requires a macOS/Xcode host and personal provisioning expires after seven days. TestFlight/App Store distribution requires the $99/year Apple Developer Program and is excluded by the €0 recurring-cost rule.
 
 ### Next actions
-1. Keep PR #25's validated Observer code unchanged; reconcile its one-commit ledger/base drift before any merge and preserve the Vercel free-tier failure signal.
-2. Continue PR #28 from the validated adapter; the remaining gate is a physical iPhone Keychain/logout/reinstall test when a macOS/Xcode host is available.
+1. Keep PR #25's validated Observer code unchanged; reconcile its two-commit ledger/base drift before any merge and preserve the Vercel free-tier failure signal.
+2. Continue PR #28 from the validated adapter; reconcile its one-commit ledger/base drift and retain the physical iPhone Keychain/logout/reinstall test as a device gate.
 3. Preserve PR #22/#23/#26/#27 as separate reviewable changes; do not merge as a batch. Reconcile the canonical-ledger-only base drift before any merge.
 4. Keep provider pools disabled until per-profile free quota, no-card/no-overage, EEA eligibility, retention/training, downstream chain and per-account consent are verified.
 5. Design an independent encrypted backup path before importing real CFO or personal-memory data; test restoration, not just backup creation.
