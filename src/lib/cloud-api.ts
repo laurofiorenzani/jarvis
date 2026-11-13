@@ -32,6 +32,7 @@ export function portugueseApiMessage(message: string, code: string): string {
   if (code === 'rate_limited') return 'O JARVIS recebeu muitas solicitações em pouco tempo. Aguarde um instante e tente novamente.'
   if (code === 'quota_exhausted') return 'A cota gratuita diária de IA foi atingida. Ela é renovada à meia-noite UTC.'
   if (code === 'unauthenticated') return 'Sua sessão expirou. Entre novamente.'
+  if (code === 'forbidden' && /Enable an AI provider pool/i.test(message)) return 'Ative um pool de provedores de IA nas configurações do JARVIS para esta conta.'
   if (code === 'forbidden') return 'Você não tem permissão para esta operação.'
   if (code === 'invalid_request') return 'Não consegui processar esta mensagem. Verifique o conteúdo e tente novamente.'
   return message
