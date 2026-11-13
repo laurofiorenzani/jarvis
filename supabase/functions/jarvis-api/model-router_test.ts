@@ -9,6 +9,7 @@ import {
   freeLlmApiTaskHeaders,
   FREE_PROVIDER_BILLING_ATTESTATION_VERSION,
   hasFreeProviderBillingAttestation,
+  assertFreeProviderBillingAttestation,
   isFreeLlmApiModel,
   isAllowedStandardProvider,
   redactProviderDiagnostic,
@@ -26,6 +27,14 @@ Deno.test('cloud inference requires an exact, current free-plan billing attestat
   if (!hasFreeProviderBillingAttestation(FREE_PROVIDER_BILLING_ATTESTATION_VERSION)) {
     throw new Error('current free-plan attestation was rejected')
   }
+  for (const invalid of [undefined, 'true', '2026-11-13-v0', 'paid-plan']) {
+    let caught: unknown
+    try { assertFreeProviderBillingAttestation(invalid) } catch (error) { caught = error }
+    if (!(caught instanceof ProviderUnavailableError)) {
+      throw new Error('cloud inference did not fail closed for an invalid billing attestation')
+    }
+  }
+  assertFreeProviderBillingAttestation(FREE_PROVIDER_BILLING_ATTESTATION_VERSION)
 })
 
 Deno.test('default provider routing does not add privacy overrides', () => {
