@@ -1008,3 +1008,13 @@ The available Supabase connector cannot inspect or set Edge Function secrets. Do
 - The implementation was behaving correctly: the synthetic outside-period transfer leg was dated 19 days after the in-period leg, outside the intentionally conservative three-calendar-day transfer-matching window. The test therefore correctly did not classify it as an internal transfer.
 - Corrected both synthetic outside-period dates to 2026-12-01, one day after the 2026-11-30 reporting-period end, so the fixture tests the intended boundary while satisfying the matching rule. Test-only commit `9db9f6b05d04baa9f9b05961762129bd2f7ebbd2`.
 - No production data, real transactions, schema, bank integrations or provider settings were involved. Fresh exact-head CI is required.
+
+
+## 2026-11-13 — CFO cross-period fixture follow-up
+
+- Exact-head CI #903 (PR #12 merge ref dfbab2fd6d991058acd11f32d9ed493b58c4db5e) confirmed the prior fixture correction was incomplete: the in-period debit inherited validTransaction.postedAt = 2026-11-13, while the outside-period credit was 2026-12-01. The 18-day gap correctly exceeded the three-day matching rule, so the assertion expected a transfer match that should not occur.
+- Updated the synthetic reporting-period fixtures to use 2026-11-30 for the in-period leg and 2026-12-01 for the outside-period leg in both debit-in-period and credit-in-period cases. This is a test-only correction; production transfer-matching logic remains unchanged.
+- Follow-up commits: bb5c52a267de0e424dc0774e571578a66dc5e7f4 (fixture alignment) and 92abf1e7649655fb5fdcde7a2ce704c16a30af86 (simplify fixture expression). Fresh exact-head CI is pending; do not mark validated yet.
+- CI #903 typecheck/build passed, 216 tests passed, one CFO test failed, two skipped; lint and later Deno/Supabase integration steps were skipped because the test job stopped. Observer Validation #114 passed on the previous documentation head 88065acc. 
+- Read-only platform recheck: Supabase remains ACTIVE_HEALTHY in eu-west-3, production jarvis-api v32 and preview jarvis-preview-api v23; Cloudflare connector identity is available; latest five Vercel deployments remain READY but latest canonical preview is still older commit 668125a. No new deployment was created due the recorded Hobby build-rate limit.
+- No production changes, credentials/secrets, provider activation, billing, user data or bank data were modified.
