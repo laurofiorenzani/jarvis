@@ -117,7 +117,11 @@ function configuredProviders(secretName = 'JARVIS_MODEL_PROVIDERS'): Provider[] 
     if (item.taskType !== undefined && !['auto', 'chat', 'code'].includes(String(item.taskType))) continue
     const gateway = item.gateway === 'freellmapi' ? 'freellmapi' : undefined
     const taskType = item.taskType === 'chat' || item.taskType === 'code' ? item.taskType : 'auto'
-    if (gateway === 'freellmapi' && !isFreeLlmApiModel(item.model)) continue
+    // Keep the local-first multi-provider gateway isolated from the default
+    // privacy pool. It belongs only in the explicitly standard pool.
+    if (gateway === 'freellmapi' &&
+        (secretName !== 'JARVIS_MODEL_PROVIDERS_STANDARD' || !isFreeLlmApiModel(item.model))) continue
+    if (secretName === 'JARVIS_MODEL_PROVIDERS_STANDARD' && item.privacyMode === 'zdr') continue
     let url: URL
     try { url = new URL(item.baseUrl) } catch { continue }
     // Secrets are server-side only. Reject non-HTTPS endpoints and URL-embedded
