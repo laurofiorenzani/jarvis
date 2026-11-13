@@ -27,3 +27,14 @@ export function countSpeechCandidates(payload: unknown): number {
   const candidates = (payload as { candidates?: unknown }).candidates
   return Array.isArray(candidates) ? candidates.length : 0
 }
+
+/** Detect Cloudflare Workers AI's explicit daily free-allocation exhaustion error. */
+export function isCloudflareDailyQuotaExhausted(payload: unknown): boolean {
+  if (!payload || typeof payload !== 'object' || Array.isArray(payload)) return false
+  const errors = (payload as { errors?: unknown }).errors
+  if (!Array.isArray(errors)) return false
+  return errors.some((item) => {
+    if (!item || typeof item !== 'object' || Array.isArray(item)) return false
+    return String((item as { code?: unknown }).code) === '3036'
+  })
+}

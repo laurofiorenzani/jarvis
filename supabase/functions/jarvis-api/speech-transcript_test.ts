@@ -1,4 +1,4 @@
-import { countSpeechCandidates, extractSpeechTranscript } from './speech-transcript.ts'
+import { countSpeechCandidates, extractSpeechTranscript, isCloudflareDailyQuotaExhausted } from './speech-transcript.ts'
 
 Deno.test('extracts and joins transcript text from provider parts', () => {
   const actual = extractSpeechTranscript({
@@ -33,4 +33,29 @@ Deno.test('extracts Cloudflare Workers AI Whisper transcript from the result env
 
 Deno.test('extracts and normalises a direct transcript string', () => {
   if (extractSpeechTranscript({ text: '  hello  ' }) !== 'hello') throw new Error('direct transcript was not normalised')
+})
+
+Deno.test('recognizes Cloudflare daily free allocation exhaustion by provider error code', () => {
+  if (!isCloudflareDailyQuotaExhausted({ success: false, errors: [{ code: 3036, message: 'quota exhausted' }] })) {
+    throw new Error('Cloudflare daily quota exhaustion was not detected')
+  }
+  if (!isCloudflareDailyQuotaExhausted({ errors: [{ code: '3036' }] })) {
+    throw new Error('string-form Cloudflare quota code was not detected')
+  }
+})
+
+Deno.test('does not classify unrelated, malformed, or successful provider responses as quota exhaustion', () => {
+  const cases: unknown[] = [
+    null,
+    {},
+    { errors: '3036' },
+    { errors: [{ code: 1000 }] },
+    { success: true, result: { text: 'hello' }, errors: [] },
+    { errors: [null, '3036', {}] },
+  ]
+  for (const payload of cases) {
+    if (isCloudflareDailyQuotaExhausted(payload)) {
+      throw new Error('unrelated provider response was classified as daily quota exhaustion')
+    }
+  }
 })
