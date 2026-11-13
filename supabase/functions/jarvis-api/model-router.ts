@@ -141,6 +141,7 @@ function configuredProviders(): Provider[] {
 }
 
 /** Safe provider diagnostics; never returns secret values or environment variable names. */
+/** Exposes only safe provider identity metadata for the client-side fail-closed activation check. */
 export function getFreeProviderStatus(): {
   configured: boolean
   providers: { name: string; model: string; providerType: string; privacyMode: 'zdr' | 'standard' }[]
