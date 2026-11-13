@@ -1137,3 +1137,11 @@ The available Supabase connector cannot inspect or set Edge Function secrets. Do
 2. Inspect the FreeLLMAPI proxy and memory modules for isolated, testable improvements without duplicating the Supabase memory store.
 3. Keep Production v32 untouched; require exact-head CI and a deliberate release review before any merge or production deployment.
 4. Native iOS and Family CFO remain unimplemented in the audited PR branch; scope them as separate workstreams after confirming their existing source lineage.
+
+## 2026-11-13 — STT free-quota regression coverage
+- Added `isCloudflareDailyQuotaExhausted(payload)` to the existing speech-transcript helper module and routed the authenticated STT handler through it. This keeps the explicit Cloudflare error-code 3036 check isolated and independently testable.
+- Added Deno unit cases for numeric and string-form code 3036, unrelated provider errors, malformed payloads, and successful transcript responses.
+- Commits on `work/jarvis-freellmapi-cloud-gateway`: helper `5d487181a9da183ed9c60a14aceca09cb7a08097`; handler refactor `589c949c69855836cab929e61e7ade6cc0ddd893`; regression tests `45e75f7af25f5da55f5a25fbe09382147700e60e`.
+- Read-back verification confirms the helper is imported, used by the STT handler, and both positive and negative tests are present. These are source-presence checks only; Deno is not installed in the connected execution environment, so the unit tests have not been run locally.
+- GitHub Actions lookup currently returns no workflow run for the new test commit. Combined status currently reports the Vercel Hobby build-rate-limit failure; no green exact-head CI is claimed. Vercel Preview remains tied to earlier docs commit `6c0fdfce733991b2ca18d20ba90fb72c5019abc3`, not this code change.
+- No Cloudflare request, audio upload, provider activation, secret update, Supabase deployment, or production change was made.
