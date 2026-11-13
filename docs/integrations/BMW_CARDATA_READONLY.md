@@ -1,6 +1,6 @@
 # BMW CarData — read-only personal integration
 
-**Status:** adapter implemented in source; not connected, not enabled, no credentials stored.
+**Status:** read-only adapter and Vault token-storage source implemented; not deployed, not connected, no credentials stored.
 
 ## Official capability boundary
 
@@ -35,13 +35,13 @@ No tokens, VINs or customer data are embedded in source. The client never logs c
 Before connecting the vehicle:
 1. Owner creates a BMW CarData client ID in the official customer portal.
 2. Owner authorizes the device-code flow and explicitly grants only `openid`, `authenticate_user` and `cardata:api:read` initially.
-3. Implement a persistent, atomic Supabase budget RPC keyed by JARVIS user + UTC day. It must stop at 50 REST calls/day across all app instances; an in-memory counter is test-only.
-4. Implement encrypted server-side refresh-token storage with service-role-only access. Do not store refresh tokens in ordinary plaintext tables, logs, browser storage or source control.
-5. Add per-user consent, disconnect/revocation and token deletion flows.
+3. Implement a persistent, atomic Supabase budget RPC keyed by JARVIS user + UTC day. It must stop at 50 REST calls/day across all app instances; the injected budget interface currently has only a test implementation.
+4. Review and apply the Vault token migration only after CI/review; the migration and service-role helper are in source but not deployed. Do not store refresh tokens in ordinary plaintext tables, logs, browser storage or source control.
+5. Add authenticated OAuth device-consent, disconnect/revocation and token deletion routes. The server-side Vault helper is ready but no user route or token exists.
 6. Validate the available telematics keys for the actual iX1 in the BMW catalogue; do not assume every vehicle exposes the same data.
 7. Keep polling conservative. The API limit is 50/day; no aggressive refresh loops.
 
-The iOS Keychain adapter can later protect tokens on-device, but a cloud-first assistant also needs a secure server-side token vault. That storage layer has not yet been implemented.
+The migration `20261113220000_jarvis_bmw_cardata_vault.sql` and server helper `bmw-cardata-token-store.ts` now provide a Vault-backed refresh-token store in source. The application table stores only the Vault secret UUID, public client ID and expiry metadata; the encrypted token is held in `vault.secrets` and decrypted only by a service-role RPC. The migration is not deployed to production. The iOS Keychain adapter can later protect tokens on-device as an optional local cache.
 
 ## Explicitly out of scope
 
@@ -63,4 +63,4 @@ Remote actions remain unavailable unless BMW publishes a supported official comm
 
 ## Validation
 
-Unit tests use mocked HTTP responses and an in-memory budget only. No BMW account, client ID, VIN, token, vehicle data or network request is used by tests. Production activation is blocked until persistent budget, encrypted token storage and explicit owner authorization exist.
+Unit tests use mocked HTTP responses and in-memory budgets/RPC clients; the SQL test uses only a synthetic refresh token in the isolated CI Vault. No BMW account, real client ID, VIN, token, vehicle data or external network request is used by tests. Production activation is blocked until persistent daily budget, migration review/deployment, authenticated consent routes and explicit owner authorization exist.

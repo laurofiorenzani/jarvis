@@ -74,6 +74,9 @@ jobs:
       - name: Test semantic-memory validation and auto-capture policy
         run: deno test supabase/functions/jarvis-api/semantic-memory.deno.ts
 
+      - name: Test BMW CarData Vault token store
+        run: deno test supabase/functions/jarvis-api/bmw-cardata-token-store_test.ts
+
       - name: Type-check Supabase Edge Function
         run: deno check supabase/functions/jarvis-api/index.ts
 
