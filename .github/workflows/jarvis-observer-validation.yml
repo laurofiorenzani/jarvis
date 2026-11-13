@@ -7,11 +7,13 @@ on:
       - "src/lib/system-observer.ts"
       - "tests/system-observer.test.ts"
       - ".github/workflows/jarvis-observer-validation.yml"
+      - ".github/workflows/jarvis-readonly-observer.yml"
   pull_request:
     paths:
       - "src/lib/system-observer.ts"
       - "tests/system-observer.test.ts"
       - ".github/workflows/jarvis-observer-validation.yml"
+      - ".github/workflows/jarvis-readonly-observer.yml"
   workflow_dispatch:
 
 permissions:

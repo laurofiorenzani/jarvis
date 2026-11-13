@@ -1,5 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
+import { readFileSync } from 'node:fs'
 import {
   normalizeObservation,
   observationFingerprint,
@@ -97,4 +98,16 @@ test('normalizes CI and deployment metadata without retaining upstream payloads'
   assert.equal(deployment?.signalCode, 'deployment_running')
   assert.equal(deployment?.severity, 'info')
   assert.equal(JSON.stringify(deployment).includes('internal-deployment-id'), false)
+})
+
+test('read-only observer workflow stays bounded, read-only and validates health payloads', () => {
+  const workflow = readFileSync(new URL('../.github/workflows/jarvis-readonly-observer.yml', import.meta.url), 'utf8')
+  assert.match(workflow, /permissions:\s+contents:\s+read\s+actions:\s+read/)
+  assert.match(workflow, /timeout-minutes:\s+5/)
+  assert.match(workflow, /AbortController/)
+  assert.match(workflow, /payload\?\.status === 'ok'/)
+  assert.match(workflow, /branch=\$\{canonicalBranch\}&event=push/)
+  assert.match(workflow, /redirect:\s*'error'/)
+  assert.doesNotMatch(workflow, /secrets\./)
+  assert.doesNotMatch(workflow, /method:\s*'(?:POST|PUT|PATCH|DELETE)'/)
 })
