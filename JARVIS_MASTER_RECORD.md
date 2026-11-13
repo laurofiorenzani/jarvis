@@ -1330,7 +1330,7 @@ Latest verified CI at this checkpoint: PR #27 #961 success; PR #22 #959 success;
 ## 2026-11-13 — multi-front continuation checkpoint
 
 ### Canonical branch and PR integrity
-- Canonical development remains `work/jarvis-canonical-integration`; latest observed head is `069664cd5bcccdbf28d85b91a44cb3de6503cbaa`. Commits `6a49b183...` and `069664cd...` after `86d171b3...` are documentation-only. Canonical CI #995 and Observer Validation #157 both SUCCESS on `069664cd...`. Do not treat `main` as the current app integration branch or merge the divergent histories wholesale.
+- Canonical development remains `work/jarvis-canonical-integration`; latest observed head is `069664cd5bcccdbf28d85b91a44cb3de6503cbaa`. Commits `6a49b183...` and `069664cd...` after `86d171b3...` are documentation-only. Canonical CI #997 and Observer Validation #158 both SUCCESS on `069664cd...`; the earlier #995/#157 passed on `6a49b183...`. Do not treat `main` as the current app integration branch or merge the divergent histories wholesale.
 - PRs #22, #23, #25, #26 and #27 were based on `86d171b3...`; they are now two documentation-only commits behind canonical. Their ledger edits overlap the canonical master record. PR #28 (`work/ios-secure-storage-v8`) was based on `6a49b183...` and is now one documentation-only commit behind. Do not force-push or bulk-update branches; inspect and reconcile the ledger before any merge. PR #28 remains Draft.
 
 ### Exact-head validation snapshot
