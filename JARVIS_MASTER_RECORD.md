@@ -1225,3 +1225,42 @@ The available Supabase connector cannot inspect or set Edge Function secrets. Do
 - Native iOS project remains absent from canonical repository; Capacitor packaging/build, Keychain plugin wiring, physical-device test, CarPlay entitlement, and TestFlight are not complete.
 - Provider-preferences application contract/client/UI/routes remain absent from canonical branch even though the Supabase table and migration exist. PR #13's cohesive feature set still requires selective integration; exclude its duplicate `20261113110000` migration and do not enable either provider pool.
 
+
+
+## 2026-11-13 16:22 UTC — current cross-front handoff
+
+### Canonical GitHub development state
+- Canonical branch at start of this handoff: `work/jarvis-canonical-integration`, base `a88a1bc3967d6026ba53e2385289cacffd37da07`.
+- PR #17 (STT daily quota classifier) merged as `2e5474b4324d6057032985fb663f1c9906560629`; exact-head CI #926 and canonical CI #928 passed; Observer Validation #139 passed.
+- PR #18 (restore source provenance for the already-applied provider-preferences RLS initplan migration) merged as `428d42b52e2c917969ced3a11ba2eca7987cc4c0`; exact-head CI #929 passed. No live migration was applied.
+- PR #19 (private FreeLLMAPI reverse proxy and strict named-profile allowlist) merged as `36d4fa7d1491e44c5f97a0bab9800858def45815`; exact-head CI #934 passed, including build, tests, lint, provider privacy, isolated Supabase migrations, SQL isolation, two-user integration and CORS. This is a development-branch merge only; no gateway deployment, tunnel, secrets or inference.
+- PR #23 (account-scoped provider consent and privacy-separated Multi-AI routing) is READY FOR REVIEW, not merged. Code head `e67fd6ff53650888332a71bb9ff887162c74e6a2` passed exact-head CI #948, including typecheck/build, tests, lint, Deno, isolated local Supabase migrations, SQL isolation, two-user integration and CORS. A documentation-only follow-up commit `5a8515ec22605712a8696853b1f015651fc3f493` added the updated FreeLLMAPI integration contract after CI; no application code changed after CI. Do not self-approve or merge; human review is required.
+- PR #23's Vercel status is blocked by the Hobby 100-deployments/day limit; no paid upgrade attempted. GitHub CI is the successful source validation for the code head.
+- PR #13 remains OPEN/Draft and divergent. Its provider-consent code has been selectively ported to PR #23; duplicate migration `20261113110000_jarvis_provider_preferences.sql` remains excluded. Close PR #13 only after human review/merge of PR #23 and final changed-file reconciliation.
+- PR #16 is closed as superseded by PR #17.
+
+### Supabase live verification
+- Project `Jarvis`: ACTIVE_HEALTHY, region `eu-west-3` (Paris), PostgreSQL 17.11.0.018.
+- Read-only SQL: `jarvis_provider_preferences` row count = 0; migration history includes exactly `20261113125425` and `20261113125437`. Both provider pools remain default-off and no account preference was written.
+- Production `jarvis-api` remains ACTIVE v32; Preview `jarvis-preview-api` remains ACTIVE v23. No function deployment or secret read occurred.
+- Security advisor: one INFO `rls_enabled_no_policy` for `jarvis_rate_limits`; current table grants are restricted to postgres/service_role and the rate-limit RPC EXECUTE is service_role-only. Do not add public policy to silence the informational lint. One WARN: leaked-password protection disabled. This Auth security setting was not changed and requires a separate security decision.
+- Performance advisor: 18 unused-index INFO findings on low-traffic data. No index was removed.
+
+### Cloudflare live verification
+- Account API read-only inventory: zero Worker scripts, zero AI Gateway gateways.
+- AI Gateway billing credit balance = 0; no default payment method; auto top-up threshold = 0 and amount = 0.
+- Current account plan / Workers AI paid-tier entitlement could not be established from this response. Do not infer that all catalog models are free. No Worker/gateway/secret/tunnel or paid plan was created.
+
+### PR #23 feature scope and remaining gates
+- Adds typed provider-preferences contract/client, authenticated rate-limited GET/PUT routes, per-account ZDR/standard pool toggles, strict-ZDR-only automatic memory extraction, named-only FreeLLMAPI routing, provider policy v2 consent, global Cloudflare processing disclosure, Brazilian Portuguese errors, CORS regression tests and two-user preference enable/revoke isolation tests.
+- Both pools remain disabled. No provider key/secret was read, no model inference was called, no user prompt/audio was transmitted.
+- The new consent notice explicitly states Cloudflare Workers AI is global inference infrastructure and no EEA-only inference guarantee has been verified. FreeLLMAPI downstream providers retain their own processing regions, retention and training terms.
+- Before any provider activation, create and audit a concrete provider manifest and named FreeLLMAPI fallback chain: current free quota/reset, payment-method requirement, hard no-overage/no-paid-fallback controls, Ireland/EEA eligibility, personal-use terms, retention/training, processing region, source URL and verification date. A named profile alone is not proof.
+- The updated `docs/cloud/FREELLMAPI_CLOUD_INTEGRATION.md` is included in PR #23. Its final documentation-only commit was not rerun through CI; the code head remains the CI #948 tested head.
+
+### iOS, integrations, CFO and self-evolution
+- Native iOS decision remains Capacitor 8 around React/Vite, not a full SwiftUI rewrite. No Capacitor config, dependency, iOS project, Keychain plugin wiring, native voice adapter, signed IPA, or TestFlight build exists. Node 22+ and macOS/Xcode 26+ are required; current tools do not provide macOS/Xcode. No paid build service should be provisioned.
+- The plugin-neutral native secure-token adapter and tests already exist, but are not wired to a concrete Capacitor plugin.
+- BMW, Blink, Dreame, messaging, Maps/CarPlay and generic integration registry remain design/feasibility work; no direct vendor action has been verified.
+- Family CFO currently has synthetic-first pure validation/calculation functions and tests (decimal arithmetic, currency safety, transaction fingerprints, conservative transfer matching and cash flow). No CFO tables, financial imports, bank connectors or live account balances were created/read. Follow the data contract and review schema/RLS/consent together before any migration.
+- Self-Evolution observer remains read-only/non-production. Observer Validation #142 and canonical CI #945 passed on the prior canonical ledger head `a88a1bc3967d6026ba53e2385289cacffd37da07`. No production self-modification or autonomous deployment.
