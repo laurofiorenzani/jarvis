@@ -11,6 +11,10 @@ test('FreeLLMAPI is the only default local provider and requires an explicit key
   assert.equal(result.sdkEnv.ANTHROPIC_BASE_URL, 'http://127.0.0.1:3001')
   assert.equal(result.sdkEnv.ANTHROPIC_API_KEY, 'local-test-key')
   assert.equal(result.sdkEnv.ANTHROPIC_MODEL, 'auto')
+  assert.equal(result.sdkEnv.ANTHROPIC_AUTH_TOKEN, undefined)
+  assert.equal(result.sdkEnv.CLAUDE_CODE_OAUTH_TOKEN, undefined)
+  assert.equal(result.sdkEnv.ANTHROPIC_BEDROCK_BASE_URL, undefined)
+  assert.equal(result.sdkEnv.CLAUDE_CODE_USE_VERTEX, undefined)
 })
 
 test('Claude/Anthropic direct billing fallback is explicitly rejected', () => {
@@ -24,6 +28,10 @@ test('FreeLLMAPI uses its Anthropic-compatible local endpoint and auto model', (
   const result = resolveBridgeProvider({
     JARVIS_PROVIDER: 'freellmapi',
     FREELLMAPI_API_KEY: 'freellmapi-test-key',
+    ANTHROPIC_AUTH_TOKEN: 'paid-auth-token-must-not-pass',
+    CLAUDE_CODE_OAUTH_TOKEN: 'claude-oauth-must-not-pass',
+    ANTHROPIC_BEDROCK_BASE_URL: 'https://bedrock.example.com',
+    CLAUDE_CODE_USE_VERTEX: '1',
   })
   assert.equal(result.provider, 'freellmapi')
   assert.equal(result.model, 'auto')
