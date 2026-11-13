@@ -114,24 +114,36 @@ export function CloudAccess({ onConnected, onDisconnected, onResumeConversation,
     }
     let cloudProviderReady = false
     let cloudSpeechReady = false
-    try {
-      const [providers, providerPreferences] = await Promise.all([
-        runtime.api.getProviderStatus(),
-        runtime.api.getProviderPreferences(),
-      ])
-      if (!isCurrentRuntime(runtime, generation)) return
-      const defaultPool = providers.providers.filter((item) => item.pool !== 'standard')
-      const standardPool = providers.providers.filter((item) => item.pool === 'standard')
-      const defaultZdrReady = providerPreferences.zdrPoolEnabled && defaultPool.length > 0 &&
-        defaultPool.every((item) => item.privacyMode === 'zdr')
-      const standardReady = providerPreferences.standardPoolEnabled && standardPool.length > 0 &&
-        standardPool.every((item) => item.privacyMode === 'standard')
-      cloudProviderReady = providers.configured && (defaultZdrReady || standardReady)
-      cloudSpeechReady = defaultZdrReady && providers.speechProvider === 'cloudflare-whisper'
-      setProviderPreferencesAvailable(true)
+    const [providerStatusResult, providerPreferencesResult] = await Promise.allSettled([
+      runtime.api.getProviderStatus(),
+      runtime.api.getProviderPreferences(),
+    ])
+    if (!isCurrentRuntime(runtime, generation)) return
+    const providerPreferences = providerPreferencesResult.status === 'fulfilled' ? providerPreferencesResult.value : null
+    setProviderPreferencesAvailable(Boolean(providerPreferences))
+    if (providerPreferences) {
       setProviderPolicyVersion(providerPreferences.currentPolicyVersion)
       setZdrPoolEnabled(providerPreferences.zdrPoolEnabled)
       setStandardPoolEnabled(providerPreferences.standardPoolEnabled)
+    } else {
+      setZdrPoolEnabled(false)
+      setStandardPoolEnabled(false)
+    }
+    if (providerStatusResult.status === 'rejected') {
+      setZdrProviderNames([])
+      setStandardProviderNames([])
+      setCloudBrainReady(false)
+      setProviderStatus('MODEL PROVIDER CONFIGURATION INVALID OR UNAVAILABLE · CHAT DISABLED')
+    } else {
+      const providers = providerStatusResult.value
+      const defaultPool = providers.providers.filter((item) => item.pool !== 'standard')
+      const standardPool = providers.providers.filter((item) => item.pool === 'standard')
+      const defaultZdrReady = Boolean(providerPreferences?.zdrPoolEnabled) && defaultPool.length > 0 &&
+        defaultPool.every((item) => item.privacyMode === 'zdr')
+      const standardReady = Boolean(providerPreferences?.standardPoolEnabled) && standardPool.length > 0 &&
+        standardPool.every((item) => item.privacyMode === 'standard')
+      cloudProviderReady = providers.configured && (defaultZdrReady || standardReady)
+      cloudSpeechReady = defaultZdrReady && providers.speechProvider === 'cloudflare-whisper'
       setZdrProviderNames(defaultPool.map((item) => item.name))
       setStandardProviderNames(standardPool.map((item) => item.name))
       setCloudBrainReady(cloudProviderReady)
@@ -144,15 +156,6 @@ export function CloudAccess({ onConnected, onDisconnected, onResumeConversation,
         : providers.providers.length
           ? 'AI PROVIDERS FOUND · ENABLE AN ACCOUNT POOL BELOW'
           : 'NO AI PROVIDER CONFIGURED · CLOUD CHAT DISABLED')
-    } catch {
-      if (!isCurrentRuntime(runtime, generation)) return
-      setProviderPreferencesAvailable(false)
-      setZdrPoolEnabled(false)
-      setStandardPoolEnabled(false)
-      setZdrProviderNames([])
-      setStandardProviderNames([])
-      setCloudBrainReady(false)
-      setProviderStatus('PROVIDER SETTINGS OR MODEL CONFIGURATION UNAVAILABLE · CHAT DISABLED')
     }
     if (!isCurrentRuntime(runtime, generation)) return
     if (cloudProviderReady) selectCloudBrain(runtime.brain)
