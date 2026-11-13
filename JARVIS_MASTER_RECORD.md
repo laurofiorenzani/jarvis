@@ -1913,3 +1913,43 @@ J. Next conversation: Continue from this checkpoint. PR #31 exact-head CI #1014 
 - PR #33 branch `work/no-paid-provider-guard-20261113`, latest code head `b31c1df7c49834a35b83cc698aa281a020f27dd0`; exact-head CI #1047/#1048 pending.
 - Production Supabase: API v32; Preview: v23; no changes made.
 - Next conversation: resume from this section. Do not repeat successful CFO/Observer validation. First inspect CI #1052 and #1047/#1048; then continue route parity and action approval persistence. Cloudflare billing plan remains unverified; do not enable providers. PR #33 disables paid local provider fallbacks and is not yet exact-head CI green. No production deploy/merge.
+
+
+## 2026-11-13 — Continuation checkpoint after parallel CI refreshes
+
+### Verified since the previous handoff
+- PR #23 Cloud Brain/Multi-AI: exact-head CI #1052 (`43508404232`) SUCCESS on `ead81317ba70c9a88a61cf7bc477540eb44e7763`, including operator free-plan billing-attestation tests, ZDR speech consent, provider privacy, semantic-memory policy, isolated Supabase migrations, SQL isolation, two-user API integration and CORS. The later attestation gate is source/CI validated; secret remains unset and no inference was sent.
+- PR #32 Family CFO: exact-head CI #1039 (`43505906597`) SUCCESS on `dfea9b296647ed257915932998700ce0fbe4ac39`; exact numeric currency exponent schema and 31 SQL assertions passed. No live migration or financial data import.
+- PR #33 zero-cost provider lockout: exact-head CI #1053 (`43508940578`) SUCCESS on refreshed head `7cfa58933af77def7b4c47cf96f8479b83218713`. Browser-direct paid model, Claude fallback, ElevenLabs speech and subscription connectors are disabled in source. Local FreeLLMAPI config was not inspected and no inference request was made.
+- PR #31 Observer: exact-head CI #1054 (`43509076704`) SUCCESS and Observer Validation #176 (`43509077137`) SUCCESS on refreshed head `7849419dfeef11984cdac4be0458678623d199ac`.
+
+### New work in progress
+- PR #26 action approval persistence: branch refreshed onto canonical; added owner-scoped `jarvis_action_approvals`, server-only invoker RPCs for create/resolve/cancel/claim/complete, ten-minute expiry, digest/context binding, idempotent create and one-time execution claim. Raw arguments and action results are not stored. 35 pgTAP assertions added.
+- CI #1059 applied the migration successfully but SQL tests stopped after 11 assertions due an ambiguous PL/pgSQL `status` reference in the resolver. Qualified the resolver table alias/predicates in commit `1056d4bf6cdab46064b8caa10c4ee0f718c93e14`; exact-head CI #1061 is pending. Do not mark the approval persistence layer validated until all 35 SQL assertions pass.
+- PR #28 iOS secure-storage adapter: branch refreshed onto canonical in merge commit `29ac8c261d3af5953ff67d02edab46b0eea5273c`; exact-head CI #1060 is in progress. Capacitor 8 adapter and decision doc are source-only; no dependency, native iOS target, Xcode project, signing or device E2E.
+
+### Cloudflare billing blocker remains
+- Workers AI pricing docs state 10,000 Neurons/day on Workers Free, while Workers Paid starts at $5/month and bills usage above that quota. Account `default_usage_model=standard` does not prove the plan. Billing/subscription read API remains 403 due missing Billing Read OAuth scope.
+- Do not set `JARVIS_FREE_PROVIDER_BILLING_ATTESTATION=2026-11-13-v1` or enable provider pools until the owner verifies Workers Free, no paid subscription/auto-top-up and no-overage behaviour. Do not request Billing Write or modify billing settings.
+
+### Release and safety
+- All branches are based on current canonical ancestry (compare 0 behind): PR #23, #31, #32, #33, #26 and #28. No forced update, merge or deployment.
+- Supabase production remains API v32; Preview remains v23. No Edge Function, production schema, Auth/RLS policy, secret, provider preference, Vercel alias, billing plan or user data changed.
+- Older PR #22 and #29 are superseded by PR #32 and should not merge independently.
+- iOS hardware/macOS build and real device testing remain outstanding. Persistent approval RPCs are not yet wired into the Edge API and do not execute integrations.
+
+### Next actions
+1. Inspect CI #1061 for PR #26. Fix any remaining SQL failures based on exact logs; rerun until all 35 pgTAP assertions pass.
+2. Inspect CI #1060 for PR #28 and record exact-head outcome.
+3. Keep PR #23, #26, #28, #31, #32, #33 open; do not self-approve or merge.
+4. After approval SQL passes, wire the service-role RPCs behind authenticated Edge API routes, then add API-level two-user tests. Keep actual action execution disabled until the approval UI and capability policy are connected.
+5. Ask owner to verify Cloudflare Workers Free/no-overage or reconnect read-only Billing Read; no provider inference before that.
+6. Continue under €0 recurring cost, no paid API/subscription, no quota bypass, no production changes.
+
+### Current branch heads
+- PR #23: `ead81317ba70c9a88a61cf7bc477540eb44e7763` — CI #1052 SUCCESS.
+- PR #26: `1056d4bf6cdab46064b8caa10c4ee0f718c93e14` — CI #1061 pending after SQL resolver fix.
+- PR #28: `29ac8c261d3af5953ff67d02edab46b0eea5273c` — CI #1060 in progress.
+- PR #31: `7849419dfeef11984cdac4be0458678623d199ac` — CI #1054 and Observer #176 SUCCESS.
+- PR #32: `dfea9b296647ed257915932998700ce0fbe4ac39` — CI #1039 SUCCESS.
+- PR #33: `7cfa58933af77def7b4c47cf96f8479b83218713` — CI #1053 SUCCESS.
