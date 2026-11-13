@@ -34,6 +34,7 @@ function readPasswordSetupToken(): string | null {
 
 const TAB_SESSION_CHOICE = 'jarvis.cloud.keep-session-in-tab'
 const REFRESH_TOKEN_KEY = 'jarvis.supabase.refresh-token'
+const FREE_PROVIDER_POLICY_VERSION = '2026-11-13-v1'
 
 function hasRestorableTabSession() {
   try {
@@ -68,6 +69,13 @@ export function CloudAccess({ onConnected, onDisconnected, onResumeConversation,
   const [memoryAutoCaptureEnabled, setMemoryAutoCaptureEnabled] = useState(false)
   const [providerStatus, setProviderStatus] = useState('MODEL STATUS NOT CHECKED')
   const [cloudBrainReady, setCloudBrainReady] = useState(false)
+  const [providerPreferencesAvailable, setProviderPreferencesAvailable] = useState(false)
+  const [providerConsentBusy, setProviderConsentBusy] = useState(false)
+  const [zdrPoolEnabled, setZdrPoolEnabled] = useState(false)
+  const [standardPoolEnabled, setStandardPoolEnabled] = useState(false)
+  const [providerPolicyVersion, setProviderPolicyVersion] = useState(FREE_PROVIDER_POLICY_VERSION)
+  const [zdrProviderNames, setZdrProviderNames] = useState<string[]>([])
+  const [standardProviderNames, setStandardProviderNames] = useState<string[]>([])
   const [memoryContent, setMemoryContent] = useState('')
   const [memoryCategory, setMemoryCategory] = useState<MemoryCategory>('preference')
   const [memoryBusy, setMemoryBusy] = useState(false)
@@ -107,21 +115,44 @@ export function CloudAccess({ onConnected, onDisconnected, onResumeConversation,
     let cloudProviderReady = false
     let cloudSpeechReady = false
     try {
-      const providers = await runtime.api.getProviderStatus()
+      const [providers, providerPreferences] = await Promise.all([
+        runtime.api.getProviderStatus(),
+        runtime.api.getProviderPreferences(),
+      ])
       if (!isCurrentRuntime(runtime, generation)) return
-      // Fail closed on older backend responses: only an explicit Cloudflare ZDR identity may activate chat.
-      cloudProviderReady = providers.configured && providers.providers.length > 0 &&
-        providers.providers.every((item) => item.providerType === 'cloudflare-workers-ai' && item.privacyMode === 'zdr')
-      cloudSpeechReady = cloudProviderReady && providers.speechProvider === 'cloudflare-whisper'
+      const defaultPool = providers.providers.filter((item) => item.pool !== 'standard')
+      const standardPool = providers.providers.filter((item) => item.pool === 'standard')
+      const defaultZdrReady = providerPreferences.zdrPoolEnabled && defaultPool.length > 0 &&
+        defaultPool.every((item) => item.privacyMode === 'zdr')
+      const standardReady = providerPreferences.standardPoolEnabled && standardPool.length > 0 &&
+        standardPool.every((item) => item.privacyMode === 'standard')
+      cloudProviderReady = providers.configured && (defaultZdrReady || standardReady)
+      cloudSpeechReady = defaultZdrReady && providers.speechProvider === 'cloudflare-whisper'
+      setProviderPreferencesAvailable(true)
+      setProviderPolicyVersion(providerPreferences.currentPolicyVersion)
+      setZdrPoolEnabled(providerPreferences.zdrPoolEnabled)
+      setStandardPoolEnabled(providerPreferences.standardPoolEnabled)
+      setZdrProviderNames(defaultPool.map((item) => item.name))
+      setStandardProviderNames(standardPool.map((item) => item.name))
       setCloudBrainReady(cloudProviderReady)
       setProviderStatus(cloudProviderReady
-        ? 'CLOUDFLARE WORKERS AI · ZDR · ' + providers.providers.map((item) => item.model).join(', ') +
-          (cloudSpeechReady ? ' · WHISPER STT READY' : ' · WHISPER STT NOT CONFIGURED')
-        : 'UNAPPROVED CLOUD PROVIDER · CHAT AND CLOUD STT DISABLED')
+        ? [
+            defaultZdrReady ? 'ZDR POOL ACTIVE' : 'ZDR POOL OFF',
+            standardReady ? 'FREE MULTI-AI ACTIVE' : 'FREE MULTI-AI OFF',
+            cloudSpeechReady ? 'WHISPER STT READY' : 'DEVICE SPEECH',
+          ].join(' · ')
+        : providers.providers.length
+          ? 'AI PROVIDERS FOUND · ENABLE AN ACCOUNT POOL BELOW'
+          : 'NO AI PROVIDER CONFIGURED · CLOUD CHAT DISABLED')
     } catch {
       if (!isCurrentRuntime(runtime, generation)) return
+      setProviderPreferencesAvailable(false)
+      setZdrPoolEnabled(false)
+      setStandardPoolEnabled(false)
+      setZdrProviderNames([])
+      setStandardProviderNames([])
       setCloudBrainReady(false)
-      setProviderStatus('MODEL PROVIDER CONFIGURATION INVALID OR UNAVAILABLE · CHAT/STT DISABLED')
+      setProviderStatus('PROVIDER SETTINGS OR MODEL CONFIGURATION UNAVAILABLE · CHAT DISABLED')
     }
     if (!isCurrentRuntime(runtime, generation)) return
     if (cloudProviderReady) selectCloudBrain(runtime.brain)
@@ -424,6 +455,45 @@ export function CloudAccess({ onConnected, onDisconnected, onResumeConversation,
     }
   }
 
+  const toggleProviderPool = async (pool: 'zdr' | 'standard', enabled: boolean) => {
+    const runtime = runtimeRef.current
+    const generation = runtimeGeneration.current
+    if (!runtime || providerConsentBusy) return
+    const nextZdr = pool === 'zdr' ? enabled : zdrPoolEnabled
+    const nextStandard = pool === 'standard' ? enabled : standardPoolEnabled
+    setProviderConsentBusy(true)
+    try {
+      const updated = await runtime.api.setProviderPreferences({
+        zdrPoolEnabled: nextZdr,
+        standardPoolEnabled: nextStandard,
+        policyVersion: providerPolicyVersion,
+      })
+      if (!isCurrentRuntime(runtime, generation)) return
+      setZdrPoolEnabled(updated.zdrPoolEnabled)
+      setStandardPoolEnabled(updated.standardPoolEnabled)
+      const providers = await runtime.api.getProviderStatus()
+      if (!isCurrentRuntime(runtime, generation)) return
+      const defaultPool = providers.providers.filter((item) => item.pool !== 'standard')
+      const standardPool = providers.providers.filter((item) => item.pool === 'standard')
+      const defaultZdrReady = updated.zdrPoolEnabled && defaultPool.length > 0 && defaultPool.every((item) => item.privacyMode === 'zdr')
+      const standardReady = updated.standardPoolEnabled && standardPool.length > 0 && standardPool.every((item) => item.privacyMode === 'standard')
+      const ready = providers.configured && (defaultZdrReady || standardReady)
+      const speechReady = defaultZdrReady && providers.speechProvider === 'cloudflare-whisper'
+      setCloudBrainReady(ready)
+      setProviderStatus(ready
+        ? [defaultZdrReady ? 'ZDR POOL ACTIVE' : 'ZDR POOL OFF', standardReady ? 'FREE MULTI-AI ACTIVE' : 'FREE MULTI-AI OFF', speechReady ? 'WHISPER STT READY' : 'DEVICE SPEECH'].join(' · ')
+        : 'AI PROVIDERS FOUND · ENABLE AN ACCOUNT POOL BELOW')
+      if (ready) selectCloudBrain(runtime.brain)
+      else selectConfiguredBrain()
+      onSpeechApiReady?.(speechReady ? runtime.api.transcribeAudio : null)
+      setMessage(enabled ? 'AI PROVIDER POOL ENABLED FOR THIS ACCOUNT' : 'AI PROVIDER POOL DISABLED FOR THIS ACCOUNT')
+    } catch (error) {
+      if (isCurrentRuntime(runtime, generation)) setMessage(error instanceof Error ? error.message : 'Provider preference could not be saved.')
+    } finally {
+      if (runtimeGeneration.current === generation) setProviderConsentBusy(false)
+    }
+  }
+
   const toggleMemoryAutoCapture = async (enabled: boolean) => {
     const runtime = runtimeRef.current
     const generation = runtimeGeneration.current
@@ -529,6 +599,12 @@ export function CloudAccess({ onConnected, onDisconnected, onResumeConversation,
     setMemoryCategory('preference')
     setMemoryBusy(false)
     setProviderStatus('NOT CHECKED')
+    setProviderPreferencesAvailable(false)
+    setProviderConsentBusy(false)
+    setZdrPoolEnabled(false)
+    setStandardPoolEnabled(false)
+    setZdrProviderNames([])
+    setStandardProviderNames([])
     try { window.sessionStorage.removeItem(TAB_SESSION_CHOICE) } catch { /* Sign-out remains complete if storage is unavailable. */ }
     onDisconnected?.()
     try {
@@ -563,6 +639,27 @@ export function CloudAccess({ onConnected, onDisconnected, onResumeConversation,
           <div style={{ paddingTop: 12 }}>
             <div style={{ marginBottom: 6, color: '#83d9e8' }}>{message}</div>
             <div style={{ marginBottom: 12, color: '#7797a2', letterSpacing: 0 }}>{providerStatus}</div>
+            {providerPreferencesAvailable && (
+              <section aria-label="AI provider permissions for this account" style={{ borderTop: '1px solid #214653', borderBottom: '1px solid #214653', padding: '10px 0', marginBottom: 12 }}>
+                <strong style={{ display: 'block', color: '#83d9e8', marginBottom: 8 }}>AI PROVIDER POOLS · THIS ACCOUNT</strong>
+                <div style={{ color: '#7797a2', lineHeight: 1.5, letterSpacing: 0, marginBottom: 8 }}>
+                  Each JARVIS account controls its own provider access. The ZDR pool is limited to explicitly zero-retention providers. The free multi-provider pool can route prompts through FreeLLMAPI to its configured providers, which may have different data-retention, training and regional terms. Only free routes are allowed; no paid fallback or automatic upgrade. You can disable either pool at any time.
+                </div>
+                <label style={{ display: 'flex', alignItems: 'flex-start', gap: 8, marginBottom: 8, letterSpacing: 0, opacity: zdrProviderNames.length || zdrPoolEnabled ? 1 : 0.55 }}>
+                  <input type="checkbox" checked={zdrPoolEnabled} disabled={providerConsentBusy || (!zdrProviderNames.length && !zdrPoolEnabled)}
+                    onChange={(event) => void toggleProviderPool('zdr', event.target.checked)} />
+                  <span>Allow ZDR provider pool{' · ' + (zdrProviderNames.length ? zdrProviderNames.join(', ') : 'not configured')}</span>
+                </label>
+                <label style={{ display: 'flex', alignItems: 'flex-start', gap: 8, marginBottom: 8, letterSpacing: 0, opacity: standardProviderNames.length || standardPoolEnabled ? 1 : 0.55 }}>
+                  <input type="checkbox" checked={standardPoolEnabled} disabled={providerConsentBusy || (!standardProviderNames.length && !standardPoolEnabled)}
+                    onChange={(event) => void toggleProviderPool('standard', event.target.checked)} />
+                  <span>Allow free multi-provider routing{' · ' + (standardProviderNames.length ? standardProviderNames.join(', ') : 'not configured')}</span>
+                </label>
+                <div style={{ color: '#7797a2', fontSize: 9, letterSpacing: 0 }}>
+                  Policy {providerPolicyVersion} · preferences are isolated per account
+                </div>
+              </section>
+            )}
             <label style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12, letterSpacing: 0 }}>
               <input type="checkbox" checked={memoryContextEnabled} disabled={memoryBusy}
                 onChange={(event) => void toggleMemoryContext(event.target.checked)} />
