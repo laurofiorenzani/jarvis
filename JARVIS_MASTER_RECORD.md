@@ -606,3 +606,14 @@ The older `docs/PROJECT_DECISIONS.md`, `docs/architecture/IMPLEMENTATION_STATUS_
 - Deployed this handler to non-production `jarvis-preview-api` v17 only. Production `jarvis-api` remains v32. No Auth accounts, credentials, production data, secrets, or production functions were changed.
 - Vercel Preview for the code commit is READY: `https://jarvis-b1ctjg3in-lauro-fiorenzani.vercel.app`. CI #817 and Observer #66 are running; do not treat runtime route behavior as verified until exact-head CI and an authenticated device/API check pass.
 - Next check: observe fresh authenticated iPhone requests on v17. If 404 persists, add a temporary safe diagnostic for the actual handler pathname and normalized route candidates before any further route changes. Keep PR #12 Draft.
+
+
+## 2026-11-13 — speech pipeline and CI route regression correction
+
+- Latest iPhone logs from 07:01–07:02 Dublin confirm the previous Preview v17 now returns HTTP 200 for authenticated GET `/v1/conversations`, `/v1/memories`, `/v1/memory-preferences`, `/v1/semantic-memory/candidates`, and `/v1/provider-status`. The iPhone also POSTed `/v1/stt` twice and received HTTP 200. No `/v1/turns` or `/v1/tts` calls were observed in that capture window, consistent with speech requests returning empty transcripts before a turn was emitted.
+- The STT handler previously returned HTTP 200 with an empty transcript for every audio segment smaller than 1,200 bytes. This can silently discard short utterances on iOS Safari. Reduced the near-empty cutoff to 256 bytes, logging only byte count and MIME type for truly tiny segments; audio itself and transcript contents are never logged.
+- CI #818 exposed a local Supabase route regression: the normalizer treated the first `/v1/` in `/functions/v1/jarvis-api/...` as the API version and derived `/jarvis-api/...`, causing `/memory-preferences` to return 404 in local integration tests. Changed route normalization to prefer the suffix after the actual function mount and strip the optional API version there.
+- Both corrections committed together as `e49d8bb84001441a20e4532bdbcc50aec8e45129` and deployed to non-production `jarvis-preview-api` v18 only. Production `jarvis-api` remains v32, untouched.
+- CI #819 and Observer #68 are running for the exact commit. Vercel Preview is building at time of record: `https://jarvis-8nsnptv74-lauro-fiorenzani.vercel.app`. Do not request another iPhone test until Preview is READY and CI verifies the local semantic-memory integration.
+- PR #12 is being moved from Draft to Ready for Review at the user's explicit request. It remains stacked on `work/intelligent-memory-foundation`; it is not yet a production release or merged to `main`.
+- Remaining gates: verify actual non-empty PT/EN STT transcript, conversation turn response, and TTS playback on iPhone; then run full release checks and consolidate stack safely. No production account, auth config, secrets, or data changed.
