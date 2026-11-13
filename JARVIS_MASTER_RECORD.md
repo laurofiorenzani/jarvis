@@ -1,8 +1,8 @@
 # JARVIS — MASTER PROJECT RECORD
-Last reconciled: 2026-11-12 (Europe/Dublin)
+Last reconciled: 2026-11-13 (Europe/Dublin)
 Record owner: project owner + maintainers
 Canonical application repository: https://github.com/laurofiorenzani/jarvis
-Canonical working branch for this record: `work/jarvis-master-record`
+Canonical working branch for this record: `work/jarvis-canonical-integration`
 Current UI baseline: `work/jarvis-amber-production-track` (preserve; do not replace with older UI)
 Status: consolidation in progress — this record is authoritative for decisions, progress, evidence and handoff.
 
@@ -1131,3 +1131,45 @@ The available Supabase connector cannot inspect or set Edge Function secrets. Do
 - Canonical PR #12 head `d674c13132af421d46beeb35a260c44f3e16be9d` has post-PR15 merge CI #923 (`43454699438`) in progress; typecheck/build/tests/lint/provider privacy/semantic memory/Deno tests/SQL migrations/SQL isolation passed, authenticated two-user semantic-memory API integration was in progress. Observer Validation #137 succeeded.
 - Vercel created a READY Preview for PR #15 merge commit `b18af5a36938a5ae3521d277075957527f16c9c6`: `https://jarvis-q54md4qxb-lauro-fiorenzani.vercel.app`. It is a preview, not production; no alias promotion.
 - PR #13 remains OPEN/Draft/unmerged, 69 commits ahead / 34 behind canonical. Its full feature branch remains unsuitable for blind integration. No provider secrets, pools, account rows, Edge Function deployments or production changes.
+
+
+## 2026-11-13 — incremental cross-platform, database and deployment reconciliation
+
+### STT quota guard
+- PR #16 was based on the previous canonical SHA and had a one-commit documentation-only gap. Its three-file change was reviewed and selectively re-applied on a clean branch based on canonical head `c82bc100fbea773eab5bdc654ec7078da6685408`.
+- PR #17: `work/stt-cloudflare-quota-canonical`, head `250f750c60ae3f891301e9e6805154cf01d17b76`; exact diff is only `index.ts`, `speech-transcript.ts`, and `speech-transcript_test.ts`. PR #17 exact-head CI #926 completed SUCCESS, including isolated Supabase migrations, SQL isolation, authenticated two-user API integration and production/Preview CORS. Vercel Preview was SUCCESS. PR #17 was squash-merged into canonical development as `2e5474b4324d6057032985fb663f1c9906560629`; no main/Production merge or deployment occurred. Observer Validation was not triggered because observer files/workflow paths were unchanged; the latest observer validation on the canonical lineage remains #137.
+- Original PR #16 remains open but is now superseded by merged PR #17; close it as redundant after confirming no unique commits remain.
+
+### Provider-preferences migration provenance
+- Live Supabase migration history contains `20261113125425_jarvis_provider_preferences` and `20261113125437_provider_preferences_rls_initplan`.
+- Canonical Git tree contains the matching `20261113125425_jarvis_provider_preferences.sql` source but was missing the already-applied `20261113125437_provider_preferences_rls_initplan.sql` source.
+- PR #13 contains the correct `20261113125437` policy-refinement source. Its older `20261113110000_jarvis_provider_preferences.sql` is logically the initial provider-preferences migration but is NOT present in live migration history and must not be ported or reapplied; it would duplicate the already-applied schema.
+- The only safe provenance repair is to add the exact `20261113125437` source file to canonical source control. No migration is being applied to the live database by this repair.
+
+### Supabase live read-only verification
+- Project `Jarvis` is ACTIVE_HEALTHY in `eu-west-3`; PostgreSQL 17.11. Production `jarvis-api` is ACTIVE v32; Preview `jarvis-preview-api` is ACTIVE v23.
+- `public.jarvis_provider_preferences` exists with RLS enabled, a user_id primary key/FK, default-off ZDR/standard booleans, and consent CHECK constraint; current row count is zero. No provider pools were enabled and no account, auth, session, conversation, or memory data was changed.
+- All inspected JARVIS public tables have RLS enabled. `jarvis_rate_limits` has no direct RLS policy, which is intentional in the current access model: table grants are limited to postgres and service_role; the SECURITY DEFINER rate-limit RPC has EXECUTE only for service_role (not anon/authenticated); anon/authenticated cannot CREATE in public. The Supabase INFO advisor finding is therefore not a reason to add a public policy.
+- The Supabase security advisor still reports leaked-password protection disabled (WARN). This auth-wide setting was not changed. Eighteen unused-index INFO findings were observed on a low-traffic dataset; no index was removed.
+- The live provider-preferences schema and grants were inspected read-only. No schema change, migration, data write, or deployment occurred.
+
+### Production versus Preview provider policy — release blocker
+- Deployed Production `jarvis-api` v32 source still references `GOOGLE_AI_STUDIO_API_KEY` and direct `generativelanguage.googleapis.com` STT/TTS calls.
+- Deployed Preview `jarvis-preview-api` v23 contains Cloudflare Workers AI Whisper STT and Cloudflare provider routing; its model-router includes a Gemini host restriction. Production and Preview are not provider-behaviour equivalent.
+- Supabase connector cannot securely verify Edge Function secret presence or values. Source references do not prove that the Google secret exists or that any request/audio is being sent. No secret was read and no inference request was sent.
+- A read-only follow-up comment was added to PR #12 with this finding. Do not promote to Production until provider code, current Ireland/EEA policy, per-account consent, zero-cost limits, exact-head CI, two-account isolation and physical iPhone PT/EN E2E are reconciled and reviewed.
+
+### Cloudflare cost/runtime inventory
+- Current Cloudflare API inventory: zero Worker scripts and zero AI Gateway gateways.
+- Current Billing Read calls are denied by the connected Cloudflare credential; current credits, spend policies, payment method and current Workers plan cannot be re-verified through this connection. Historical ledger entries about zero AI Gateway balance/no payment method remain historical only, not a fresh billing attestation.
+- No Worker, gateway, tunnel, secret, provider inference, paid plan, or billing setting was created or changed.
+
+### Native iOS and FreeLLMAPI runtime
+- Recursive tree inspection of the canonical application branch found no `ios/`, `.xcodeproj`, `.xcworkspace`, Swift source, or Capacitor scaffold. The package remains React/Vite; native iOS, Keychain plugin, signing and TestFlight are not implemented.
+- PR #13 currently remains OPEN/Draft and diverged (69 commits ahead / 42 behind canonical at last compare). Its private Node 22 proxy package and tests are source code only. The host, FreeLLMAPI service, gateway token, unified key, provider credentials and private tunnel are not deployed/configured; no inference has been sent. Oracle VM state remains unverified and no Oracle connector is available.
+- No bulk rebase/merge of PR #13 is safe. Continue feature-by-feature, excluding its duplicate migration version.
+
+### Safety and release controls
+- No Production Edge Function, Vercel alias, account, auth setting, secret, provider preference, memory, billing plan, or user data was changed.
+- Keep provider pools disabled until each account holder independently accepts the complete provider/data-transfer notice. Do not infer that Supabase Paris region or Cloudflare ZDR means all processing remains in the EEA.
+- Keep all changes on isolated PR branches; no production promotion or paid upgrade.
