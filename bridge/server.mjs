@@ -255,8 +255,8 @@ const MCP_SERVERS = Object.fromEntries(
  * running in read-only mode and their send, share and delete tools one
  * JARVIS_ALLOW_WRITES away.
  *
- * strictMcpConfig limits the session to the servers passed below. Set
- * JARVIS_ACCOUNT_CONNECTORS=1 to let the account's connectors in as well.
+ * strictMcpConfig limits the session to the servers passed below. Subscription-
+ * backed account connectors are disabled; no environment flag can enable them.
  */
 // Claude.ai account connectors require a separate commercial account and are disabled.
 const ACCOUNT_CONNECTORS = false
@@ -506,11 +506,8 @@ const SYSTEM_PROMPT = [
 ].join('')
 
 /**
- * ElevenLabs credentials, borrowed from the MCP server config.
- *
- * If you've set up the elevenlabs MCP server, the key is already on this
- * machine — no reason to make you paste it into a second .env file. The browser
- * never sees it: it POSTs text to /tts here and gets audio back.
+ * Metered speech credentials are intentionally unavailable under the €0 policy.
+ * Keep this stub fail-closed so no environment or MCP secret can enable billing.
  */
 function elevenKey() {
   // Paid ElevenLabs speech is intentionally disabled. Never read credentials
@@ -519,9 +516,8 @@ function elevenKey() {
 }
 const VOICE_ID = process.env.JARVIS_VOICE_ID ?? 'JBFqnCBsd6RMkjVDRZzb'
 
-// Local, per-process quotas protect the user's paid speech API account from a
-// runaway tab or accidental request loop. This is deliberately independent of
-// Origin validation: an allowed app origin can still issue too many requests.
+// Local, per-process quotas remain as defense in depth even though the metered
+// speech endpoints are disabled. Origin validation is still independent.
 const SPEECH_LIMITS = Object.freeze({
   '/tts': { requests: 30, windowMs: 60_000 },
   '/stt': { requests: 12, windowMs: 60_000 },
