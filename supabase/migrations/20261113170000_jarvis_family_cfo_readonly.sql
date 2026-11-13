@@ -28,6 +28,7 @@ create table if not exists public.jarvis_cfo_transactions (
   id uuid primary key default gen_random_uuid(),
   owner_user_id uuid not null references auth.users(id) on delete cascade,
   account_id uuid not null,
+  internal_transfer_pair_id uuid,
   transaction_at date not null,
   posted_at date,
   description text not null check (length(btrim(description)) between 1 and 500),
@@ -56,6 +57,10 @@ create index if not exists jarvis_cfo_transactions_owner_date_idx
 
 create index if not exists jarvis_cfo_transactions_account_date_idx
   on public.jarvis_cfo_transactions (account_id, transaction_at desc);
+
+create index if not exists jarvis_cfo_transactions_transfer_pair_idx
+  on public.jarvis_cfo_transactions (owner_user_id, internal_transfer_pair_id)
+  where internal_transfer_pair_id is not null;
 
 create unique index if not exists jarvis_cfo_transactions_source_record_uidx
   on public.jarvis_cfo_transactions (owner_user_id, account_id, source_type, source_record_id)

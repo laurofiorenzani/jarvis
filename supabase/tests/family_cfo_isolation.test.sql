@@ -1,6 +1,6 @@
 begin;
 
-select plan(30);
+select plan(31);
 
 insert into auth.users (id, aud, role, email, encrypted_password, email_confirmed_at, created_at, updated_at)
 values
@@ -29,6 +29,12 @@ select lives_ok(
     values ('20000000-0000-4000-8000-000000000012', '00000000-0000-4000-8000-000000000012', '10000000-0000-4000-8000-000000000012', '2026-11-13', '2026-11-13', 'Synthetic salary', 2500.00, 'EUR', 'posted', 'user_confirmed', 'confirmed', 'manual', 'synthetic-test', now(), '2026-11-13')$cfo$,
   'user B transaction fixture is valid'
 );
+select is(
+  (select internal_transfer_pair_id from public.jarvis_cfo_transactions where id = '20000000-0000-4000-8000-000000000011'),
+  null::uuid,
+  'transactions remain unpaired until an explicit pair-level confirmation'
+);
+
 select lives_ok(
   $cfo$insert into public.jarvis_cfo_balance_snapshots
     (id, owner_user_id, account_id, observed_at, amount, currency, confidence, source_type, source_name, effective_at)

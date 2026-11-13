@@ -51,7 +51,7 @@ Money values must use exact decimal/numeric representation, never binary floatin
 - Posted date, transaction date, signed amount, currency, merchant/counterparty, original description, category, account, pending/posted/reversed status, and source reference.
 - Preserve original bank text. Categorization is a separate model/user annotation with confidence and review status.
 - Deduplicate using institution ID when available; otherwise use a conservative fingerprint and retain collision review.
-- Transfers between owned accounts must be paired and excluded from household income/expense totals when confidently matched.
+- Transfers between owned accounts may be excluded from household income/expense totals only when both records share an explicit user-confirmed internal_transfer_pair_id. Equal/opposite amounts, dates and record-level confidence alone are never sufficient; heuristic matches are suggestions only.
 
 ### Income, budgets, and recurring commitments
 - Income sources, gross/net distinction, frequency, effective dates, and evidence.
@@ -93,7 +93,7 @@ Every dashboard/report must show:
 6. Whether a value is nominal, inflation-adjusted, gross, or net.
 
 Supported first-release calculations:
-- Cash flow: confirmed inflows minus confirmed outflows, excluding internal transfers.
+- Cash flow: confirmed inflows minus confirmed outflows, excluding only explicit pair-confirmed internal transfers; unpaired equal/opposite transactions remain included.
 - Spending: posted transactions only, with uncategorized totals visible.
 - Savings rate: clearly defined numerator/denominator and gross/net basis.
 - Debt trajectory: scenario projection from a dated principal balance and explicit assumptions.
@@ -185,3 +185,8 @@ Money columns use finite NUMERIC(20,2). NaN is rejected by the finite-value chec
 - Revoke all table privileges from PUBLIC, anon, authenticated and service_role before applying explicit grants.
 - Authenticated receives SELECT only. service_role receives only SELECT, INSERT, UPDATE and DELETE; TRUNCATE and other unnecessary privileges are not granted.
 - Synthetic tests verify anon cannot read or write, service_role has only the required DML privileges, transaction NaN is rejected, and balance negative infinity is rejected.
+
+
+### Explicit internal-transfer pair identity — 2026-11-13
+
+Transactions default to an unpaired state. The optional internal_transfer_pair_id is a shared UUID assigned only after an explicit user review confirms that two records are the same internal transfer. Cash-flow calculations may exclude a pair only when both records share this ID and all existing owner/account/currency/amount/date/record-confidence checks pass. Matching based only on equal/opposite amounts, proximity in time or record-level confidence is not sufficient and must never silently exclude records. Unpaired records remain in income/expense totals.

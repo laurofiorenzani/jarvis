@@ -1333,3 +1333,9 @@ Latest verified CI at this checkpoint: PR #27 #961 success; PR #22 #959 success;
 - Amount constraints reject NaN and both infinities; tests cover transaction NaN and balance-snapshot negative infinity in addition to existing cases.
 - The migration remains source-only and is not applied to live Supabase. No financial records, bank credentials, imports, payments, transfers, trades or production schema changes.
 - Exact-head CI after this least-privilege follow-up is pending; PR remains Draft for review.
+
+
+### Family CFO pair-level transfer identity — 2026-11-13
+- Added nullable internal_transfer_pair_id to the proposed transactions table, defaulting to NULL, plus an owner-scoped partial index. The field is assigned only after explicit user confirmation of the pair; it is not populated by amount/date heuristics.
+- The domain matcher requires both records to share this pair ID before it can exclude them from cash flow. Equal/opposite amounts and record-level confidence alone cannot remove records. Synthetic tests cover unpaired equal/opposite records, mismatched pair IDs and inclusion of unrelated bill/refund transactions.
+- PR #22 SQL test plan is now 31 assertions, including the unpaired-by-default invariant. Migration remains CI-only and unapplied to live Supabase.
