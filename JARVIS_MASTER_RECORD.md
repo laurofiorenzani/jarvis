@@ -1018,3 +1018,14 @@ The available Supabase connector cannot inspect or set Edge Function secrets. Do
 - CI #903 typecheck/build passed, 216 tests passed, one CFO test failed, two skipped; lint and later Deno/Supabase integration steps were skipped because the test job stopped. Observer Validation #114 passed on the previous documentation head 88065acc. 
 - Read-only platform recheck: Supabase remains ACTIVE_HEALTHY in eu-west-3, production jarvis-api v32 and preview jarvis-preview-api v23; Cloudflare connector identity is available; latest five Vercel deployments remain READY but latest canonical preview is still older commit 668125a. No new deployment was created due the recorded Hobby build-rate limit.
 - No production changes, credentials/secrets, provider activation, billing, user data or bank data were modified.
+
+
+## 2026-11-13 — CFO cross-period correction validated
+
+- Exact canonical integration branch commit `d089d862ff54975912d16f62bbd62caaaef0b1c1` triggered CI #906 (run ID `43446745391`) and JARVIS Observer Validation #117 (run ID `43446745420`). Both completed successfully.
+- CI #906 passed all listed stages: dependency install/audit, typecheck + production build, Node test suite, lint, provider privacy routing, semantic-memory policy tests, Supabase Edge Function typecheck, speech transcript tests, isolated Supabase startup, migration application, SQL isolation regression tests, authenticated semantic-memory API tests with two isolated users, stack cleanup, production API/CORS smoke test and canonical preview CORS smoke test.
+- Observer Validation #117 passed observer privacy/triage tests, typecheck/build and lint.
+- This validates the synthetic Family CFO cross-period fixture correction committed in `bb5c52a267de0e424dc0774e571578a66dc5e7f4` and `92abf1e7649655fb5fdcde7a2ce704c16a30af86` as part of the tested canonical PR merge ref. It does not validate bank integrations, real financial data, schema migration for CFO, provider inference, iOS device E2E or production release.
+- Vercel combined commit status still reports the Hobby build-rate-limit failure. Do not upgrade or create repeated deployments; no exact-head new preview is claimed.
+- No merge, production deployment, secret/provider activation, billing change, real financial import or account mutation occurred.
+- Next: keep PR #12 unmerged pending remaining release gates; verify latest PR head/base/mergeability and inspect whether the Vercel failure is only the external preview check. Continue read-only infrastructure/hosting investigation and isolated Self-Evolution work.
