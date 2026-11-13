@@ -1550,3 +1550,35 @@ This handoff records completed validations and remaining blockers; it does not d
 6. Preserve PR #12 and canonical branch; do not merge open feature PRs in bulk or alter production.
 
 No production resources, live schema/data, user accounts, secrets, provider configuration, billing, or deployments were changed in this pass.
+
+
+## 2026-11-13 — continuation checkpoint (live platform + provider parity)
+
+### Newly verified
+- Canonical branch's current ledger was read before this update; this note records only new observations from the current continuation.
+- GitHub CI #1005 (run `43474223510`) on the canonical checkpoint was still IN_PROGRESS. Typecheck/build, unit tests, lint, provider privacy routing, semantic-memory policy, Edge Function type-check and speech tests all SUCCESS; isolated local Supabase startup was still running, with migration/isolation/two-user/CORS steps pending.
+- PR #29 CI #1004 (run `43474129034`) was still IN_PROGRESS. Its typecheck/build, tests, lint, provider privacy, semantic-memory, Edge Function and speech checks SUCCESS; isolated local Supabase startup and downstream migration/isolation/CORS steps pending. Do not mark either run green until final conclusion.
+- PR #25 current code head `725e1bbdf7ef8a68b34f9f3c7a7c6b960bd47a5b` has no workflow runs returned by exact-commit lookup. Previous green checks belong to older code head `431cb78...`; keep Draft and do not transfer those checks.
+- Supabase remains ACTIVE_HEALTHY. Live migration history still ends at `20261113125437_provider_preferences_rls_initplan`; no CFO migration is live.
+- Production Edge Function `jarvis-api` remains ACTIVE v32; Preview `jarvis-preview-api` remains ACTIVE v23. Source comparison confirms Preview includes the newer FreeLLMAPI standard pool, EEA provider eligibility checks, Cloudflare Workers AI speech routing and account/provider diagnostic metadata. Production v32's model router is older and does not contain the same FreeLLMAPI pool/EEA policy implementation. This is a material production/Preview parity gap; do not deploy or activate providers until a separately reviewed promotion plan and exact production-safe validation exist.
+- Provider configuration code is fail-closed on missing/invalid configuration, but its `tier=free` / `billingMode=free_quota_only` labels are operator assertions, not independent proof of downstream billing. Both provider pools remain disabled; no inference, secret reads or changes occurred.
+- Supabase logs query for the last 24h returned 351 function_logs, 312 function_edge_logs, 173 edge_logs, 98 auth_logs, 72 pgbouncer_logs, 59 postgres_logs, 27 auth_audit_logs and 14 postgrest_logs. These are event counts only; no error-rate or user-content conclusion is inferred from counts.
+- Performance advisor reported 18 INFO unused-index candidates, mostly memory/conversation indexes. Do not drop them based on a low-traffic snapshot; first validate query plans and representative workload.
+- Vercel now shows multiple READY Preview deployments on canonical branch, including newer docs/CFO commits, but all returned deployments have target=null (Preview). No Production promotion or live alias change is evidenced. A READY state alone is not a browser/functional smoke test.
+- PR #12 remains open and mergeable into `work/intelligent-memory-foundation`, not production `main`; its base relationship must be preserved and reviewed before any integration. No merge performed.
+- PR #23 and #26 are open, non-draft, but not mergeable at current metadata; do not batch merge. PR #23's own summary still says downstream FreeLLMAPI provider-chain attestation is a gate. PR #26 remains domain primitives only, without persistence/UI/execution.
+
+### Work performed
+- Rechecked exact-commit workflow states/jobs, PR #12/#23/#26/#29 metadata, live migration history, production/Preview Edge Function source, 24h log-source counts, performance advisor and Vercel Preview inventory.
+- No production deployment, database migration/data mutation, auth setting, secret, provider activation, inference, billing change, branch merge or user-account change occurred.
+
+### Next actions
+1. Recheck CI #1005 and PR #29 #1004 final conclusions; inspect failed job logs if either fails.
+2. Keep PR #25 Draft until exact-head CI and Observer Validation exist for `725e1bb...`.
+3. Create a reviewed production/Preview parity matrix before any production promotion; preserve production v32 and Preview v23 as separate evidence until then.
+4. Continue exact-source review of provider preference gating and pre-inference downstream attestation; no personal prompts to FreeLLMAPI until independent free/quota/retention/EEA guarantees are proven.
+5. Keep PR #22 Draft until the currency precision and FX contract is approved; no CFO migration to live.
+6. Review unused-index candidates only with EXPLAIN/query workload evidence; no index drops from advisor INFO alone.
+7. Preserve all PR and deployment safety gates; no production release or claim of 24/7 recovery.
+
+This is a read-only platform and code-parity checkpoint plus continuity documentation. It does not declare JARVIS production-ready.
