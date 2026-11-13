@@ -1524,3 +1524,29 @@ This checkpoint is an evidence-based status update, not a declaration that JARVI
 - Next: (1) resolve CFO currency minor-unit contract and FX representation; (2) get exact-head CI and Observer Validation for PR #25 without altering its source; (3) review PR #23 consent UI against account-specific provider activation and pre-inference downstream-chain attestation; (4) review PR #26/27 for server-side atomic persistence and pair confirmation; (5) continue native iOS feasibility only with a verified free macOS/Xcode path; (6) preserve PR #12 as integration candidate and production unchanged until release gates pass.
 
 This handoff records completed validations and remaining blockers; it does not declare JARVIS production-ready or any unshipped capability complete.
+
+
+## 2026-11-13 — follow-on parallel work checkpoint (17:3x UTC)
+
+### Completed this pass
+- Confirmed canonical CI #1002 and Observer Validation #162 both SUCCESS on exact source checkpoint `a969f3c1119b6ebd42aaef9058e94fec6bb521d3`. Full CI completed isolated Supabase migration reset, SQL isolation, two-user semantic-memory API integration, and deployed production/Preview CORS smoke tests.
+- Confirmed canonical branch moved only by the handoff documentation commit `4f6caaae1e22edfdf957772c6e0f9ac7a65ed5a7`; no code changed in that checkpoint.
+- Opened design-only PR #29 from `work/cfo-currency-contract-design` to canonical branch. It adds a versioned currency-precision proposal to the Family CFO data contract: ISO 4217 metadata with exponent/effective dates, exact decimal/BigInt, original vs settlement currency, FX provenance, no implicit EUR fallback, and fail-closed unsupported codes.
+- PR #29 CI run `43474129034` is IN_PROGRESS on exact head `adf66467070e2fe24b1837b36880ff553ce67af3` at handoff time. Do not mark green until completed.
+- PR #29 is Draft, one documentation file only; no schema, code, financial data or live platform changes.
+- Reviewed PR #22 migration and PR #27 transfer matcher. PR #22 currently permits any three-letter currency code while storing `numeric(20,2)`; this is why PR #29 records a design gap. PR #27 requires explicit pair ID plus same owner/currency, different accounts, exact opposite amount, posted/confirmed state, confidence and unique bounded-date matching. Exact-head CI #987 for PR #27 passed.
+- Reviewed PR #26 scope: pure approval-envelope validation only; it has no persistence, atomic transitions, UI or execution adapter. Exact-head CI #979 passed.
+- Reviewed PR #23 provider consent and model router: both account pools remain disabled pending verified per-account consent and independently attested downstream free/quota/privacy eligibility. FreeLLMAPI remains standard-retention only and must not be represented as ZDR. No inference, secret access, provider activation or billing change occurred.
+- Reconfirmed PR #25 current head `725e1bbdf7ef8a68b34f9f3c7a7c6b960bd47a5b` is ahead of its last passing exact code head `431cb78a31e439f94a048754b3a8d9ae5195c730`; CI #994 / Observer #156 cannot validate current head. PR remains Draft. No workflow dispatch/write endpoint was available through the connected GitHub controls in this pass, so no exact-head run was triggered.
+- Reconfirmed Supabase production function v32 and Preview v23 active; live migrations still end at provider-preferences RLS migration, no CFO schema applied. Security advisor: rate-limit table RLS/no-policy INFO; leaked-password protection WARN. No auth/security changes made.
+- Reconfirmed Vercel Hobby deployment rate limit prevents assuming a current-head Preview. Existing READY deployment is on older SHA `5d6b4ed...`; no paid upgrade or quota bypass.
+
+### Next actions
+1. Wait for PR #29 exact-head CI; fix only if a real failure appears.
+2. Continue reviewing exact source of the currency exponent registry and supported currencies before implementation; keep PR #22 Draft.
+3. Obtain a supported exact-head validation route for PR #25; do not transfer old checks.
+4. Keep PR #23 providers off until a pre-inference downstream allowlist/attestation and hard zero-billing guarantee exist.
+5. Continue PR #26/27 persistence design separately; no action execution or financial operations.
+6. Preserve PR #12 and canonical branch; do not merge open feature PRs in bulk or alter production.
+
+No production resources, live schema/data, user accounts, secrets, provider configuration, billing, or deployments were changed in this pass.
