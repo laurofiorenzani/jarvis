@@ -191,20 +191,9 @@ export type McpServer = {
 }
 
 /**
- * Demo-only remote MCP servers for the explicit browser-direct backend.
- * They are never configured in the cloud or bridge backends. The cloud runtime
- * has its own server-side API boundary; it does not read this list.
- *
- * Only remote HTTP MCP servers work here. Local stdio servers (filesystem,
- * Blender, Playwright) need a machine to run on and are outside this demo path.
- *
- * SECURITY: every value configured here is exposed in the browser bundle.
- * In direct mode Vite inlines tokens and private endpoint URLs into JavaScript.
- * Anyone who can load that build can inspect and reuse those credentials.
- * Never populate these values for a public deployment. Use this mode only for
- * isolated local demos with disposable, least-privilege credentials. For the
- * production cloud backend, add integrations behind authenticated server-side
- * adapters instead of putting vendor credentials in VITE_* variables.
+ * Legacy direct-browser MCP catalog. All entries are intentionally disabled:
+ * browser-direct provider mode is not supported by the €0 cost/security policy.
+ * Add integrations only behind authenticated server-side adapters.
  */
 export const MCP_SERVERS: McpServer[] = [
   // The single highest-leverage integration: one URL, ~8,000 apps, managed
@@ -214,16 +203,16 @@ export const MCP_SERVERS: McpServer[] = [
   {
     name: 'zapier',
     label: 'Zapier',
-    url: str(BACKEND === 'direct' ? viteEnv.VITE_ZAPIER_MCP_URL : undefined) ?? '',
-    enabled: Boolean(str(BACKEND === 'direct' ? viteEnv.VITE_ZAPIER_MCP_URL : undefined)),
+    url: undefined ?? '',
+    enabled: false,
   },
 
   // Alternative/complementary gateway: ~3,000 apps, free for personal use.
   {
     name: 'pipedream',
     label: 'Pipedream',
-    url: str(BACKEND === 'direct' ? viteEnv.VITE_PIPEDREAM_MCP_URL : undefined) ?? '',
-    enabled: Boolean(str(BACKEND === 'direct' ? viteEnv.VITE_PIPEDREAM_MCP_URL : undefined)),
+    url: undefined ?? '',
+    enabled: false,
   },
 
   // Official first-party servers. Each needs its own OAuth token pasted in.
@@ -231,36 +220,36 @@ export const MCP_SERVERS: McpServer[] = [
     name: 'notion',
     label: 'Notion',
     url: 'https://mcp.notion.com/mcp',
-    token: str(BACKEND === 'direct' ? viteEnv.VITE_NOTION_TOKEN : undefined),
-    enabled: Boolean(str(BACKEND === 'direct' ? viteEnv.VITE_NOTION_TOKEN : undefined)),
+    token: undefined,
+    enabled: false,
   },
   {
     name: 'linear',
     label: 'Linear',
     url: 'https://mcp.linear.app/mcp',
-    token: str(BACKEND === 'direct' ? viteEnv.VITE_LINEAR_TOKEN : undefined),
-    enabled: Boolean(str(BACKEND === 'direct' ? viteEnv.VITE_LINEAR_TOKEN : undefined)),
+    token: undefined,
+    enabled: false,
   },
   {
     name: 'github',
     label: 'GitHub',
     url: 'https://api.githubcopilot.com/mcp/',
-    token: str(BACKEND === 'direct' ? viteEnv.VITE_GITHUB_TOKEN : undefined),
-    enabled: Boolean(str(BACKEND === 'direct' ? viteEnv.VITE_GITHUB_TOKEN : undefined)),
+    token: undefined,
+    enabled: false,
   },
   {
     name: 'stripe',
     label: 'Stripe',
     url: 'https://mcp.stripe.com',
-    token: str(BACKEND === 'direct' ? viteEnv.VITE_STRIPE_TOKEN : undefined),
-    enabled: Boolean(str(BACKEND === 'direct' ? viteEnv.VITE_STRIPE_TOKEN : undefined)),
+    token: undefined,
+    enabled: false,
   },
   {
     name: 'sentry',
     label: 'Sentry',
     url: 'https://mcp.sentry.dev/mcp',
-    token: str(BACKEND === 'direct' ? viteEnv.VITE_SENTRY_TOKEN : undefined),
-    enabled: Boolean(str(BACKEND === 'direct' ? viteEnv.VITE_SENTRY_TOKEN : undefined)),
+    token: undefined,
+    enabled: false,
   },
   // Home Assistant is self-hosted, so this needs a publicly reachable URL
   // (Nabu Casa Cloud, or a Cloudflare tunnel). Worth the setup — "Jarvis, dim
@@ -271,11 +260,11 @@ export const MCP_SERVERS: McpServer[] = [
   {
     name: 'home',
     label: 'Home',
-    url: str(BACKEND === 'direct' ? viteEnv.VITE_HOMEASSISTANT_MCP_URL : undefined) ?? '',
-    token: str(BACKEND === 'direct' ? viteEnv.VITE_HOMEASSISTANT_TOKEN : undefined),
+    url: undefined ?? '',
+    token: undefined,
     enabled: Boolean(
-      str(BACKEND === 'direct' ? viteEnv.VITE_HOMEASSISTANT_MCP_URL : undefined) &&
-        str(BACKEND === 'direct' ? viteEnv.VITE_HOMEASSISTANT_TOKEN : undefined),
+      undefined &&
+        undefined,
     ),
   },
 ]
