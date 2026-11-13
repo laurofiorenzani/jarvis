@@ -2104,3 +2104,41 @@ No third-party integration was connected, no credentials were requested, no data
 - PR #33 continuity branch exact-head CI #1080 (`43513423136`) SUCCESS on `8473ab92300308cc491d41e0304e20a01efa54ee`; this validates the latest ledger/integration research documentation. Provider-lockout code tree remains unchanged from #1053 SUCCESS.
 - PR #26 authenticated action-approval API exact-head CI #1078 SUCCESS on `4af6a1fd1daee5bee573b7cc55bab1a22a7b482e`. Six approval service tests and Edge Function typecheck pass; route-level live two-user integration is still pending.
 - PR #34 BMW CarData exact-head CI #1082 is still in the isolated local Supabase startup step. Earlier #1079 failed only because the test fake lacked a constructor; that was fixed. The Vault migration and 28 SQL assertions have not yet been confirmed by a completed run.
+
+
+## 2026-11-13 — OpenClaw evaluation and cross-front CI checkpoint
+
+### OpenClaw review — architecture reference only
+- Reviewed official OpenClaw docs for Gateway architecture, security/prompt injection, Gateway WebSocket protocol, node pairing/capabilities, iOS node, tool plugins, Ollama/local models and WhatsApp channel.
+- Decision: do not install or embed a second OpenClaw Gateway. JARVIS remains sole owner of identity, Supabase Auth, conversations, family memory, provider policy, approvals and interfaces. Avoid duplicate sessions/memory and a second control plane.
+- Adopt as design references: device identity/pairing separated from capability approval; device-scoped roles/scopes; token rotation/revocation; typed node invocation with deadlines/cancellation/idempotency; capability-change reapproval; narrow per-agent tool allowlists; isolated browser profiles; SKILL.md-compatible task documentation.
+- iOS node capabilities (camera/screen/location/Talk) are useful inspiration for JARVIS's first-party SwiftUI app, but OpenClaw's iOS docs note foreground/background lifecycle limits. No assumption of always-on background camera/screen or persistent iPhone WebSocket.
+- Do not adopt OpenClaw's WhatsApp Web/Baileys session for family production messaging without a separate account-risk and policy review. It is distinct from an official WhatsApp Business API integration.
+- OpenClaw is self-hosted, not a hosted free inference service. It still needs an AI provider API key or local model hardware; local inference does not remove compute/storage/electricity/operations costs. No OpenClaw install, package, server, plugin, provider or credential was created.
+- Official Plugin SDK is documented as experimental. Prefer JARVIS-owned TypeScript/Deno adapters and capability contracts; no runtime dependency.
+- Detailed assessment: `docs/architecture/OPENCLAW_EVALUATION.md`.
+
+### Current exact-head CI evidence
+- PR #23 provider consent/FreeLLMAPI: CI #1052 SUCCESS on `ead81317ba70c9a88a61cf7bc477540eb44e7763`. Operator-level Cloudflare Free/no-overage attestation is still absent/unverified; provider pools remain disabled and no inference sent.
+- PR #26 persistent action approvals: CI #1078 SUCCESS on `4af6a1fd1daee5bee573b7cc55bab1a22a7b482e`; metadata-only authenticated create/list/approve/reject/cancel API validated. No execution adapter is wired; no external actions occur.
+- PR #31 Observer: refreshed exact-head CI #1054 and Observer #176 SUCCESS on `7849419dfeef11984cdac4be0458678623d199ac`.
+- PR #32 CFO currency exponent: CI #1039 SUCCESS on `dfea9b296647ed257915932998700ce0fbe4ac39`; isolated migration/SQL and API tests only, no production CFO migration or financial import.
+- PR #33 no-paid-provider guard: CI #1083 SUCCESS on `20ddcb5d5330cf7f840a8e1ff79d031139782eec`.
+- PR #34 BMW CarData/Vault: CI #1084 SUCCESS on `9846edb396250e9e5f1810d03fa631ca1395b593`; BMW Vault migration and 40 isolated pgTAP assertions passed. Source only; no production migration, BMW client registration, user consent, token, API route or vehicle request.
+
+### Live platform checkpoint
+- Supabase project `undmhmdwhxvjgvezvucy` remains ACTIVE_HEALTHY in eu-west-3; production `jarvis-api` v32 and Preview `jarvis-preview-api` v23. Live migration history ends at `20261113125437`; PR #26 action-approval, PR #32 CFO and PR #34 BMW Vault migrations are not applied to production.
+- Security advisor INFO remains on `public.jarvis_rate_limits` (RLS enabled without policies); direct grants are verified absent for anon/authenticated and service_role has intended access. WARN remains for leaked-password protection disabled; no Auth setting changed. Performance advisor still lists 18 unused indexes; do not drop without workload evidence.
+- No production deployment, merge, migration, provider activation/inference, secret read, Vault secret creation, BMW connection or external action was performed.
+
+### Handoff
+A. State: JARVIS remains in development. Six active workstreams are CI-validated at their respective exact heads, but are not merged/released: provider consent, action approvals, Observer, CFO currency, zero-paid-provider guard and BMW CarData.
+B. Completed/validated: PR #23 CI #1052; PR #26 CI #1078; PR #31 CI #1054 + Observer #176; PR #32 CI #1039; PR #33 CI #1083; PR #34 CI #1084; OpenClaw architecture review documented.
+C. In progress: PR #26 UI/capability executor boundary; PR #34 authenticated OAuth connect/data routes and persistent daily budget wiring; provider operator billing attestation and Preview/production policy parity; CFO schema integration; native iOS device registry and secure storage; Observer schedule/release control.
+D. Evidence: repo `laurofiorenzani/jarvis`; PR #23, #26, #31, #32, #33, #34; OpenClaw assessment at `docs/architecture/OPENCLAW_EVALUATION.md`; Supabase production v32/Preview v23; migrations through `20261113125437`.
+E. Decisions: OpenClaw is a reference only, not a second Gateway/brain. Do not enable paid providers or WhatsApp Web/Baileys personal account. Do not deploy/migrate/activate integrations before exact release gates and explicit user consent.
+F. Pending: authenticated BMW OAuth lifecycle + atomic request budget; action approval UI and separately gated executor; live two-user integration for action approval; Cloudflare no-overage billing evidence; production/Preview route parity; CFO migration after schema reconciliation; iOS native/Keychain physical-device tests.
+G. User action: BMW CarData client registration and device consent will be required before connection; no credentials should be sent in chat. Cloudflare billing attestation requires owner verification because current OAuth scope lacks Billing Read. Mac/Xcode and iPhone will be needed for native acceptance.
+H. Next: inspect exact PR #34 files and implement only safe authenticated BMW API plumbing that remains disabled until owner OAuth; inspect PR #26 UI/API wiring; keep parallel checks on provider and CFO; no production changes.
+I. GitHub: `laurofiorenzani/jarvis`; PR #23/#26/#31/#32/#33/#34 remain open Draft; no merge.
+J. Next conversation: Continue from this checkpoint. Exact CI green: #23/#1052, #26/#1078, #31/#1054 + Observer #176, #32/#1039, #33/#1083, #34/#1084. OpenClaw review says reuse device pairing/capability scopes/token revocation and node protocol ideas, but do not install a second Gateway or duplicate Supabase memory; keep JARVIS first-party iOS. BMW PR is source/isolated-CI only, no live account or endpoints. Supabase prod v32/Preview v23, live migrations through 20261113125437. Keep €0 recurring cost and production untouched.
