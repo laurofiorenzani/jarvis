@@ -1805,7 +1805,7 @@ J. Next conversation: Continue from latest JARVIS_MASTER_RECORD.md. PR #30 CI #1
 - This change intentionally requires a valid existing local FreeLLMAPI key/config; if absent, bridge startup refuses rather than falling back to a paid Claude account. Local .env values were not inspected in this session.
 
 **Self-Evolution / Observer — PR #31**
-- Exact-head CI #1014 (`43477580864`) passed on `56f9871d92aa3a45fed02bbd7944af5774e64f67`; Observer validation #172 (`435048?`) was previously recorded successful. PR remains Draft; no scheduled automation was created and no production release occurred.
+- Exact-head CI #1014 (`43477580864`) passed on `56f9871d92aa3a45fed02bbd7944af5774e64f67`; Observer validation #172 (`43477580659`) completed SUCCESS on the exact Observer branch head. PR remains Draft; no scheduled automation was created and no production release occurred.
 
 **iOS / action approvals**
 - Existing PR #28 contains a fail-closed Capacitor secure-storage adapter and unit tests, but no Capacitor dependency, iOS target, Xcode project, signing or physical-device validation exists. No native build claimed.
