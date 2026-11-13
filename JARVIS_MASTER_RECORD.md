@@ -1394,3 +1394,35 @@ No new PRs were merged, no live migrations were run, and no production deploymen
 - No Vercel Preview exists for the current PR heads, so GitHub CI is the authoritative code validation for now; it does not replace browser/device E2E.
 
 No PR #22–#27 was merged. No new deployment, live migration, provider activation or paid service was created.
+
+
+## 2026-11-13 17:01 Dublin — continuity and parallel-work verification
+
+### Canonical repository and integration candidate
+- Read-only GitHub verification confirms the active implementation repository is `laurofiorenzani/jarvis`; default branch remains `main`.
+- The canonical development branch `work/jarvis-canonical-integration` is at `069664cd5bcccdbf28d85b91a44cb3de6503cbaa`, represented by open PR #12 targeting `work/intelligent-memory-foundation` (not `main`). PR #12 is Ready for Review and GitHub currently reports it mergeable, but it has not been merged. Exact-head CI #997 and JARVIS Observer Validation #158 both completed successfully on this commit.
+- Do not equate “mergeable” with release approval: PR #12 is a large integration candidate and production remains a separate release gate.
+
+### Parallel PR validation snapshot
+- PR #22 Family CFO persistence: head `c3d3edc2ed91f88994cb93bb6acc7843f09992c0`; exact-head CI #984 SUCCESS; remains Draft. The read-only migration is CI-tested only and has not been applied to live Supabase. Currency validation remains unresolved: the current three-letter regex does not prove ISO-4217 validity or define supported minor units.
+- PR #23 provider consent / routing: head `2e9f3de2ddc0cdf46464e3f385aff97e5e54fbc3`; exact-head CI #982 SUCCESS; Ready for Review but not merged. Provider pools remain disabled; provider terms/eligibility, zero-billing hard cap, per-account consent and synthetic inference verification remain release gates.
+- PR #25 Observer: head `725e1bbdf7ef8a68b34f9f3c7a7c6b960bd47a5b`; no PR-triggered workflow run was returned for this exact head. Keep Draft; earlier CI/Observer passes on older heads do not validate this head.
+- PR #26 action-approval primitives: head `59e454969cf3f2875b18ee50dfea48b98c9e3425`; exact-head CI #979 SUCCESS; Ready for Review but not merged. It is a pure validation foundation, not persisted approvals, UI or external action execution.
+- PR #27 CFO transfer pairing: head `4c31dc2032b4217a887f483b3ec943e1647fbbe0`; exact-head CI #987 SUCCESS; Ready for Review but not merged. Exclusion requires a shared explicit user-confirmed pair ID; unpaired transactions remain in cash flow.
+- PR #28 iOS secure storage: head `abac40a19f2adb730b328258a76d8f4de80d3510`; documentation follow-ups are beyond the code head `56c6e5cccf1337e25388e3a1a1683ac1b2915c6d`, whose CI #996 passed. The adapter is not wired into an iOS app; no Capacitor package/project, Xcode build or physical-device test exists. No exact-head workflow run was returned for the documentation-only head.
+
+### Release and platform boundary
+- Latest PR #12 review comment at 16:52 UTC identifies a material Production/Preview mismatch: production `jarvis-api` v32 still contains Gemini STT/TTS calls, while Preview `jarvis-preview-api` v23 contains the Cloudflare Whisper route and Gemini restriction. Supabase connector cannot inspect Edge Function secret presence/values. No secret was read, no inference was sent and production was not changed.
+- Keep production promotion blocked until provider-policy parity is reviewed, Preview is validated with synthetic data, owner-only secret setup is completed securely, both accounts' provider-consent gates are satisfied, and physical iPhone PT/EN end-to-end is proven.
+- Vercel Hobby deployment cap remains a blocker for fresh previews. Do not upgrade, bypass quota or use a stale Preview as validation.
+- No PR was merged; no production deployment, migration, account/auth change, provider activation, secret change or billing change was performed during this verification.
+
+### Next parallel actions
+1. Resolve the Family CFO v1 currency contract before any schema approval: either a documented two-decimal currency allowlist with rejection of unsupported codes, or a currency-specific minor-unit design. Preserve account settlement currency separately from original merchant currency where FX applies.
+2. Review the latest PR #23 consent UX and provider routing against the two-account isolation gate; keep both provider pools default-off until explicit per-account acceptance and a verified free/no-overage provider manifest.
+3. Obtain a fresh exact-head CI plus Observer Validation for PR #25; keep it Draft until both pass.
+4. Reconcile PR #22–#28 selectively with the latest canonical ledger; do not force-push or merge branches in bulk.
+5. Continue iOS architecture only along a verified zero-recurring macOS/Xcode route; do not claim a native app exists.
+6. Preserve PR #12 as the current integrated candidate and keep Production unchanged until every release gate is satisfied.
+
+This checkpoint is a read-only state reconciliation plus documentation update. It does not mark any unshipped capability as complete.
