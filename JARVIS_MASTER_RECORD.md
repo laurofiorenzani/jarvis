@@ -319,3 +319,27 @@ All branch counts are a snapshot from GitHub compare, not a deletion authorizati
 - Closed private repo PR #3 (repository reconciliation) after moving its findings into this master record.
 - Remaining open canonical repo PRs: #1 cloud foundation, #4 semantic memory foundation, #7 amber production UI, #8 cloud brain/voice locale, #9 cloud status accuracy, #12 canonical integration candidate.
 - No repository or branch was deleted. The connected GitHub actions do not expose repository-delete or branch-delete operations. The private `jarvis-personal-cloud` repo and remaining feature branches remain retirement candidates only after final feature reconciliation.
+
+
+## 16. Continuation audit — 2026-11-13 06:20 Europe/Dublin
+
+### Live GitHub state rechecked
+- Canonical application repository `laurofiorenzani/jarvis` exists, is writable by the connected account, and its default branch is still `main`.
+- Private `laurofiorenzani/jarvis-personal-cloud` still exists and is not empty. Its `main` contains architecture, integration, memory, roadmap and security documents. Its branch inventory includes `main`, `work/intelligent-memory`, `work/intelligent-memory-next` and `work/repository-reconciliation`. The README describes it as a planning workspace, but the private memory branch is a materially distinct Cloudflare Worker/D1 prototype. Do not delete before a path-by-path migration/reconciliation.
+- Canonical repo branch search returned the following visible branches: `feature/gemini-live-voice`, `feature/intelligent-memory`, `feature/live-vision`, `fix/auth-invite-password-recovery`, `fix/restore-main-preview-build`, `main`, `work/freellmapi-backend-prototype`, `work/intelligent-memory-foundation`, `work/intelligent-memory-next`, `work/jarvis-amber-command-center`, `work/jarvis-amber-production-track`, `work/jarvis-canonical-integration`, `work/jarvis-cloud-status-accuracy`, `work/jarvis-master-record`, `work/jarvis-voice-locale`, `work/memory-integration`, `work/memory-integration-ready`, `work/mobile-companion`, `work/remove-shortcut-architecture`, `work/self-evolution-engine-foundation`. This is a live inventory snapshot, not a deletion approval.
+- PR #12 remains OPEN and DRAFT, head `e5d34dfea3baf59cb86b647ad0348be282667666`, base `work/intelligent-memory-foundation` (not `main`). It is mergeable according to GitHub metadata, but this does not make it a safe mainline release. Its current diff includes the current amber UI/auth/memory/voice integration, observer workflows and this master record.
+- The latest observed successful check on that head is Observer Validation run #48 (`43323568754`). It is not the complete CI suite. The Vercel status on the same commit is FAILURE solely because the account hit the deployment rate limit (retry after 24 hours); do not upgrade billing or retry repeatedly.
+- The candidate CI workflow now triggers push only on `main` (and pull_request/workflow_dispatch). This means ordinary pushes to working branches do not get the full CI run; PR validation is still configured. Review this trigger change before promoting the integration.
+- PR #12 is still a candidate, not a production release. Do not merge, retarget, delete branches/repos, or promote deployments until full CI on the exact head, mainline reconciliation, and device validation gates are satisfied.
+
+### Immediate work queue (resume here)
+1. Inspect the full PR #12 changed-file list and exact-head checks, distinguish full CI from observer-only validation, and repair any CI trigger regression.
+2. Compare `work/jarvis-canonical-integration` against `main` and each feature branch; create a per-feature migration matrix with file-level provenance before changing main.
+3. Review all unique files and commits in `jarvis-personal-cloud` including `work/intelligent-memory-next`; migrate design/security findings into this single record and only the chosen Supabase architecture. Do not run Cloudflare D1 as a competing memory store.
+4. Verify the existing two Supabase accounts, current amber UI sign-in/recovery, PT/EN speech, memory consent/isolation and iPhone browser behaviour. No re-registration.
+5. Verify Vercel quota reset before one batched preview deployment; do not alter billing.
+6. Keep Oracle/Cloudflare resources untouched until their live ownership, current state and role are confirmed. No credentials or private SSH keys in chat or Git.
+7. Close/delete secondary branches and retire the private planning repository only after every unique useful item is migrated, tests pass and no open PR/deployment depends on them.
+
+### Explicit status correction
+The current work has not yet produced one official `main`, and it has not completed repository/branch cleanup. The canonical repository and candidate integration line are identified, but the consolidation is still in progress. This record is the single project ledger; do not create competing continuity files.
