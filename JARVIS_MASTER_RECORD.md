@@ -1013,3 +1013,9 @@ The available Supabase connector cannot inspect or set Edge Function secrets. Do
 - GitHub combined status for that head reports Vercel failure with the Hobby free-plan build-rate-limit URL. No paid upgrade or billing change was made.
 - Migration is now applied to the shared database, so the next validation must exercise the Preview endpoint and two-account read isolation. Provider consent remains default-off; do not create preferences rows or enable pools without each account holder's separate consent.
 - Next steps: inspect current PR head CI after the ledger commit; make an authenticated Preview GET /provider-preferences and test each existing account sees only its own row; verify the iPhone Cloud Access bootstrap; inspect STT logs/configuration without reading secret values; keep Production v32 untouched until exact-head CI and device E2E pass.
+
+
+### Voice diagnostic accuracy fix (12:57 UTC)
+- Source review confirmed the voice loop intentionally does not fall back to browser/OS Web Speech when cloud STT is unavailable, because that could send microphone audio to a different vendor and violate the configured cloud-only privacy boundary.
+- The prior missing-transcriber error incorrectly told an already-authenticated user to sign in again. Updated src/lib/voice.ts on PR #13 to say that cloud transcription is unavailable and to verify the account connection plus an approved speech provider. This changes diagnostic wording only; it does not enable a provider, change privacy routing, or claim voice is fixed.
+- Commit: f22fce69dd0645ff8e10b9125c2b9e7687ad6891. Automated validation of this latest commit is pending; Vercel's Hobby build-rate-limit remains an external blocker.
