@@ -1731,3 +1731,41 @@ G. User action: None required immediately. A physical iPhone + Mac/Xcode will ev
 H. Next: Continue independent source reviews and safe branch work; recheck Vercel only after the free deployment window, then run a real Preview smoke/acceptance test if available.
 I. GitHub: laurofiorenzani/jarvis; canonical branch work/jarvis-canonical-integration; PR #30 remains Draft/open/non-mergeable; no merges or production changes in this checkpoint.
 J. Next conversation: Continue JARVIS from the latest JARVIS_MASTER_RECORD.md. PR #30 exact-head CI #1009 completed SUCCESS across build/tests/lint, isolated Supabase migrations, SQL/two-user isolation and production/Preview CORS; PR #30 remains Draft/non-mergeable pending ancestry/review. PR #25 exact-head has no workflow runs. PR #28 secure-storage code passed older CI #996 but current head/device validation is pending. PR #29 currency CI #1004 passed; reconcile with CFO PR #22. Vercel records are READY target=null and Hobby daily deployment cap was reached. Continue multitask, preserve €0 recurring cost, do not merge/deploy/migrate/activate providers without gates.
+## 2026-11-13 — multi-front architecture/security review
+
+### PR and branch state refresh
+- PRs #22, #25, #26, #27, #28, #29 and #30 remain open and none is mergeable according to current GitHub metadata. All remain separate review units; no batch merge.
+- PR #22 head c3d3edc2ed91f88994cb93bb6acc7843f09992c0 still proposes owner-scoped read-only CFO persistence. Source review confirms numeric(20,2) and a three-character currency regex, which is not compatible with the currency exponent registry design in PR #29. The migration must remain unapplied until this contract is reconciled.
+- PR #27 explicitly requires a shared internal_transfer_pair_id, owner/currency/account/amount/date/uniqueness and posted/confirmed/high-confidence checks. Equal-and-opposite unpaired records remain in cash flow. This is conservative and should be preserved.
+- PR #28 adapter patch is fail-closed for web before invoking plugin storage, sets jarvis_ prefix, disables iCloud sync and configures device-only Keychain access on iOS. However, the adapter is not wired to auth/HUD, native dependency/project are absent, and physical-device/logout/reinstall tests remain pending. Current canonical branch still contains the prior plugin-neutral adapter; PR #28 is an unmerged branch, not integrated code.
+- PR #26 action approval remains pure domain logic. It binds approval to user/session/invocation/capability/argument digest and TTL, but does not persist decisions, enforce atomic one-time transitions, render UI or execute actions.
+- PR #25 Observer source remains read-only and metadata-bounded. It does not persist snapshots; scheduled runs remain inactive until safely integrated into default branch. Exact-head validation remains outstanding.
+
+### Cloud Brain / Supabase source review
+- Re-read live Edge Function metadata and source. Production `jarvis-api` is ACTIVE v32, verify_jwt=false; Preview `jarvis-preview-api` is ACTIVE v23, verify_jwt=false. Both handlers perform their own bearer-token validation with Supabase `auth.getUser()` before user-scoped work; public health is intentionally pre-auth. This is an observed code pattern, not proof that all routes have been independently penetration-tested.
+- Material production/Preview implementation drift remains: production source uses Google AI Studio for STT and its own CORS allowlist; Preview source includes Cloudflare Workers AI Whisper STT, broader project-specific Preview-origin matching, and additional preflight/routing modules. Do not deploy or claim parity until a route-by-route diff and provider/quota policy review is complete.
+- Preview automatic memory capture source checks the per-user rate limit, safety classifier and a per-user provider preference requiring `zdr_pool_enabled === true` plus matching policy version before routing conversation text. Provider pools are still not enabled; no inference was invoked.
+- Live Supabase migration inventory remains through `20261113125437_provider_preferences_rls_initplan`; no CFO migration is present/applied.
+- Security advisor recheck: INFO `public.jarvis_rate_limits` has RLS enabled without policies; WARN leaked-password protection disabled. No change made. Confirm the rate-limit table is service-role-only from migration/source before any future policy change; do not expose it to authenticated clients.
+
+### iOS / action safety
+- PR #28's exact patch was reviewed; web localStorage fallback is explicitly rejected, but no native app is built or installed. Push-to-talk remains the baseline; do not promise always-on wake word while backgrounded/locked.
+- PR #26 exact patch was reviewed. Approval digest uses strict canonical JSON, SHA-256 and bounded payload; unsupported capabilities are denied and unknown capabilities require approval. Persistence/atomic consumption remains a required server-side gate before any external integration can rely on it.
+
+### Actions in this session
+- Refreshed metadata for PRs #22/#25/#26/#27/#28/#29/#30 and listed changed files to confirm exact scope.
+- Reviewed Observer implementation and Self-Evolution design; reviewed CFO migration/contract and transfer-pair domain patch; reviewed iOS secure-storage adapter/tests and action-approval primitives.
+- Re-read live production/Preview Edge Function metadata/source, Supabase migration inventory and security advisor.
+- No source changes, PR merges, deployments, live migrations, secrets/auth/billing changes, provider inference, financial data access or external actions.
+
+### Handoff
+A. State: JARVIS foundations are progressing; not production-ready and not yet a complete native iPhone app.
+B. Completed: PR #30 CI #1009 remains verified SUCCESS from prior checkpoint; current PR inventory and code/security review refreshed; live Supabase state rechecked.
+C. In progress: Observer exact-head CI; production/Preview API parity; provider policy/consent/no-billing verification; CFO currency exponent schema reconciliation; native iOS integration and physical-device gate; persistent/atomic approval service.
+D. Evidence: canonical branch work/jarvis-canonical-integration; PR #22 c3d3edc..., #25 725e1bb..., #26 59e4549..., #27 4c31dc2..., #28 abac40a..., #29 adf6646..., #30 4e56733...; production function v32; Preview v23; live migrations through 20261113125437.
+E. Decisions: no batch merge; no CFO migration until currency schema is exact; no provider activation or inference until per-user consent, EEA, retention, downstream billing/no-overage are independently verified; no auth/RLS changes based solely on advisor output; no paid services or quota bypass.
+F. Pending: Self-Evolution—exact-head Observer run and eventual safe schedule integration; Cloud Brain—route-by-route v32/v23 parity and auth review; Multi-AI—provider attestation; CFO—currency registry/exponent + FX schema; iOS—native app target and device tests; actions—server persistence/atomic approval lifecycle.
+G. User action: none immediately. Mac/Xcode and physical iPhone will be needed for native acceptance; paid Apple Developer Program remains excluded.
+H. Next: continue read-only route/auth/provider review, resolve CFO schema contract on isolated branch, and prepare Observer exact-head workflow validation without creating unnecessary Vercel deployments.
+I. GitHub: laurofiorenzani/jarvis; canonical work/jarvis-canonical-integration; latest ledger update will be the documentation-only commit below.
+J. Next conversation: Continue from latest JARVIS_MASTER_RECORD.md. PR #30 CI #1009 passed end-to-end but PR remains Draft/non-mergeable. PR #25 exact-head checks missing. Live Supabase production API v32 and Preview API v23 are materially different (Google STT vs Cloudflare Whisper and CORS/routing differences); perform route-by-route parity review. PR #22 CFO migration numeric(20,2) conflicts with PR #29 currency exponent design; do not migrate. PR #28 native adapter remains unmerged/unwired; PR #26 approval is domain-only. Continue multitask, no paid services, no provider activation, no production mutation without gates.
