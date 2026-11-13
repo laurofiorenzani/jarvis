@@ -64,6 +64,14 @@ export type MemoryPreferenceResponse = {
   autoCaptureEnabled: boolean
 }
 
+export type ProviderPreferencesResponse = {
+  version: typeof CLOUD_API_VERSION
+  currentPolicyVersion: string
+  zdrPoolEnabled: boolean
+  standardPoolEnabled: boolean
+  acceptedAt: string | null
+}
+
 
 export type SemanticMemoryCandidate = {
   id: string
