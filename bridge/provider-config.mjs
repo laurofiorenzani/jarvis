@@ -32,15 +32,25 @@ export function resolveBridgeProvider(env = process.env) {
   const model = env.FREELLMAPI_MODEL?.trim() || 'auto'
   if (model.length > 160) throw new Error('FREELLMAPI_MODEL must be 160 characters or fewer.')
 
+  const sdkEnv = { ...env }
+  // Prevent inherited Claude account, OAuth, Bedrock or Vertex credentials from
+  // overriding the explicitly selected loopback FreeLLMAPI gateway.
+  for (const key of [
+    'ANTHROPIC_AUTH_TOKEN',
+    'CLAUDE_CODE_OAUTH_TOKEN',
+    'ANTHROPIC_BEDROCK_BASE_URL',
+    'ANTHROPIC_VERTEX_PROJECT_ID',
+    'CLAUDE_CODE_USE_BEDROCK',
+    'CLAUDE_CODE_USE_VERTEX',
+  ]) delete sdkEnv[key]
+  sdkEnv.ANTHROPIC_BASE_URL = url.origin
+  sdkEnv.ANTHROPIC_API_KEY = apiKey
+  sdkEnv.ANTHROPIC_MODEL = model
+
   return {
     provider,
     model,
     effort: undefined,
-    sdkEnv: {
-      ...env,
-      ANTHROPIC_BASE_URL: url.origin,
-      ANTHROPIC_API_KEY: apiKey,
-      ANTHROPIC_MODEL: model,
-    },
+    sdkEnv,
   }
 }
