@@ -1,6 +1,6 @@
 # JARVIS Family CFO — data and capability contract
 
-Status: design contract only; no Family CFO tables, bank connectors, financial imports, balances, or money-moving tools are implemented by this document.
+Status: the domain contract remains design-only. An initial owner-scoped, read-only database schema is proposed in PR #20; it is not merged or applied to live Supabase. No bank connectors, financial imports, live balances, or money-moving tools are implemented.
 
 ## 1. Purpose and non-goals
 

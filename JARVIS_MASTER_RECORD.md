@@ -1173,3 +1173,12 @@ The available Supabase connector cannot inspect or set Edge Function secrets. Do
 - No Production Edge Function, Vercel alias, account, auth setting, secret, provider preference, memory, billing plan, or user data was changed.
 - Keep provider pools disabled until each account holder independently accepts the complete provider/data-transfer notice. Do not infer that Supabase Paris region or Cloudflare ZDR means all processing remains in the EEA.
 - Keep all changes on isolated PR branches; no production promotion or paid upgrade.
+
+
+## 2026-11-13 — Family CFO persistence foundation (PR #20)
+- Drafted the first owner-scoped database schema for accounts, transactions and dated balance snapshots.
+- Authenticated users receive SELECT-only access with per-owner RLS. Direct client INSERT/UPDATE/DELETE is denied. Server-side writes are reserved for service_role and must derive owner_user_id from the verified JWT and validate account ownership.
+- Composite account/owner foreign keys prevent a transaction or balance snapshot from referencing another user's account. Amounts use exact NUMERIC(20,2), currencies use ISO-like 3-letter validation, and provenance, confidence, source, effective and observation timestamps are retained.
+- Synthetic SQL isolation tests cover two users, own-row visibility, cross-owner foreign-key rejection, invalid currency/confidence and denied direct writes.
+- PR #20 is a draft schema proposal only. It does not execute a live migration. No real financial data, bank credentials, connector, household-sharing permission, money movement or production setting is touched.
+- The application API, import/reconciliation workflow, balances, budgets, mortgage/pension/investment calculations and Family CFO UI remain unimplemented.
