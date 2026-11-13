@@ -1,6 +1,6 @@
 begin;
 
-select plan(33);
+select plan(35);
 
 insert into auth.users (id, aud, role, email, encrypted_password, email_confirmed_at, created_at, updated_at)
 values
@@ -297,12 +297,40 @@ select is(
   'cancelled approval cannot be cancelled twice'
 );
 
+insert into public.jarvis_action_approvals (
+  request_id, user_id, session_id, conversation_id, invocation_id,
+  capability_id, argument_digest, title, target, impact, reversibility,
+  policy_version, status, created_at, expires_at, decided_at, decided_by
+) values (
+  '10000000-0000-4000-8000-000000000035',
+  '00000000-0000-4000-8000-000000000031',
+  'session-a', 'conversation-a', 'invocation-approved-expired', 'bmw.climate.start',
+  repeat('9', 64), 'Expired approved climate', 'BMW iX1', 'Starts cabin climate',
+  'Can be stopped from the vehicle', 'policy-v1', 'approved',
+  now() - interval '11 minutes', now() - interval '1 minute',
+  now() - interval '2 minutes', '00000000-0000-4000-8000-000000000031'
+);
+select is(
+  public.jarvis_claim_action_approval_execution(
+    '10000000-0000-4000-8000-000000000035',
+    '00000000-0000-4000-8000-000000000031',
+    'session-a', 'invocation-approved-expired', 'bmw.climate.start', repeat('9', 64), 'policy-v1'
+  ),
+  null::uuid,
+  'expired approved action cannot be claimed for execution'
+);
+select is(
+  (select status from public.jarvis_action_approvals where request_id = '10000000-0000-4000-8000-000000000035'),
+  'expired',
+  'expired approved action transitions to expired'
+);
+
 set local role authenticated;
 select set_config('request.jwt.claim.sub', '00000000-0000-4000-8000-000000000031', true);
 select is(
   (select count(*)::int from public.jarvis_action_approvals),
   4,
-  'user A sees only their three approvals'
+  'user A sees only their four approvals'
 );
 select set_config('request.jwt.claim.sub', '00000000-0000-4000-8000-000000000032', true);
 select is(
