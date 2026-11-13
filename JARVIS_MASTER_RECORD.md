@@ -1321,3 +1321,21 @@ The canonical branch has three additional documentation-only ledger commits afte
 The three commits after f217 on canonical are ledger-only updates to `JARVIS_MASTER_RECORD.md`; no source-code changes were introduced by them. The divergence is therefore documentation/ancestry drift, not proof of code conflict. Do not force-push or reconstruct full branch trees. Before any merge, inspect the actual PR mergeability/diff and ensure the current canonical ledger remains intact. Exact-head CI remains the merge gate; review remains human-owned.
 
 Latest verified CI at this checkpoint: PR #27 #961 success; PR #22 #959 success; PR #25 #955 and Observer #144 success; PR #23 #966 in progress; PR #26 #971 pending. Canonical CI #970 and Observer #146 were in progress at the prior check. No merge or production change is authorized by this status note.
+
+
+### PR #22 exact-head refresh — 2026-11-13
+- Rebased the owner-scoped, read-only Family CFO persistence proposal onto canonical ledger commit 86d171b3e869bee138795342963995adaa302b93. Migration and 23 synthetic SQL assertions are unchanged from the green CI #959 run; a new exact-head CI run is required. No live CFO migration/table was applied.
+
+
+## 2026-11-13 — Family CFO least-privilege schema review (PR #22)
+- PR #22 exact-head CI #976 passed the isolated migration, SQL isolation, authenticated two-user API and CORS stages on head `2558cb84e7e17a5064ae009ca010c1bd55d414c4`.
+- Follow-up hardening now explicitly revokes all table privileges from PUBLIC, anon, authenticated and service_role, then grants authenticated SELECT only and service_role SELECT/INSERT/UPDATE/DELETE only. Synthetic tests assert service_role lacks TRUNCATE and anon cannot read/write.
+- Amount constraints reject NaN and both infinities; tests cover transaction NaN and balance-snapshot negative infinity in addition to existing cases.
+- The migration remains source-only and is not applied to live Supabase. No financial records, bank credentials, imports, payments, transfers, trades or production schema changes.
+- Exact-head CI after this least-privilege follow-up is pending; PR remains Draft for review.
+
+
+### Family CFO pair-level transfer identity — 2026-11-13
+- Added nullable internal_transfer_pair_id to the proposed transactions table, defaulting to NULL, plus an owner-scoped partial index. The field is assigned only after explicit user confirmation of the pair; it is not populated by amount/date heuristics.
+- The domain matcher requires both records to share this pair ID before it can exclude them from cash flow. Equal/opposite amounts and record-level confidence alone cannot remove records. Synthetic tests cover unpaired equal/opposite records, mismatched pair IDs and inclusion of unrelated bill/refund transactions.
+- PR #22 SQL test plan is now 31 assertions, including the unpaired-by-default invariant. Migration remains CI-only and unapplied to live Supabase.
