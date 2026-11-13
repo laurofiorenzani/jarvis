@@ -802,3 +802,36 @@ The available Supabase connector cannot inspect or set Edge Function secrets. Do
 4. Verify a persistent private host for the Node/SQLite FreeLLMAPI service; do not expose its dashboard or port 3001 publicly.
 5. Deploy the updated Edge Function to Preview only, then test a synthetic prompt and controlled quota/error failover.
 6. Add only provider credentials and models with verified zero-billing limits and eligible terms.
+
+
+## 2026-11-13 — Per-account provider pools and consent
+
+### Implemented on work/jarvis-freellmapi-cloud-gateway
+
+- Added migration 20261113110000_jarvis_provider_preferences.sql. Provider pool preferences are per user, default off, RLS-enabled, and readable only by that authenticated user. Only the server-side Edge Function writes preferences.
+- Added authenticated GET/PUT /v1/provider-preferences with a versioned policy acceptance, rate limits, bounded request bodies, and explicit revocation.
+- Added two-user integration assertions: both accounts default off; enabling standard/ZDR pools for user A does not enable them for user B; user A can revoke both; user B remains unchanged.
+- Added CloudAccess controls for each account to independently enable/revoke the strict-ZDR pool and standard multi-provider pool. The standard pool notice explains that FreeLLMAPI's downstream providers have different retention/training/region terms and that paid fallback is prohibited.
+- Main authenticated turns use the standard pool only when that account enabled it. If it fails before streaming begins, JARVIS falls back to the default pool only when the same account also enabled that pool. Default pool entries are now accepted only when explicitly marked ZDR. FreeLLMAPI remains standard-only and cannot claim ZDR.
+- Automatic memory extraction is restricted to the separately accepted ZDR pool; it never sends private conversation text to FreeLLMAPI or another standard-retention provider.
+- Added multilingual task classification (pt-BR/English) for FreeLLMAPI routing and regression tests.
+- Corrected cloud API error messages to Brazilian Portuguese, including a specific provider-consent instruction.
+- New commits after the previous checkpoint: 49ccabea8bf63171a7fe412752475569a7bdacef (migration), 96a5c72a265be51cf9ac9b8cfb3492ba8e9f44e0 (strict default pool), 1a45cab711808f9ad8d525d34f4d60fc63259cd1 (provider API and turn routing), f144524e5cda462806358f888d9f5879bc51ef44 (contract), ed03a48618607f2dcacb681f75dde736f5db0095 (client), 45e7aece657662a3fc9cb234df27f256186760fc (client tests), a636e1b092d44a564e8121c47faa7464ea0ab348 (CloudAccess UI), cb26f2736fbf5d0b60bf6ce872bf4445094dfb98 (consent error handling), 7d27bd5062ed9d1bb23af801fddd02bfc8f6801b (two-user integration test), b6bb3c59c857499ff03aba99f59bcb8d3f1f6ffa (task classifier), a398229ee8f3c9132c41a61351006505c87511da (classifier tests), 4447f9aeb90a4213f1d8028d7aa61510d44a4369 (turn integration), 144b24bb80dc4ba391cbc5b4ff1f4545fea26ebd (pt-BR provider error), 6e1426baa4cac157c03316c496b88b8bad14103d (locale test), 028dff7c4aff45103f45952b0f9520cf6d48de3c (ZDR-only auto-memory extraction).
+
+### Current validation and deployment state
+
+- PR #13 remains OPEN/DRAFT, base work/jarvis-canonical-integration, current head 028dff7c4aff45103f45952b0f9520cf6d48de3c.
+- CI run #853 was cancelled after new commits superseded its checkout. A new full CI run for the current head has not yet been confirmed; do not deploy until it passes.
+- Supabase Preview remains jarvis-preview-api v21; Production remains jarvis-api v32. The provider-preferences migration and new Edge Function code have not been deployed to Supabase yet.
+- Vercel's latest READY preview remains the earlier documentation-only commit a2c1248e5a193436e33fd4a8e3b63f27df731909. No Vercel deployment of the latest provider code is confirmed.
+- FreeLLMAPI's private host, unified key and provider keys are still unconfigured. Cloudflare inventory has zero Workers scripts; Oracle VM state cannot be checked through a connected OCI tool.
+- No provider inference request or personal prompt has been sent. No secret, production resource, account, billing plan, branch or repository was changed or deleted.
+
+### Next actions
+
+1. Obtain exact-head CI success for 028dff7c4aff45103f45952b0f9520cf6d48de3c; rerun if necessary.
+2. Deploy the exact validated Edge Function source and migration to Supabase Preview only, preserving Production v32.
+3. Verify the authenticated provider-preferences endpoints and two-account isolation on Preview.
+4. Establish a persistent private Node/SQLite host for FreeLLMAPI. Oracle is not inspectable through current connectors; do not assume the VM is running.
+5. Configure the FreeLLMAPI endpoint and unified API key only in server-side secrets, then run a synthetic non-personal inference and force controlled quota/fallback tests.
+6. Verify provider-specific free caps and terms before enabling individual providers; no paid fallback or paid overage.
