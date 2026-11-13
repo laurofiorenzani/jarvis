@@ -805,3 +805,30 @@ The available Supabase connector cannot inspect or set Edge Function secrets. Do
 - Validated integrated candidate: PR #12, `work/jarvis-canonical-integration`, HEAD `0cf362fd8e6fbf95303cf38e124631f74596f3ac`.
 - Gateway/STT workstream: PR #13, `work/jarvis-freellmapi-cloud-gateway`; its latest recorded documentation checkpoint is `a770b0fb3150e7abf7fa127fdf01184512e52ae8`; exact-head code validation and deploy are still pending.
 - No merge, production promotion, account changes, secrets, billing or irreversible cleanup.
+
+
+## 2026-11-13 13:36 Dublin — iPhone provider-pool and voice diagnostics
+
+### User-provided device evidence
+- Three iPhone screenshots captured at 13:35–13:36 Dublin show the JARVIS Cloud Access panel and Voice Diagnostics panel.
+- Cloud account status: authenticated; tab-session restore enabled; session clears when the tab closes.
+- Provider status displayed by the app: “NO AI PROVIDER CONFIGURED · CLOUD CHAT DISABLED”.
+- Both per-account provider-pool controls are shown as not configured and unchecked: strict ZDR pool and free multi-provider routing.
+- Memory retrieval and automatic memory suggestions are both checked for this account. Review queue count is zero. This is account preference state only; it does not imply an AI model is configured or that any memory facts exist.
+- Voice diagnostics: recogniser running, 2 sessions, 1 transcription failure, 0 accepted, 0 wakes, last heard “nothing yet”, last drop “speech service cooling down for 2s”; error says cloud speech transcription is unavailable and an approved speech provider must be enabled for this account.
+- Speaking diagnostics: system engine, no selected voice, 0 handed to OS, 0 actually spoke, 0 failures, 0 cloud rescues.
+- These screenshots prove the UI and account session load. They do not prove successful STT, model inference, TTS, or an active provider.
+
+### Source-backed diagnosis
+- The current PR #13 branch (work/jarvis-freellmapi-cloud-gateway) contains the per-account provider-preference UI and API, provider-pool selection, FreeLLMAPI standard-privacy routing, Cloudflare Workers AI ZDR routing, and account-isolation integration tests.
+- The provider preference migration 20261113110000_jarvis_provider_preferences.sql creates a new RLS-protected table. It has NOT been applied to the live Supabase project. Preview and Production functions remain recorded as jarvis-preview-api v21 and jarvis-api v32 respectively.
+- PR #13 code head 637dbe5b02bd636b65bd3fcf3484a9d166b0b853 passed full CI run #861 (43408232534), including two-user provider-preference isolation tests. Later changes are documentation/workflow-ledger updates; run #862 on 47d6ae38b9d78531f8b66bc7c9ad67362a0fc1c7 was cancelled, and no run is currently returned for latest branch head a770b0fb3150e7abf7fa127fdf01184512e52ae8. Vercel reports free-tier build-rate limiting on the later heads.
+- Current screenshot's “not configured” state is consistent with the known missing runtime configuration: no FreeLLMAPI private host/unified key is configured; Cloudflare Workers AI secrets are not configured; and the new provider-preferences migration/API has not been deployed to the shared Supabase project. Do not ask the user to toggle controls or retry voice until the matching backend is deployed and a provider is configured.
+- The voice loop intentionally keeps the privacy boundary cloud-only; it does not silently fall back to browser/OS speech recognition for command transcription. Cloud Whisper STT is unavailable until Cloudflare credentials are configured server-side and the account has accepted the cross-border processing notice. Native system TTS remains the intended Portuguese/English response path, but the screenshot shows no selected voice and no speech handed to the OS.
+- The exact Vercel hostname is not fully legible in the screenshots. Do not assume which immutable Preview deployment the user opened or claim it is the latest branch build.
+
+### Release and approval boundary
+- Workers Free was confirmed in the PR #13 research record, with no Workers Paid subscription and no payment method on file. This is not proof that Cloudflare account ID/token secrets exist or that daily Neurons remain.
+- PR #13 migration is additive and RLS-protected but changes the shared production Supabase Postgres schema even if only the Preview Edge Function is deployed. It must not be applied without explicit approval of that exact schema change.
+- No secrets, provider requests, personal prompts/audio, production functions, schema, user accounts, memory rows, or billing settings were changed during this screenshot diagnosis.
+- Immediate safe sequence: validate the exact PR #13 head/workflow; obtain explicit approval for the additive shared-schema migration before applying it; deploy the matching Edge Function to Preview only; verify provider-preference isolation; configure scoped Cloudflare Workers AI credentials through Supabase Dashboard (never in chat); then run synthetic non-personal chat and PT/EN Whisper tests. FreeLLMAPI standard routing remains blocked until a persistent private HTTPS host and server-side key exist.
