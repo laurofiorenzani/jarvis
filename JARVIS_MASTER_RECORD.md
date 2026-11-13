@@ -1203,6 +1203,25 @@ The available Supabase connector cannot inspect or set Edge Function secrets. Do
 - Native iOS/Swift/Xcode/Capacitor project remains absent from the canonical tree. PWA is not the native iOS deliverable.
 
 
-### PR #19 canonical rebase — 2026-11-13
-- Rebased the complete proxy package and master-ledger update directly onto canonical merge commit `428d42b52e2c917969ced3a11ba2eca7987cc4c0`; compare confirms 1 commit ahead / 0 behind. The deployment package includes the Dockerfile, Compose overlay, environment template, proxy, README and tests.
-- The first CI #931 ran against the pre-rebase head and exposed the route-metadata test assertion mismatch; the assertion is corrected. Exact-head CI for the rebased branch is required before merge.
+### PR #19 canonical rebase and merge — 2026-11-13
+- Rebased the complete proxy package onto canonical merge commit `428d42b52e2c917969ced3a11ba2eca7987cc4c0`. The exact PR head `8f316258c6ff9973fc3b3d321ad8788bc38a11a1` passed CI run #934, including typecheck/build, full tests, lint, provider privacy routing, semantic-memory policy, Deno Edge Function tests, isolated Supabase migrations, SQL isolation, authenticated two-user integration, and production/Preview CORS smoke tests.
+- PR #19 was marked ready and squash-merged into `work/jarvis-canonical-integration` as `36d4fa7d1491e44c5f97a0bab9800858def45815`. This is a development-branch merge only; no production deployment, provider credentials, inference, host, tunnel, billing or live data changes occurred.
+- The proxy now requires `FREELLMAPI_ALLOWED_MODELS`, allows only explicitly named `auto:<profile>` routes, and rejects generic `auto`, `fusion`, malformed/missing and unlisted profiles before upstream FreeLLMAPI calls. The sample `auto:jarvis-approved` label is not provider certification; its actual downstream fallback chain must still be audited and pinned to eligible free providers before activation.
+- Upstream FreeLLMAPI deployment guidance: pin an immutable reviewed release/commit; retain loopback-only `HOST_BIND`; never expose port 3001; leave Watchtower/autoupdate disabled because it mounts the Docker socket. Record the upstream SHA before any host deployment.
+
+### Cloud-first and native iOS handoff revalidation — 2026-11-13
+- Re-read `docs/architecture/CLOUD_FIRST_ARCHITECTURE.md`, `docs/mobile/IOS_APP_AND_CARPLAY_DELIVERY.md`, and `docs/mobile/IOS_NATIVE_APP_DECISION.md`. The approved mobile target is Capacitor 8 around React/Vite, not a fully SwiftUI rewrite and not a PWA. Capacitor requires Node 22+ and macOS/Xcode 26+ for iOS generation/build/signing; the current connector environment does not provide Xcode/macOS.
+- iOS work remains parallelisable: package/config/app identity, mobile UI adaptation, Keychain adapter/plugin selection, native voice/lifecycle adapters and build workflow. Native build/signing/physical-device/TestFlight validation remains blocked on Apple-compatible macOS/Xcode and signing credentials; do not provision paid macOS build services.
+- CarPlay is a separate restricted template-based companion and requires Apple's approved entitlement. Do not promise a general-purpose JARVIS HUD on CarPlay or treat CarPlay as the BMW integration mechanism.
+
+### Self-Evolution and Family CFO source-of-truth recheck — 2026-11-13
+- `docs/architecture/self-evolution-engine.md` remains a foundation/read-only observer design; not production-enabled. Human approval remains required for merges, production, auth/security, secrets, billing and consequential integrations.
+- `docs/agents/FAMILY_CFO_DATA_CONTRACT.md` requires dated sourced balances, strict account/member consent, source coverage, explicit missing data, and no invented transactions/saldos. The current finance project remains a data-contract/design foundation; no live bank/pension/mortgage connector data was accessed or imported in this pass.
+
+### Canonical state after PR #19
+- Canonical development head: `36d4fa7d1491e44c5f97a0bab9800858def45815`. PR #17, #18 and #19 are merged into the canonical development branch; PR #16 is closed as superseded. PR #13 remains open/Draft and diverged (69 commits ahead / 43 behind at last compare); do not bulk merge/rebase it.
+- Production Supabase `jarvis-api` remains ACTIVE v32 and Preview `jarvis-preview-api` remains ACTIVE v23. Production and Preview provider behaviour remains divergent; this is a release blocker. No production function deployment was made.
+- Cloudflare account inventory previously returned zero Workers and zero AI Gateways; Billing Read remains denied, so current spend/payment/credit status cannot be freshly attested. No Cloudflare resource or paid plan was created.
+- Native iOS project remains absent from canonical repository; Capacitor packaging/build, Keychain plugin wiring, physical-device test, CarPlay entitlement, and TestFlight are not complete.
+- Provider-preferences application contract/client/UI/routes remain absent from canonical branch even though the Supabase table and migration exist. PR #13's cohesive feature set still requires selective integration; exclude its duplicate `20261113110000` migration and do not enable either provider pool.
+
