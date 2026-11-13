@@ -31,6 +31,13 @@ const validTransaction = {
   provenance,
 }
 
+test('accepts real leap days and rejects impossible calendar dates', () => {
+  assert.equal(CfoTransactionSchema.safeParse({ ...validTransaction, transactionAt: '2024-02-29' }).success, true)
+  assert.equal(CfoTransactionSchema.safeParse({ ...validTransaction, transactionAt: '2025-02-29' }).success, false)
+  assert.equal(CfoTransactionSchema.safeParse({ ...validTransaction, postedAt: '2026-02-30' }).success, false)
+  assert.equal(CfoTransactionSchema.safeParse({ ...validTransaction, provenance: { ...provenance, effectiveAt: '2026-13-01' } }).success, false)
+})
+
 test('validates a synthetic transaction with source provenance', () => {
   assert.equal(CfoTransactionSchema.safeParse(validTransaction).success, true)
   assert.equal(CfoTransactionSchema.safeParse({ ...validTransaction, amount: 12.34 }).success, false)
