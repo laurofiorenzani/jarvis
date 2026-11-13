@@ -935,3 +935,11 @@ The available Supabase connector cannot inspect or set Edge Function secrets. Do
 4. Verify or provision the existing persistent Oracle VM through an authorised OCI/SSH route; current connected tools do not expose OCI management, and Cloudflare has zero Worker scripts.
 5. Configure the private FreeLLMAPI host/proxy and server-side secrets only after host verification; run synthetic inference and controlled quota/fallback tests before enabling any provider pool.
 6. Address the Supabase leaked-password-protection warning through a separately approved Auth security change; do not change it silently.
+
+
+### Additional deployment-source verification (12:35 UTC)
+
+- Vercel production deployment history was checked separately from Preview. The newest production-target record is CANCELED on `main` commit `da4e4591a0fe364ba5823d44ee2954b88ffd3383`. The newest READY production-target deployment in the returned history is from `work/memory-integration-ready`, commit `36781884d0555b21b525549940b97035e64832e8`. This is not the current amber/canonical-integration or FreeLLMAPI gateway branch. Do not infer that PR #12/#13 is deployed to Production.
+- Read-only source inspection of deployed Supabase functions confirms: Preview v21 contains semantic-memory and Cloudflare Workers AI code, but no provider-preferences route and no FreeLLMAPI gateway-token integration. Production v32 contains semantic-memory code, but no Cloudflare Workers AI or FreeLLMAPI gateway-token integration. Thus the PR #13 provider-preferences and FreeLLMAPI code is not live in either deployed function.
+- The latest READY Preview deployment on the gateway branch is built from commit `9265f7c`, an ancestor of the branch head observed before this session's documentation-only commits. It is not proof that the current PR #13 head or its FreeLLMAPI gateway path is running.
+- Direct HTTP checks of the Preview page and public health URLs could not be completed with the available web fetch capability. Deployment readiness and Supabase function inventory/source are verified; end-to-end browser/API health is not newly verified.
