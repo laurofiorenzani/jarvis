@@ -1264,3 +1264,28 @@ The available Supabase connector cannot inspect or set Edge Function secrets. Do
 - BMW, Blink, Dreame, messaging, Maps/CarPlay and generic integration registry remain design/feasibility work; no direct vendor action has been verified.
 - Family CFO currently has synthetic-first pure validation/calculation functions and tests (decimal arithmetic, currency safety, transaction fingerprints, conservative transfer matching and cash flow). No CFO tables, financial imports, bank connectors or live account balances were created/read. Follow the data contract and review schema/RLS/consent together before any migration.
 - Self-Evolution observer remains read-only/non-production. Observer Validation #142 and canonical CI #945 passed on the prior canonical ledger head `a88a1bc3967d6026ba53e2385289cacffd37da07`. No production self-modification or autonomous deployment.
+
+## 2026-11-13 — parallel workstream reconciliation (session continuation)
+
+Canonical development head before this ledger update: `f217feccdaceddfc12a72437fcb7e7a3125ad296`. No production deployment, production migration, secrets, account settings, billing settings, or live financial data were changed in this pass.
+
+### PR and branch status verified
+- **PR #22 — Family CFO read-only persistence:** branch `work/family-cfo-readonly-finite-v2`, head `7e8561656ec9994ddfc15d628d22d69db888f415`, exactly one commit ahead of canonical and not behind. The first CI attempts (#946/#947) failed because three SQL tests expected check-constraint code 23514 for infinity values, while PostgreSQL `numeric(20,2)` rejects them earlier with numeric overflow 22003. The current branch test file expects 22003 for positive/negative infinity and retains the NaN constraint assertion. Exact-head CI #959 completed successfully. Migration remains proposed only; it has not been applied to live Supabase. PR remains open for review.
+- **PR #27 — Family CFO transfer confidence:** branch `work/cfo-transfer-confidence`, head `20e2dcc83f4d58f91c3a7afd9d863e6e7b699df8`, one commit ahead of canonical. Internal transfers are now excluded only when posted, confirmed, and confidence is `verified` or `user_confirmed`; tests cover estimated/unknown confidence. Exact-head CI #961 was still running at reconciliation; do not merge until it completes successfully.
+- **PR #26 — action approval primitives:** branch `work/cloud-action-approval-core`, head `9280b038ab9be4f71007f3f9e5771f10f3c2ca37`, two commits ahead of canonical. Adds a 64 KiB argument cap, strict JSON canonicalization, 10-minute expiry validation, digest/context binding and fail-closed unknown-capability handling. CI #965 was cancelled; a rerun was requested and was queued at reconciliation. This remains a pure domain foundation: no persistence, UI, route, vendor execution or authorization to act.
+- **PR #25 — Preview health observer:** branch `work/observer-preview-api-health`, head `803f86a577625382fcd0fa5b09149fde27ac5f1d`. CI #955 and Observer Validation #144 both passed. The branch is one commit ahead and one behind canonical; do not merge as-is. The check is read-only and validates public Preview API health with a timeout and expected JSON payload.
+- **PR #23 — provider consent / FreeLLMAPI routing:** branch `work/provider-consent-app-integration`, head `983133f8a8046fb2874124a16216b38676f898ba`, three commits ahead and zero behind canonical. Latest CI #966 was queued at reconciliation; earlier run #963 was cancelled. Do not treat the previous #948 pass as exact-head evidence for this later branch state. Provider pools remain default-off; no inference or provider content transfer occurred. Downstream provider identity/fallback-count diagnostics and zero-cost/EEA eligibility verification remain release blockers.
+
+### Review and safety gates
+- Keep all five PRs open until their exact current heads pass CI and their diffs are reviewed. Do not self-approve or merge them as a batch.
+- Keep PR #25's branch divergence unresolved until a safe, selective rebase/cherry-pick is prepared; do not force-push a reconstructed full tree.
+- Do not apply the Family CFO migration to live Supabase. No CFO tables or personal financial records have been created/imported.
+- No FreeLLMAPI host, tunnel, provider secret, inference request, paid plan, or automatic billing path has been activated.
+- No iOS project, Xcode build, signed IPA, TestFlight, or physical-device verification is claimed by this pass.
+
+### Next actions
+1. Verify completion of CI #961 (PR #27), queued reruns #965 (PR #26) and #966 (PR #23); inspect failed job logs rather than guessing.
+2. Review PR #22 schema/RLS and exact-head CI #959 before human merge decision.
+3. Prepare a safe canonicalized PR for the Preview observer change without overwriting canonical ledger or unrelated files.
+4. Continue with app MVP work only after checking the current canonical tree and preserving the amber UI and existing-account auth path.
+5. Keep this master record as the sole project ledger; update it again after the next verified state transition.
