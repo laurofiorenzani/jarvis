@@ -61,6 +61,22 @@ export function assertConsistentProviderPrivacy(
  * Cloudflare Workers AI has built-in zero data retention for stateless inference;
  * OpenRouter requires its explicit ZDR and data-collection-deny request flags.
  */
+export function assertEeaProviderEligibility(hostname: string): void {
+  if (hostname === 'generativelanguage.googleapis.com') {
+    throw new ProviderUnavailableError(
+      'Gemini API is disabled for this Ireland/EEA JARVIS deployment. Google requires Paid Services for EEA API clients, and no paid provider is approved.',
+    )
+  }
+}
+
+export function assertProviderPrivacyMode(hostname: string, privacyMode?: 'zdr'): void {
+  if (hostname === 'api.cloudflare.com' && privacyMode !== 'zdr') {
+    throw new ProviderUnavailableError(
+      'Cloudflare Workers AI must be configured with privacyMode set to "zdr".',
+    )
+  }
+}
+
 export function assertZdrProviderConfig(
   hostname: string,
   apiKeyEnv?: string,
@@ -100,6 +116,8 @@ function configuredProviders(): Provider[] {
     if (url.protocol !== 'https:' || url.username || url.password ||
         url.search || url.hash || !item.name.trim() || !item.model.trim() ||
         (item.privacyMode !== undefined && item.privacyMode !== 'zdr')) continue
+    assertEeaProviderEligibility(url.hostname)
+    assertProviderPrivacyMode(url.hostname, item.privacyMode === 'zdr' ? 'zdr' : undefined)
     const apiKeyEnv = typeof item.apiKeyEnv === 'string' ? item.apiKeyEnv : undefined
     const apiKey = apiKeyEnv ? Deno.env.get(apiKeyEnv)?.trim() : undefined
     if (item.privacyMode === 'zdr') {
@@ -167,8 +185,8 @@ export function redactProviderDiagnostic(value: string): string {
 }
 
 export function toChatCompletionsUrl(baseUrl: string): string {
-  // Google Gemini's OpenAI-compatible endpoint is rooted at /v1beta/openai,
-  // not /v1. Appending /v1/chat/completions creates a 404.
+  // OpenAI-compatible gateways use different roots; Cloudflare Workers AI
+  // uses an account-scoped /ai/v1 path, which already ends in /v1.
   return baseUrl.endsWith('/chat/completions')
     ? baseUrl
     : baseUrl.endsWith('/v1') || baseUrl.endsWith('/openai')

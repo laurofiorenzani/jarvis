@@ -409,7 +409,7 @@ export async function startVoice(h: VoiceHandlers, cloudTranscribe?: CloudTransc
     // VAD pipeline in cloud mode and resolve the authenticated transcriber for
     // each segment, rather than falling back permanently to browser
     // SpeechRecognition when the user signs in a moment later.
-    diag.engine = 'gemini-cloud'
+    diag.engine = 'cloud-whisper'
     return startElevenVoice(h, cloudTranscribe, getCloudTranscriber)
   }
   diag.engine = caps().stt ? 'elevenlabs' : 'browser'
@@ -542,7 +542,7 @@ async function startElevenVoice(h: VoiceHandlers, cloudTranscribe?: CloudTranscr
       const backoffMs = retryAfterMs ?? Math.min(60_000, 5_000 * (2 ** Math.min(transcriptionFailures - 1, 4)))
       transcribeBlockedUntil = Date.now() + backoffMs
       diag.lastError = `${String(err)} · retry in ${Math.ceil(backoffMs / 1000)}s`
-      drop('cloud speech service failed; automatic backoff active')
+      drop('cloud STT service failed; automatic backoff active')
     }
   }
 

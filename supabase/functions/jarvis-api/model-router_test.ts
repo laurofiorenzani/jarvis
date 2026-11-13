@@ -1,6 +1,8 @@
 import {
   assertConsistentProviderPrivacy,
   assertZdrProviderConfig,
+  assertEeaProviderEligibility,
+  assertProviderPrivacyMode,
   classifyProviderFailure,
   redactProviderDiagnostic,
   rotateProviderOrder,
@@ -135,4 +137,20 @@ Deno.test('Cloudflare Workers AI base URL appends the OpenAI-compatible chat pat
   const actual = toChatCompletionsUrl('https://api.cloudflare.com/client/v4/accounts/ba87bf4587d1167de0d075972d14a05c/ai/v1')
   const expected = 'https://api.cloudflare.com/client/v4/accounts/ba87bf4587d1167de0d075972d14a05c/ai/v1/chat/completions'
   if (actual !== expected) throw new Error('unexpected Cloudflare chat endpoint: ' + actual)
+})
+
+
+Deno.test('Gemini API is blocked for the Ireland/EEA JARVIS runtime until paid service is explicitly approved', () => {
+  let caught: unknown
+  try { assertEeaProviderEligibility('generativelanguage.googleapis.com') } catch (error) { caught = error }
+  if (!(caught instanceof ProviderUnavailableError)) throw new Error('Gemini API was not blocked for the EEA runtime')
+  assertEeaProviderEligibility('api.cloudflare.com')
+})
+
+Deno.test('Cloudflare Workers AI must declare its native ZDR privacy mode', () => {
+  assertProviderPrivacyMode('api.cloudflare.com', 'zdr')
+  let caught: unknown
+  try { assertProviderPrivacyMode('api.cloudflare.com', undefined) } catch (error) { caught = error }
+  if (!(caught instanceof ProviderUnavailableError)) throw new Error('Cloudflare provider without ZDR was accepted')
+  assertProviderPrivacyMode('api.groq.com', undefined)
 })

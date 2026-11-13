@@ -25,9 +25,11 @@ Workers Free includes 10,000 Neurons per day. When that daily free allocation is
 
 If the account is on Workers Free, the daily limit fails closed rather than converting the JARVIS app into a paid service. Do not upgrade or enable paid billing to bypass quota exhaustion.
 
-## Data handling
+## Data handling and cross-border processing
 
 Cloudflare states that standard, stateless Workers AI inference requests have zero data retention and that Customer Content is not used to train AI models. Operational metadata such as model IDs, timestamps, sizes, latency and neuron counts may still be retained. Do not enable AI Gateway content logging/caching or stateful features for this route. Third-party model licenses still apply; review the selected model's license.
+
+**This is not an EU-only data-residency service.** Cloudflare's DPA governs processing of personal data and includes Standard Contractual Clauses for restricted international transfers; that is a transfer safeguard, not a promise that every inference request stays inside the EEA. The account owner must explicitly accept this cross-border processing before personal content is routed. Each JARVIS account holder must accept the provider notice in their own account; the owner must not pre-accept on behalf of the second account.
 
 ## Required Supabase Edge Function secrets
 
@@ -38,7 +40,7 @@ Add these secrets in the Supabase project's Edge Function secrets:
 - `CLOUDFLARE_ACCOUNT_ID` — the Cloudflare account ID (32 hexadecimal characters).
 - `CLOUDFLARE_API_TOKEN` — the scoped Workers AI token.
 
-The same credentials serve the chat model router and Whisper STT. The Supabase connector available to this session cannot inspect or set Edge Function secrets; the account owner must perform this step in the Supabase Dashboard.
+The same credentials serve the chat model router and Whisper STT. **Do not add these secrets yet.** First confirm Workers Free, accept the cross-border processing terms, and implement the per-account provider notice/acceptance gate. Each account must accept separately. The Supabase connector available to this session cannot inspect or set Edge Function secrets; the account owner must perform this step in the Supabase Dashboard after those gates are complete.
 
 ## Model router configuration
 
@@ -69,7 +71,7 @@ The direct Workers AI endpoint is used, not AI Gateway. Cloudflare's native zero
 
 ## Release verification
 
-After the owner confirms Workers Free and adds the secrets:
+After the owner confirms Workers Free, the per-account notice/acceptance gate is implemented, both account holders have accepted, and the owner adds the secrets:
 
 1. Check authenticated `GET /v1/provider-status` shows the Gemma model.
 2. Run one synthetic, non-personal chat completion.
