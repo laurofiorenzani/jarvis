@@ -21,7 +21,7 @@ function bannerWith(overrides) {
       },
     }),
   )
-  const env = { ...process.env, HOME: home, USERPROFILE: home, JARVIS_BRIDGE_PORT: '0' }
+  const env = { ...process.env, HOME: home, USERPROFILE: home, JARVIS_PROVIDER: 'freellmapi', FREELLMAPI_API_KEY: 'ci-local-test-key', JARVIS_BRIDGE_PORT: '0' }
   delete env.JARVIS_MCP_SERVERS
   delete env.JARVIS_ACCOUNT_CONNECTORS
   Object.assign(env, overrides)
@@ -62,7 +62,7 @@ test('an empty JARVIS_MCP_SERVERS passes none', async () => {
   assert.match(await bannerWith({ JARVIS_MCP_SERVERS: '' }), /config: none/)
 })
 
-test('account connectors are off unless asked for', async () => {
+test('subscription-backed account connectors remain disabled even when requested', async () => {
   assert.match(await bannerWith({}), /account connectors off/)
-  assert.match(await bannerWith({ JARVIS_ACCOUNT_CONNECTORS: '1' }), /account connectors ON/)
+  assert.match(await bannerWith({ JARVIS_ACCOUNT_CONNECTORS: '1' }), /account connectors off/)
 })
