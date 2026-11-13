@@ -20,7 +20,7 @@ const SERVER = fileURLToPath(new URL('../bridge/server.mjs', import.meta.url))
 /** Start a bridge on a free port; resolves once it says where it is listening. */
 function startBridge(env = {}) {
   const child = spawn(process.execPath, [SERVER], {
-    env: { ...process.env, JARVIS_BRIDGE_PORT: '0', ...env },
+    env: { ...process.env, JARVIS_PROVIDER: 'freellmapi', FREELLMAPI_API_KEY: 'ci-local-test-key', JARVIS_BRIDGE_PORT: '0', ...env },
     stdio: ['ignore', 'pipe', 'pipe'],
   })
   let log = ''
@@ -242,7 +242,7 @@ test('refuses a WebSocket with a forged-looking foreign Origin', async () => {
 
 test('an occupied port is reported plainly and exits non-zero', async () => {
   const child = spawn(process.execPath, [SERVER], {
-    env: { ...process.env, JARVIS_BRIDGE_PORT: String(bridge.port) },
+    env: { ...process.env, JARVIS_PROVIDER: 'freellmapi', FREELLMAPI_API_KEY: 'ci-local-test-key', JARVIS_BRIDGE_PORT: String(bridge.port) },
     stdio: ['ignore', 'pipe', 'pipe'],
   })
   let log = ''
