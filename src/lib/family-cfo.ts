@@ -195,6 +195,9 @@ export function calculateCashFlow(
   if (!currency || !CfoCurrencySchema.safeParse(currency).success) {
     throw new TypeError('An explicit currency is required when the period has no eligible transactions')
   }
+  if (period.currency && period.currency !== currency) {
+    throw new TypeError('Requested cash-flow currency does not match the eligible records')
+  }
   if (eligible.some((tx) => tx.money.currency !== currency)) {
     throw new TypeError('Cash flow requires a single currency; calculate currencies separately')
   }
