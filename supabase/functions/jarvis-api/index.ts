@@ -305,10 +305,12 @@ Deno.serve(async (request) => {
       console.info('[jarvis] ignored near-empty speech segment', { bytes: audio.byteLength, mimeType })
       return response({ version: VERSION, text: '' }, 200, cors)
     }
+    const audioBody = new ArrayBuffer(audio.byteLength)
+    new Uint8Array(audioBody).set(audio)
     const upstream = await fetch(`https://api.cloudflare.com/client/v4/accounts/${accountId}/ai/run/@cf/openai/whisper`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/octet-stream', Authorization: 'Bearer ' + apiToken },
-      body: audio,
+      body: audioBody,
       signal: AbortSignal.timeout(30_000),
     }).catch(() => null)
     if (!upstream) return error('service_unavailable', 'Speech transcription service could not be reached.', 503, true, cors)
