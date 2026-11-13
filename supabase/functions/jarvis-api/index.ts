@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js'
+import { getApiRoutePathCandidates } from './route-path.ts'
 import { getFreeProviderStatus, startFreeModelStream } from './model-router.ts'
 import { isSemanticMemoryId, isSafeAutoMemorySource, mergeSemanticMemoryPreferences, normalizeSemanticMemoryQuery, parseAutoMemoryCandidates, parseSemanticMemoryCandidate, parseSemanticMemoryDecision, parseSemanticMemorySearch } from './semantic-memory.ts'
 
@@ -143,23 +144,8 @@ Deno.serve(async (request) => {
       : cors
     return new Response(null, { status: 204, headers: preflightHeaders })
   }
-  const rawPath = url.pathname.replace(/\/$/, '') || '/'
-  // Supabase's Edge runtime can expose either the full public mount path or
-  // only a shortened path. Normalize using the final API /v1/ segment so both
-  // production and preview function slugs resolve to the same route names.
-  const functionMount = rawPath.match(/\/functions\/v1\/[a-z0-9-]+(?=\/|$)/i)
-  const suffixPath = functionMount
-    ? rawPath.slice(functionMount.index! + functionMount[0].length) || '/'
-    : rawPath
-  const stripVersion = (value: string) => value.replace(/^\/v1(?=\/|$)/, '').replace(/\/$/, '') || '/'
-  // The first /v1/ in a Supabase URL belongs to the function mount
-  // (/functions/v1/<slug>), not the Jarvis API. Prefer the path after the
-  // actual function mount and strip only the optional API version there.
-  const apiRoutePath = stripVersion(suffixPath)
-  const pathCandidates = [...new Set([
-    rawPath, suffixPath, stripVersion(rawPath), stripVersion(suffixPath), apiRoutePath,
-  ])]
-  const path = apiRoutePath
+  const pathCandidates = getApiRoutePathCandidates(url.pathname)
+  const path = pathCandidates[pathCandidates.length - 1]
   const matchesPath = (expected: string) => pathCandidates.includes(expected)
   const matchPath = (pattern: RegExp) => {
     for (const candidate of pathCandidates) {
