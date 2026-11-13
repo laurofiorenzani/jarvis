@@ -3,8 +3,9 @@ import assert from 'node:assert/strict'
 import {
   CfoBalanceSnapshotSchema,
   CfoTransactionSchema,
-  decimalToMinorUnits,
-  minorUnitsToDecimal,
+  amountMatchesMinorUnit,
+  decimalToScaledUnits,
+  scaledUnitsToDecimal,
   sumMoney,
 } from '../src/lib/family-cfo.ts'
 
@@ -59,12 +60,26 @@ test('validates dated balance snapshots and rejects missing provenance', () => {
   assert.equal(CfoBalanceSnapshotSchema.safeParse({ ...snapshot, provenance: undefined }).success, false)
 })
 
-test('uses exact integer minor units for decimal arithmetic', () => {
-  assert.equal(decimalToMinorUnits('0.10') + decimalToMinorUnits('0.20'), 30n)
-  assert.equal(minorUnitsToDecimal(decimalToMinorUnits('-12.34')), '-12.34')
-  assert.equal(minorUnitsToDecimal(999999999999999999n), '9999999999999999.99')
-  assert.throws(() => decimalToMinorUnits('1.001'), /Invalid decimal/)
-  assert.throws(() => decimalToMinorUnits('1e3'), /Invalid decimal/)
+test('uses exact four-place integer scaling without assuming a currency exponent', () => {
+  assert.equal(decimalToScaledUnits('0.10') + decimalToScaledUnits('0.20'), 3000n)
+  assert.equal(scaledUnitsToDecimal(decimalToScaledUnits('-12.34')), '-12.34')
+  assert.equal(scaledUnitsToDecimal(999999999999999999n), '99999999999999.9999')
+  assert.equal(scaledUnitsToDecimal(decimalToScaledUnits('1.234')), '1.234')
+  assert.throws(() => decimalToScaledUnits('1.00001'), /Invalid decimal/)
+  assert.throws(() => decimalToScaledUnits('1e3'), /Invalid decimal/)
+})
+
+test('validates amounts against currency exponents without rounding', () => {
+  assert.equal(amountMatchesMinorUnit('1200', 0), true)
+  assert.equal(amountMatchesMinorUnit('1200.01', 0), false)
+  assert.equal(amountMatchesMinorUnit('1.23', 2), true)
+  assert.equal(amountMatchesMinorUnit('1.2300', 2), true)
+  assert.equal(amountMatchesMinorUnit('1.234', 2), false)
+  assert.equal(amountMatchesMinorUnit('1.234', 3), true)
+  assert.equal(amountMatchesMinorUnit('1.2345', 3), false)
+  assert.equal(amountMatchesMinorUnit('1.0000', 0), true)
+  assert.equal(amountMatchesMinorUnit('1.0001', 0), false)
+  assert.equal(amountMatchesMinorUnit('1.00', 5), false)
 })
 
 test('sums only matching currencies and never performs implicit FX', () => {
@@ -72,12 +87,13 @@ test('sums only matching currencies and never performs implicit FX', () => {
     { amount: '10.10', currency: 'EUR' },
     { amount: '-2.35', currency: 'EUR' },
     { amount: '0.25', currency: 'EUR' },
-  ]), { amount: '8.00', currency: 'EUR' })
+  ]), { amount: '8', currency: 'EUR' })
   assert.throws(() => sumMoney([
     { amount: '10.00', currency: 'EUR' },
     { amount: '10.00', currency: 'USD' },
   ]), /different currencies/)
-  assert.deepEqual(sumMoney([]), { amount: '0.00', currency: 'EUR' })
+  assert.deepEqual(sumMoney([], 'JPY'), { amount: '0', currency: 'JPY' })
+  assert.throws(() => sumMoney([]), /explicit currency/)
 })
 
 
@@ -98,7 +114,7 @@ test('cash flow excludes matched transfers and includes confirmed posted records
   const grocery = { ...validTransaction, id: '10000000-0000-4000-8000-000000000024', money: { amount: '-120.50', currency: 'EUR' } }
   const pending = { ...validTransaction, id: '10000000-0000-4000-8000-000000000025', status: 'pending' as const, money: { amount: '-999.00', currency: 'EUR' } }
   assert.deepEqual(calculateCashFlow([debit, credit, salary, grocery, pending], { start: '2026-11-01', end: '2026-11-30' }), {
-    currency: 'EUR', inflows: '2000.00', outflows: '120.50', net: '1879.50',
+    currency: 'EUR', inflows: '2000', outflows: '120.5', net: '1879.5',
     includedCount: 2, excludedTransferCount: 2,
   })
   const periodEndDebit = { ...debit, postedAt: '2026-11-30', transactionAt: '2026-11-30' }
