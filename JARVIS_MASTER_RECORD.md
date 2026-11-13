@@ -1645,3 +1645,12 @@ G. **User action:** none required now; no paid upgrades or credentials requested
 H. **Next:** create isolated CI fix branch from current canonical head; update workflow; validate exact PR head; then continue independent source reviews.
 I. **GitHub:** `laurofiorenzani/jarvis`; canonical `work/jarvis-canonical-integration`; ledger base blob SHA `8415234235304068e3300ce62f34c7169bdee3e5`; PRs #22–#29 remain open per above.
 J. **Next conversation:** “Continue JARVIS from the latest JARVIS_MASTER_RECORD.md. CI #1006 was cancelled on PR #12 merge ref due Docker registry Rate exceeded; it was not canonical CI. Fix obsolete Supabase exclusion in an isolated branch and evaluate bounded retries; secure exact-head validation for PR #25. Continue Cloud Brain parity, provider attestation, CFO currency/FX and action approval in parallel. Preserve €0 recurring cost and all production/data/provider safety gates.”
+
+
+### Follow-up — isolated CI correction PR #30
+- Created branch `work/ci-supabase-start-resilience` from canonical handoff commit `e796ffbaf3ea81059eaad85a63a084095b063287`.
+- Changed only `.github/workflows/ci.yml`: `supabase start --exclude inbucket` → `supabase start --exclude mailpit`, matching the current Supabase CLI valid container name reported in CI logs.
+- Commit: `4e56733f1c2e18d592794eb48e1fce55de00f0f4`.
+- Opened Draft PR #30: https://github.com/laurofiorenzani/jarvis/pull/30. PR metadata now reports mergeable=true; exact-head workflow lookup currently returned no runs. Do not merge until exact-head CI passes.
+- The original Docker registry `Rate exceeded` remains a separate external blocker; this one-line fix does not claim to resolve it. No paid Docker Hub account or service was introduced.
+- Vercel bot again reported the Hobby deployment cap (>100 deployments/day) on PR #30. Stop triggering deployments; no upgrade and no bypass. Continue GitHub CI independently.
