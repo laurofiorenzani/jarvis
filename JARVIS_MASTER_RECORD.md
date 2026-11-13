@@ -2098,3 +2098,9 @@ No third-party integration was connected, no credentials were requested, no data
 3. Add a live two-user integration test for action-approval routes in an isolated Edge Function environment; do not claim route-level integration until it passes.
 4. Build the approval UI and capability allowlist before any execution claim/adapter is enabled.
 5. Keep all changes Draft and production untouched until owner review; maintain €0 recurring-cost rule.
+
+
+## 2026-11-13 — Latest CI ledger update
+- PR #33 continuity branch exact-head CI #1080 (`43513423136`) SUCCESS on `8473ab92300308cc491d41e0304e20a01efa54ee`; this validates the latest ledger/integration research documentation. Provider-lockout code tree remains unchanged from #1053 SUCCESS.
+- PR #26 authenticated action-approval API exact-head CI #1078 SUCCESS on `4af6a1fd1daee5bee573b7cc55bab1a22a7b482e`. Six approval service tests and Edge Function typecheck pass; route-level live two-user integration is still pending.
+- PR #34 BMW CarData exact-head CI #1082 is still in the isolated local Supabase startup step. Earlier #1079 failed only because the test fake lacked a constructor; that was fixed. The Vault migration and 28 SQL assertions have not yet been confirmed by a completed run.
