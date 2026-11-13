@@ -978,3 +978,11 @@ The available Supabase connector cannot inspect or set Edge Function secrets. Do
 - Added regression tests for transfer pairing, rejection of pending/mismatched transfers, transfer-excluded cash flow, and fingerprint normalization.
 - These latest CFO changes are committed to this branch and require fresh exact-head CI; do not call them validated until CI passes.
 - No schema migration, bank connection, real financial data, external transfer, production deployment, billing or secrets change.
+
+
+## 2026-11-13 — CFO fingerprint regression found and corrected
+
+- Canonical CI #896 failed only one of 219 test cases: transaction fingerprint whitespace normalization. Typecheck/build passed; 216 tests passed, one failed, two were skipped. The failure exposed an over-escaped regular expression that matched a literal backslash instead of whitespace.
+- Corrected the implementation to use the whitespace matcher `/\\s+/g`, preserving the intended stable fingerprint behavior.
+- Observer Validation #107 passed on the same pre-fix head. The corrective commit is `668125a078db63edd7f21b1150476593728187bd`; a new exact-head CI run is required before declaring this fix validated.
+- PR #12 was confirmed mergeable again and remains open/Ready for Review. It is 120 commits ahead of its base and zero commits behind; no merge or production promotion was performed.
