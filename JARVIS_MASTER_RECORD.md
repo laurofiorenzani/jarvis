@@ -1029,3 +1029,14 @@ The available Supabase connector cannot inspect or set Edge Function secrets. Do
 - Vercel combined commit status still reports the Hobby build-rate-limit failure. Do not upgrade or create repeated deployments; no exact-head new preview is claimed.
 - No merge, production deployment, secret/provider activation, billing change, real financial import or account mutation occurred.
 - Next: keep PR #12 unmerged pending remaining release gates; verify latest PR head/base/mergeability and inspect whether the Vercel failure is only the external preview check. Continue read-only infrastructure/hosting investigation and isolated Self-Evolution work.
+
+
+## 2026-11-13 — Observer #118 and canonical PR recheck
+
+- Observer Validation #118 completed successfully on canonical head `702899933abd34def2ce472ae92a3fee813b2156` (run ID `43448634050`): observer privacy/triage tests, typecheck/build and lint passed.
+- CI #907 (run ID `43448634289`) on the same head: dependency audit/fix, typecheck/build, Node tests, lint, provider privacy, semantic-memory policy, Edge Function typecheck and speech transcript tests all passed. Isolated local Supabase startup was still running at the latest observation; migrations, SQL isolation, authenticated two-user integration and cloud CORS smoke tests remain pending. Do not mark full CI green yet.
+- Vercel combined status for canonical head `7028999...` is now SUCCESS (previously Hobby build-rate-limit failure). This is a successful status check; deployment URL/readiness and exact artifact were not independently inspected in this pass.
+- PR #12 rechecked: OPEN, Ready for Review, not merged, mergeable=true; base `work/intelligent-memory-foundation`, head `work/jarvis-canonical-integration` at `702899933abd34def2ce472ae92a3fee813b2156`.
+- PR #13 rechecked: OPEN, Draft, not merged, mergeable=false. Comparing its branch with the canonical branch shows 67 commits ahead and 30 behind (diverged), with changes spanning gateway proxy, model router, CloudAccess, Supabase function/CORS, tests, workflow and ledger. No automatic merge/rebase was attempted. The provider-gateway design and proxy were reviewed: public routes limited to models/chat, separate bearer auth, upstream key replacement, bounded request size, rate limiting and no prompt logging are present in source; deployment and host remain unverified.
+- Live migration inventory confirms provider-preferences migrations are recorded. No provider preferences were enabled, no inference called, no secrets changed, no production deployment, no account/data mutation and no billing change.
+- Next: finish CI #907's isolated Supabase and CORS stages; reconcile PR #13 feature-by-feature on a dedicated integration branch only after inspecting each conflict, retaining PR #12 as canonical; continue private free-host investigation without assuming Oracle VM exists.
