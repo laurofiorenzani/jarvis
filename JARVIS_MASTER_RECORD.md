@@ -523,3 +523,33 @@ The older `docs/PROJECT_DECISIONS.md`, `docs/architecture/IMPLEMENTATION_STATUS_
 - `docs/architecture/IMPLEMENTATION_STATUS_2026-11-10.md`: dated implementation snapshot; its auth/voice/provider status is stale relative to the current candidate.
 - `docs/LOGIN_AND_PWA_SETUP.md`: old instructions incorrectly say no accounts exist and encourage account creation/PWA installation; no longer appropriate for the current two-account/native-app decision.
 - Architecture specifications and vendor/mobile design documents remain as supporting technical references, not competing progress/decision ledgers. README continues to point to this master record as the single source of truth.
+
+
+## 22. Private workbench and provider prototype audit — 2026-11-13
+
+### `jarvis-personal-cloud` is a research workbench, not a second production app
+- The private repository still exists. Its `work/intelligent-memory-next` branch is 276 commits ahead of its `main`, with 49 changed files. Memory MVP CI #144 passed on commit `3a43b5aed50e0ac3392a25ef99d5a526ca8049b4`.
+- The branch contains a Cloudflare Worker/D1 household memory API prototype, encrypted memory/key lifecycle code, confirmation and audit flows, synthetic tests, and detailed architecture/security research.
+- Live Cloudflare account inventory remains zero Workers scripts, zero D1 databases, zero Access apps/tunnels/zones discovered by the connected account. The branch's own runbooks state no Cloudflare resource was provisioned. All code and test data are prototypes; no family records were stored there.
+- The Cloudflare design is a competing identity/data plane (Cloudflare Access + D1), whereas the existing live JARVIS system already uses Supabase Auth, Postgres/RLS and deployed Edge Functions. Do not introduce a second production memory database or require a second login. Keep Supabase as the canonical cloud data plane unless a measured requirement proves otherwise.
+
+### Reusable security research extracted from the private workbench
+- Worker identity: validate Cloudflare Access edge-injected JWT signature, issuer, audience, expiry, not-before, subject and verified email; map issuer+subject to a provisioned user. Never trust a browser-supplied user ID or a shared household token.
+- Memory encryption: AES-256-GCM with a fresh 96-bit IV and 128-bit tag; strict canonical Base64; versioned keyring; authenticated additional data binds household, owner, memory ID, visibility, payload version, key version, type, retention deadline and sensitivity. Tampering with classification/retention metadata must fail decryption.
+- Key rotation: scheduled re-encryption with compare-and-swap on key version, payload version, timestamp and ciphertext to avoid overwriting concurrent user edits. This is synthetic SQLite/Worker test evidence, not live D1 validation.
+- Mutation approval: one-use, short-lived confirmation token bound to actor, operation, target and canonical payload digest; consume atomically before a mutation; reject replay/wrong user/changed arguments. Audit events contain metadata only.
+- Retention and abuse controls: private-by-default memory, owner-only mutations, bounded request bodies, per-user rate limiter required/fail-closed, expiring confirmation cleanup, audit retention and encrypted export/backup plans.
+- Local encrypted-memory branch adds AES-256-GCM envelopes, 32-byte key-provider contract, atomic create-if-absent, fail-closed missing-key behavior for existing stores, encrypted backups, metadata-only audit, serialized writes, restrictive file permissions and atomic rename.
+- Important blocker: no real Windows Credential Manager/DPAPI, macOS Keychain or cloud KMS adapter exists in the private workbench; its tests use fake/in-memory vaults. Do not use the local file store with personal data or treat its contract as a deployed key vault.
+- The Cloudflare Worker code is not production-ready: no deployed Access/Worker/D1, no real identities, no browser approval UI, no production backup/restore test, no deployed rate-limit verification, and no complete runtime/voice/vendor integration. The Worker CORS/Access preflight interaction is specifically documented as unresolved.
+- Decision: carry the above invariants into the Supabase cloud approval and memory designs where applicable. Do not migrate the Worker/D1 implementation, duplicate tables, credentials, or identity system. The private repository can be retired only after this record and the selected code/tests contain all reusable requirements and the remaining branch inventory is signed off.
+
+### FreeLLMAPI prototype review
+- `work/freellmapi-backend-prototype` adds an OpenAI-compatible streaming client, tool-call fragment accumulator, sequential MCP tool loop, explicit stdio MCP server allowlist, and reuses the local bridge workspace/file-root policy.
+- Its default endpoint is `http://127.0.0.1:3001/v1`; non-loopback endpoints must be HTTPS. The MCP session adapter explicitly rejects remote HTTP/SSE MCP transports at this stage and requires configured local stdio commands.
+- Therefore it is a local Node bridge adapter, not a cloud-hosted/iPhone service. Exposing the local FreeLLMAPI dashboard/API or moving its key into the browser would violate the multi-user/cloud security boundary. It must not be deployed as the cloud brain without a separately reviewed HTTPS service, per-user auth, secret isolation, tool policy, rate/cost limits and verified free/private hosting.
+- The existing Supabase model router remains the chosen cloud provider gateway for the zero-cost prototype. Actual provider inference still needs a real authenticated turn and privacy/quota verification.
+
+### Repository retirement decision
+- The private `jarvis-personal-cloud` repository is not the canonical application repository. Its role is research only; its useful security requirements have now been consolidated in this master ledger.
+- Do not delete it until the final check confirms no open PR, deployment, automation or unique test is still needed. Once that check passes, retire it rather than continuing parallel development there.
