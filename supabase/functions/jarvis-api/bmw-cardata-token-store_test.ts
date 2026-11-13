@@ -15,6 +15,8 @@ class FakeRpc implements BMWVaultRpcClient {
   data: unknown = true
   failure: { message?: string } | null = null
 
+  constructor(data: unknown = true) { this.data = data }
+
   async rpc(name: string, params: Record<string, unknown>) {
     this.calls.push({ name, params })
     return { data: this.data, error: this.failure }
