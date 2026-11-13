@@ -1321,3 +1321,8 @@ The canonical branch has three additional documentation-only ledger commits afte
 The three commits after f217 on canonical are ledger-only updates to `JARVIS_MASTER_RECORD.md`; no source-code changes were introduced by them. The divergence is therefore documentation/ancestry drift, not proof of code conflict. Do not force-push or reconstruct full branch trees. Before any merge, inspect the actual PR mergeability/diff and ensure the current canonical ledger remains intact. Exact-head CI remains the merge gate; review remains human-owned.
 
 Latest verified CI at this checkpoint: PR #27 #961 success; PR #22 #959 success; PR #25 #955 and Observer #144 success; PR #23 #966 in progress; PR #26 #971 pending. Canonical CI #970 and Observer #146 were in progress at the prior check. No merge or production change is authorized by this status note.
+
+
+### PR #26 action-approval core — 2026-11-13
+- Pure fail-closed action approval primitives now distinguish decision validity from execution permission (`valid` + explicit `decision`), so a valid rejection cannot be mistaken for permission to execute. Envelope validation rechecks protocol version, maximum ten-minute TTL, digest shape and exact user/session/invocation/capability/argument binding. Synthetic tests cover approved/rejected outcomes, replay, expiry, altered envelope and malformed JSON values.
+- Exact-head CI #975 passed on the pre-rebase head; this branch is rebased onto canonical ledger 86d171b3e869bee138795342963995adaa302b93 and requires exact-head CI again. No route, persistence, integration execution or production action was added.
