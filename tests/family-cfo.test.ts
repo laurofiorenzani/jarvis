@@ -72,3 +72,34 @@ test('sums only matching currencies and never performs implicit FX', () => {
   ]), /different currencies/)
   assert.deepEqual(sumMoney([]), { amount: '0.00', currency: 'EUR' })
 })
+
+
+test('pairs only unique, confirmed internal transfers', async () => {
+  const { matchInternalTransfers } = await import('../src/lib/family-cfo.ts')
+  const debit = { ...validTransaction, id: '10000000-0000-4000-8000-000000000011', accountId: '30000000-0000-4000-8000-000000000011', money: { amount: '-50.00', currency: 'EUR' } }
+  const credit = { ...validTransaction, id: '10000000-0000-4000-8000-000000000012', accountId: '30000000-0000-4000-8000-000000000012', money: { amount: '50.00', currency: 'EUR' }, postedAt: '2026-11-14', transactionAt: '2026-11-14' }
+  assert.deepEqual(matchInternalTransfers([debit, credit]), [{ debitId: debit.id, creditId: credit.id }])
+  assert.deepEqual(matchInternalTransfers([debit, { ...credit, recordStatus: 'pending_review' }]), [])
+  assert.deepEqual(matchInternalTransfers([debit, { ...credit, money: { amount: '49.99', currency: 'EUR' } }]), [])
+})
+
+test('cash flow excludes matched transfers and includes confirmed posted records only', async () => {
+  const { calculateCashFlow } = await import('../src/lib/family-cfo.ts')
+  const debit = { ...validTransaction, id: '10000000-0000-4000-8000-000000000021', accountId: '30000000-0000-4000-8000-000000000021', money: { amount: '-50.00', currency: 'EUR' } }
+  const credit = { ...validTransaction, id: '10000000-0000-4000-8000-000000000022', accountId: '30000000-0000-4000-8000-000000000022', money: { amount: '50.00', currency: 'EUR' } }
+  const salary = { ...validTransaction, id: '10000000-0000-4000-8000-000000000023', money: { amount: '2000.00', currency: 'EUR' } }
+  const grocery = { ...validTransaction, id: '10000000-0000-4000-8000-000000000024', money: { amount: '-120.50', currency: 'EUR' } }
+  const pending = { ...validTransaction, id: '10000000-0000-4000-8000-000000000025', status: 'pending' as const, money: { amount: '-999.00', currency: 'EUR' } }
+  assert.deepEqual(calculateCashFlow([debit, credit, salary, grocery, pending], { start: '2026-11-01', end: '2026-11-30' }), {
+    currency: 'EUR', inflows: '2000.00', outflows: '120.50', net: '1879.50',
+    includedCount: 2, excludedTransferCount: 2,
+  })
+})
+
+test('transaction fingerprint is stable across description whitespace and case', async () => {
+  const { transactionFingerprint } = await import('../src/lib/family-cfo.ts')
+  assert.equal(
+    transactionFingerprint(validTransaction),
+    transactionFingerprint({ ...validTransaction, description: '  SYNTHETIC   GROCERY TRANSACTION ' }),
+  )
+})
