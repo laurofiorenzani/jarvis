@@ -1227,12 +1227,12 @@ The available Supabase connector cannot inspect or set Edge Function secrets. Do
 
 
 
-## 2026-11-13 — provider-preferences and FreeLLMAPI integration selective port (PR #22)
+## 2026-11-13 — provider-preferences and FreeLLMAPI integration selective port (PR #24)
 - Created isolated branch `work/provider-preferences-consent-v2` from canonical head `a88a1bc3967d6026ba53e2385289cacffd37da07`, after PR #19's private proxy was merged. This is a source/test PR only; it is not deployed.
 - Selectively ported the provider-preferences contract, cloud client GET/PUT methods, per-account Cloud Access controls, authenticated Supabase preference routes, separate ZDR/standard routing, FreeLLMAPI task classification, two-user isolation assertions, model-router/client tests and public-health CORS helper/tests from PR #13. Existing STT quota protection and applied migration source files are preserved; duplicate migration `20261113110000` and duplicate proxy package are excluded.
 - Consent policy is versioned `2026-11-13-v2` and explicitly states that Cloudflare Workers AI is global inference infrastructure with no verified EU/EEA-only processing guarantee; Supabase's Paris primary region does not cover every global processing category; FreeLLMAPI downstream providers have independent processing/retention/training terms.
 - Corrected voice status: if Cloudflare Whisper is not configured and the account has not accepted the ZDR pool, cloud voice input is unavailable. No browser/device STT fallback is implied or silently used.
 - Hardened standard pool routing to accept only the FreeLLMAPI gateway and named `auto:<profile>` routes. The merged proxy requires `FREELLMAPI_ALLOWED_MODELS` and rejects generic `auto`, `fusion`, malformed/missing and unlisted profiles. The name `auto:jarvis-approved` is not provider certification; its downstream fallback chain still requires independent eligibility review.
 - Both provider pools remain default-off; live preference row count is zero. No provider secrets, inference requests, real prompts/audio, user preference writes, production deployment, billing change or account data mutation occurred.
-- PR #22 exact-head CI, isolated Supabase migration/SQL tests and authenticated two-user integration are required before merge. Physical iPhone PT-BR/English STT → model turn → audible TTS remains a separate device gate.
-- PR #13 remains OPEN/Draft and diverged; do not bulk merge it. The provider-preferences feature is not canonical until PR #22 passes validation and is merged.
+- PR #24 exact-head CI, isolated Supabase migration/SQL tests and authenticated two-user integration are required before merge. Physical iPhone PT-BR/English STT → model turn → audible TTS remains a separate device gate.
+- PR #13 remains OPEN/Draft and diverged; do not bulk merge it. The provider-preferences feature is not canonical until PR #24 passes validation and is merged.
