@@ -177,8 +177,9 @@ export function calculateCashFlow(
     outflows: minorUnitsToDecimal(outTotal),
     net: minorUnitsToDecimal(inTotal - outTotal),
     includedCount: eligible.length,
-    excludedTransferCount: transfers.filter((pair) =>
-      transactions.some((tx) => tx.id === pair.debitId && tx.postedAt !== null && tx.postedAt >= period.start && tx.postedAt <= period.end),
-    ).length * 2,
+    excludedTransferCount: transfers.reduce((count, pair) => count + transactions.filter((tx) =>
+      (tx.id === pair.debitId || tx.id === pair.creditId) &&
+      tx.postedAt !== null && tx.postedAt >= period.start && tx.postedAt <= period.end,
+    ).length, 0),
   }
 }
