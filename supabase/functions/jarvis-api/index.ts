@@ -144,16 +144,20 @@ Deno.serve(async (request) => {
     return new Response(null, { status: 204, headers: preflightHeaders })
   }
   const rawPath = url.pathname.replace(/\/$/, '') || '/'
-  // Supabase mounts the same handler under both jarvis-api and
-  // jarvis-preview-api. Strip the actual function mount generically; hardcoding
-  // the production slug makes every preview route fall through to auth/404.
+  // Supabase's Edge runtime can expose either the full public mount path or
+  // only a shortened path. Normalize using the final API /v1/ segment so both
+  // production and preview function slugs resolve to the same route names.
   const functionMount = rawPath.match(/\/functions\/v1\/[a-z0-9-]+(?=\/|$)/i)
   const suffixPath = functionMount
     ? rawPath.slice(functionMount.index! + functionMount[0].length) || '/'
     : rawPath
   const stripVersion = (value: string) => value.replace(/^\/v1(?=\/|$)/, '').replace(/\/$/, '') || '/'
-  const pathCandidates = [...new Set([rawPath, suffixPath, stripVersion(rawPath), stripVersion(suffixPath)])]
-  const path = stripVersion(suffixPath)
+  const lastApiVersion = rawPath.lastIndexOf('/v1/')
+  const apiRoutePath = lastApiVersion >= 0 ? rawPath.slice(lastApiVersion + 3) : stripVersion(suffixPath)
+  const pathCandidates = [...new Set([
+    rawPath, suffixPath, stripVersion(rawPath), stripVersion(suffixPath), apiRoutePath,
+  ])]
+  const path = apiRoutePath
   const matchesPath = (expected: string) => pathCandidates.includes(expected)
   const matchPath = (pattern: RegExp) => {
     for (const candidate of pathCandidates) {
