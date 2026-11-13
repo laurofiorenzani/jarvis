@@ -1043,3 +1043,9 @@ The available Supabase connector cannot inspect or set Edge Function secrets. Do
 3. Verify token scope and Cloudflare Workers AI free allocation; test short non-sensitive PT-BR and English audio only after the provider is configured.
 4. Keep Production jarvis-api v32 unchanged; rerun exact-head CI after the free build quota recovers.
 5. Continue independent work on FreeLLMAPI private hosting, memory, native iOS, web and Family CFO without creating duplicate projects or recurring costs.
+
+
+### Exact-head Preview recovery (13:00 UTC)
+- The documentation/ledger commit `34757f1346ba2ad3bee0a503a2c8eb2cd6476247` now has a READY Vercel Preview: `https://jarvis-i9i2a5urt-lauro-fiorenzani.vercel.app` (deployment `dpl_FBSzxNMKWEXjcxboV3ZwC4GLaRm4`). This deployment is built from the current PR branch head and includes the source-level voice diagnostic wording correction. It is not yet authenticated/device-E2E verified.
+- Vercel combined status for this exact commit is now SUCCESS. GitHub Actions connector still returns no workflow run for this SHA, so full CI is not confirmed.
+- The prior READY preview `jarvis-mjbu1qt4d-lauro-fiorenzani.vercel.app` is no longer the preferred test target; use the exact-head URL above for owner sign-in testing.
