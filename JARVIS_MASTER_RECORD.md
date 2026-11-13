@@ -1809,7 +1809,7 @@ J. Next conversation: Continue from this latest ledger. PR #30 CI #1009 is fully
 ### Self-Evolution / PR #31 — exact-head validation complete
 - PR #31 head `56f9871d92aa3a45fed02bbd7944af5774e64f67`, base `work/jarvis-canonical-integration` at `5430babd6191bd09d3393fc7597592ec953eb2ab`.
 - GitHub Actions CI run #1014 (`43477580864`), job `132065335423`: COMPLETED SUCCESS; all 47 steps succeeded. Includes dependency/security checks, typecheck/build, tests, lint, Deno provider privacy, semantic-memory policy, Edge Function typecheck, speech tests, isolated Supabase startup/migrations, SQL isolation regression, two-user authenticated semantic-memory API, production API/CORS and canonical Preview CORS smoke tests.
-- Observer workflow run #172 (`43477580659`), job `132065335423`? (see run jobs; Observer job completed SUCCESS): privacy/triage tests, typecheck/build and lint all succeeded.
+- Observer workflow run #172 (`43477580659`): its `validate` job completed SUCCESS; privacy/triage tests, typecheck/build and lint all succeeded.
 - Updated PR #31 description to record exact-head CI and Observer success. PR remains Draft/open and GitHub reports mergeable=false; no merge. The PR is validated at code/CI level, not approved or released.
 - Vercel bot reported the Hobby daily deployment cap (>100 deployments/day; retry after 24 hours). No upgrade, bypass or retry spam. Observer and CI checks did not require a new Vercel deployment.
 
