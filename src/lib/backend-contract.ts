@@ -23,6 +23,7 @@ export type ApiErrorCode =
   | 'forbidden'
   | 'invalid_request'
   | 'rate_limited'
+  | 'quota_exhausted'
   | 'service_unavailable'
   | 'internal_error'
 

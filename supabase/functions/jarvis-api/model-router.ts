@@ -57,15 +57,23 @@ export function assertConsistentProviderPrivacy(
   }
 }
 
-/** ZDR is only meaningful on OpenRouter and must be authenticated server-side. */
+/** ZDR providers must use an official endpoint and a configured server-side key.
+ * Cloudflare Workers AI has built-in zero data retention for stateless inference;
+ * OpenRouter requires its explicit ZDR and data-collection-deny request flags.
+ */
 export function assertZdrProviderConfig(
   hostname: string,
   apiKeyEnv?: string,
   apiKey?: string,
+  pathname?: string,
 ): void {
-  if (hostname !== 'openrouter.ai' || !apiKeyEnv || !apiKey) {
+  const openRouter = hostname === 'openrouter.ai'
+  const cloudflareWorkersAi = hostname === 'api.cloudflare.com' &&
+    typeof pathname === 'string' &&
+    /^\/client\/v4\/accounts\/[a-f0-9]{32}\/ai\/v1(?:\/chat\/completions)?$/i.test(pathname)
+  if ((!openRouter && !cloudflareWorkersAi) || !apiKeyEnv || !apiKey) {
     throw new ProviderUnavailableError(
-      'ZDR provider requires the official OpenRouter host and a configured server-side API key.',
+      'ZDR provider requires an approved OpenRouter or Cloudflare Workers AI endpoint and a configured server-side API key.',
     )
   }
 }
@@ -96,7 +104,7 @@ function configuredProviders(): Provider[] {
     const apiKey = apiKeyEnv ? Deno.env.get(apiKeyEnv)?.trim() : undefined
     if (item.privacyMode === 'zdr') {
       // Do not skip an invalid ZDR entry and fall back to a standard provider.
-      assertZdrProviderConfig(url.hostname, apiKeyEnv, apiKey)
+      assertZdrProviderConfig(url.hostname, apiKeyEnv, apiKey, url.pathname)
     }
     if (apiKeyEnv && !apiKey) continue
     providers.push({
@@ -126,9 +134,12 @@ export function getFreeProviderStatus(): {
   }
 }
 
-/** Request-level privacy controls for OpenRouter-compatible endpoints. */
-export function providerRoutingOptions(privacyMode?: 'zdr'): Record<string, unknown> {
-  return privacyMode === 'zdr'
+/** Request-level privacy controls for providers with explicit routing flags. */
+export function providerRoutingOptions(privacyMode?: 'zdr', hostname?: string): Record<string, unknown> {
+  if (privacyMode !== 'zdr') return {}
+  // Cloudflare Workers AI's direct inference endpoint applies ZDR by default.
+  // Do not send OpenRouter-specific fields to Cloudflare.
+  return hostname === 'openrouter.ai'
     ? { provider: { zdr: true, data_collection: 'deny' } }
     : {}
 }
@@ -196,7 +207,7 @@ export async function startFreeModelStream(
           messages,
           stream: true,
           temperature: 0.4,
-          ...providerRoutingOptions(provider.privacyMode),
+          ...providerRoutingOptions(provider.privacyMode, new URL(provider.baseUrl).hostname),
         }),
         // The 25-second deadline applies only to connection/response headers.
         // Keep the caller's signal attached for the full stream lifetime, but

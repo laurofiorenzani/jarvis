@@ -533,9 +533,11 @@ async function startElevenVoice(h: VoiceHandlers, cloudTranscribe?: CloudTranscr
       // Do not silently fall back to Web Speech: browser speech services may
       // send microphone audio to an OS/browser vendor. Keep cloud-only STT and
       // surface the failure rather than changing the privacy boundary.
+      const quotaExhausted = Boolean(err && typeof err === 'object' && 'code' in err &&
+        (err as { code?: unknown }).code === 'quota_exhausted')
       const retryAfterMs = err && typeof err === 'object' && 'retryAfterMs' in err &&
         typeof (err as { retryAfterMs?: unknown }).retryAfterMs === 'number'
-        ? Math.min(300_000, Math.max(1_000, (err as { retryAfterMs: number }).retryAfterMs))
+        ? Math.min(quotaExhausted ? 86_400_000 : 300_000, Math.max(1_000, (err as { retryAfterMs: number }).retryAfterMs))
         : undefined
       const backoffMs = retryAfterMs ?? Math.min(60_000, 5_000 * (2 ** Math.min(transcriptionFailures - 1, 4)))
       transcribeBlockedUntil = Date.now() + backoffMs

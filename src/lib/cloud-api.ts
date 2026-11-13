@@ -24,11 +24,12 @@ import {
 
 export type CloudFetch = (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>
 
-const API_ERROR_CODES = ['unauthenticated', 'forbidden', 'invalid_request', 'rate_limited', 'service_unavailable', 'internal_error'] as const
+const API_ERROR_CODES = ['unauthenticated', 'forbidden', 'invalid_request', 'rate_limited', 'quota_exhausted', 'service_unavailable', 'internal_error'] as const
 
 function portugueseApiMessage(message: string, code: string): string {
   if (code === 'service_unavailable') return 'O serviço de IA está temporariamente indisponível. Vou tentar novamente em instantes.'
   if (code === 'rate_limited') return 'O Jarvis recebeu muitos pedidos em pouco tempo. Aguarda um instante e tenta novamente.'
+  if (code === 'quota_exhausted') return 'A quota gratuita diária de IA foi atingida. Ela reinicia à meia-noite UTC.'
   if (code === 'unauthenticated') return 'A tua sessão expirou. Inicia sessão novamente.'
   if (code === 'forbidden') return 'Não tens autorização para esta operação.'
   if (code === 'invalid_request') return 'Não consegui processar esta mensagem. Verifica o conteúdo e tenta novamente.'
@@ -161,8 +162,8 @@ export function createCloudApiClient(options: CloudApiOptions) {
           ? rawCode as ApiError['error']['code']
           : response.status === 429 ? 'rate_limited' : 'service_unavailable'
         const retryHeader = response.headers.get('Retry-After')
-        const retrySeconds = retryHeader && /^\d{1,4}$/.test(retryHeader)
-          ? Math.min(300, Math.max(1, Number(retryHeader)))
+        const retrySeconds = retryHeader && /^\d{1,5}$/.test(retryHeader)
+          ? Math.min(code === 'quota_exhausted' ? 86_400 : 300, Math.max(1, Number(retryHeader)))
           : undefined
         throw new CloudApiError(
           body?.error?.message || 'Speech transcription failed.',

@@ -116,7 +116,9 @@ export function CloudAccess({ onConnected, onDisconnected, onResumeConversation,
     if (!isCurrentRuntime(runtime, generation)) return
     selectCloudBrain(runtime.brain)
     onSpeechApiReady?.(runtime.api.transcribeAudio)
-    onTtsApiReady?.(runtime.api.synthesizeSpeech)
+    // Cloud TTS stays disabled until an approved provider supports both PT-BR and EN-GB.
+    // The device-native speech engine remains the active output path.
+    onTtsApiReady?.(null)
     setConnected(true)
     onConnected?.()
   }

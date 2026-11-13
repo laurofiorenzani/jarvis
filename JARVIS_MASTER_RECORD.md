@@ -700,3 +700,31 @@ The older `docs/PROJECT_DECISIONS.md`, `docs/architecture/IMPLEMENTATION_STATUS_
 3. Review the Google AI Studio quotas for the STT model after the logged 429s. Keep retry/cooldown behavior; do not create rapid retry loops.
 4. Fresh iPhone E2E is still required: existing-account sign-in, non-empty PT-BR and EN-GB transcripts, a cloud model turn, and audible speech. Automated CI does not replace this test.
 5. Persistent cloud action approvals/tool execution, vendor integrations, native Capacitor iOS app and full self-evolution remain unimplemented; their architecture/specifications are not shipped capabilities.
+
+
+## 2026-11-13 — provider eligibility and Cloudflare Workers AI migration
+
+### Google Gemini Free Tier decision
+- Verified Google's Gemini API Additional Terms: API clients made available to users in the EEA, Switzerland or UK may only use Paid Services. JARVIS is accessed from Ireland and the owner requires zero paid API usage; Gemini Free Tier is therefore not an eligible cloud provider for this deployment. Do not configure or re-enable Gemini Free for chat, STT or TTS in the JARVIS cloud app.
+- Removed the Gemini Free STT request from the Preview code path. The cloud TTS route now fails closed and CloudAccess no longer installs the Gemini TTS callback. Device-native speech remains the active TTS path. Do not send private text/audio to the previous Gemini Free routes.
+
+### Cloudflare candidate verified read-only
+- The connected Cloudflare account exposes the Workers AI model catalog. Current candidates: `@cf/google/gemma-4-26b-a4b-it` (256k context, function calling, reasoning and vision; explicitly listed by Cloudflare as Workers Free available), `@cf/zai-org/glm-4.7-flash` (131k context, function calling and reasoning; also listed as Workers Free available), and `@cf/openai/whisper` for multilingual STT. The model catalog also shows models that may require paid billing; catalog presence alone does not prove Free eligibility.
+- Excluded `@cf/nvidia/nemotron-3-120b-a12b` because its model catalog lists planned deprecation on 20 Nov 2026. Excluded Qwen3.8 and Llama 3.3 from the Free candidate list because Cloudflare's current published Free-plan model notice does not list them.
+- Cloudflare's current data-use documentation states that standard stateless Workers AI requests have zero data retention and Customer Content is not used to train AI models. Operational metadata may still be retained; model-specific third-party licenses apply. Do not use AI Gateway content logging/caching or stateful features.
+- Workers Free provides 10,000 Neurons/day. Exhaustion returns HTTP 429/error 3036 until reset. Workers Paid also includes that allocation but bills usage above it. The account plan could not be verified because the connected Cloudflare OAuth scope lacks Billing Read; no inference request was sent and no usage was consumed by this audit.
+
+### Code changes in this candidate
+- Model router ZDR validation now accepts only the official OpenRouter ZDR endpoint or the exact Cloudflare Workers AI account Chat Completions endpoint. Cloudflare uses its native ZDR commitment; OpenRouter-only request flags are not sent to Cloudflare. Mixed ZDR/standard provider failover remains rejected.
+- STT now calls Cloudflare `@cf/openai/whisper` using server-side `CLOUDFLARE_ACCOUNT_ID` and `CLOUDFLARE_API_TOKEN`. The transcript parser accepts the Cloudflare result envelope. Audio and transcript content remain out of logs.
+- Cloudflare error 3036 is mapped to `quota_exhausted` and the client cooldown honours the reset time (up to 24 hours) instead of retrying every few minutes.
+- Gemini cloud TTS is disabled. Native browser/iOS speech remains the default for PT-BR and EN-GB. The available Aura 2 cloud TTS model is English-only; no Portuguese text is sent to it.
+- Added a Cloudflare setup guide and marked the Google Gemini Free guide as historical/not eligible for the EEA deployment.
+
+### Owner action required before runtime activation
+1. Confirm the Cloudflare account is on **Workers Free**, not Workers Paid, to prevent any paid overage.
+2. Create a scoped API token with Account → Workers AI → Read and add `CLOUDFLARE_ACCOUNT_ID` and `CLOUDFLARE_API_TOKEN` as Supabase Edge Function secrets.
+3. Add the `JARVIS_MODEL_PROVIDERS` JSON from `docs/cloud/CLOUDFLARE_WORKERS_AI_PROVIDER.md` as a Supabase Edge Function secret.
+4. Then run synthetic chat and PT/EN Whisper smoke tests before any personal content is routed.
+
+The available Supabase connector cannot inspect or set Edge Function secrets. Do not request or paste the token in chat. No production function, production secret, billing plan, user account or personal data was changed.

@@ -15,7 +15,7 @@ Deno.test('default provider routing does not add privacy overrides', () => {
 })
 
 Deno.test('ZDR mode requires zero-retention and no-data-collection endpoints', () => {
-  const options = providerRoutingOptions('zdr')
+  const options = providerRoutingOptions('zdr', 'openrouter.ai')
   const provider = options.provider as { zdr?: boolean; data_collection?: string } | undefined
   if (provider?.zdr !== true || provider.data_collection !== 'deny') {
     throw new Error('strict ZDR routing was not enforced')
@@ -108,4 +108,31 @@ Deno.test('free model routing rotates its starting provider fairly', () => {
     }
   })
   if (rotateProviderOrder([], 0).length !== 0) throw new Error('empty provider list should remain empty')
+})
+
+
+Deno.test('Cloudflare Workers AI ZDR requires the official account chat endpoint and server-side key', () => {
+  const accountId = 'ba87bf4587d1167de0d075972d14a05c'
+  assertZdrProviderConfig('api.cloudflare.com', 'CLOUDFLARE_API_TOKEN', 'test-token', `/client/v4/accounts/${accountId}/ai/v1`)
+  assertZdrProviderConfig('api.cloudflare.com', 'CLOUDFLARE_API_TOKEN', 'test-token', `/client/v4/accounts/${accountId}/ai/v1/chat/completions`)
+  for (const invalid of [
+    ['api.cloudflare.com', 'CLOUDFLARE_API_TOKEN', 'test-token', '/client/v4/accounts/not-an-id/ai/v1'],
+    ['api.cloudflare.com', 'CLOUDFLARE_API_TOKEN', 'test-token', '/client/v4/accounts/ba87bf4587d1167de0d075972d14a05c/ai/v2'],
+    ['api.groq.com', 'CLOUDFLARE_API_TOKEN', 'test-token', '/v1'],
+  ] as const) {
+    let caught: unknown
+    try { assertZdrProviderConfig(invalid[0], invalid[1], invalid[2], invalid[3]) } catch (error) { caught = error }
+    if (!(caught instanceof ProviderUnavailableError)) throw new Error('invalid Cloudflare ZDR endpoint was accepted')
+  }
+})
+
+Deno.test('Cloudflare native ZDR does not receive OpenRouter-only routing flags', () => {
+  const options = providerRoutingOptions('zdr', 'api.cloudflare.com')
+  if ('provider' in options) throw new Error('OpenRouter privacy flags leaked into Cloudflare request')
+})
+
+Deno.test('Cloudflare Workers AI base URL appends the OpenAI-compatible chat path', () => {
+  const actual = toChatCompletionsUrl('https://api.cloudflare.com/client/v4/accounts/ba87bf4587d1167de0d075972d14a05c/ai/v1')
+  const expected = 'https://api.cloudflare.com/client/v4/accounts/ba87bf4587d1167de0d075972d14a05c/ai/v1/chat/completions'
+  if (actual !== expected) throw new Error('unexpected Cloudflare chat endpoint: ' + actual)
 })

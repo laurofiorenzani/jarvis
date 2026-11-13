@@ -1,6 +1,12 @@
-/** Extract a transcript from the provider response without trusting its shape. */
+/** Extract a transcript from Cloudflare Workers AI or compatible provider responses. */
 export function extractSpeechTranscript(payload: unknown): string {
   if (!payload || typeof payload !== 'object' || Array.isArray(payload)) return ''
+  const envelope = payload as { result?: unknown; text?: unknown }
+  const result = envelope.result && typeof envelope.result === 'object' && !Array.isArray(envelope.result)
+    ? envelope.result as { text?: unknown }
+    : null
+  const directText = typeof result?.text === 'string' ? result.text : envelope.text
+  if (typeof directText === 'string') return directText.trim()
   const candidates = (payload as { candidates?: unknown }).candidates
   if (!Array.isArray(candidates) || candidates.length === 0) return ''
   const first = candidates[0]

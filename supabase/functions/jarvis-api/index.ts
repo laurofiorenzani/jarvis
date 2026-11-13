@@ -1,6 +1,6 @@
 import { createClient } from '@supabase/supabase-js'
 import { getApiRoutePathCandidates } from './route-path.ts'
-import { extractSpeechTranscript, countSpeechCandidates } from './speech-transcript.ts'
+import { extractSpeechTranscript } from './speech-transcript.ts'
 import { getFreeProviderStatus, startFreeModelStream } from './model-router.ts'
 import { isSemanticMemoryId, isSafeAutoMemorySource, mergeSemanticMemoryPreferences, normalizeSemanticMemoryQuery, parseAutoMemoryCandidates, parseSemanticMemoryCandidate, parseSemanticMemoryDecision, parseSemanticMemorySearch } from './semantic-memory.ts'
 
@@ -289,8 +289,9 @@ Deno.serve(async (request) => {
     const allowed = await consumeLimit('speech_transcription_minute', 30, 60)
     if (allowed === null) return error('service_unavailable', 'Speech rate limiter is unavailable.', 503, true, cors)
     if (!allowed) return error('rate_limited', 'Too many speech segments. Please pause briefly.', 429, true, cors)
-    const apiKey = Deno.env.get('GOOGLE_AI_STUDIO_API_KEY')?.trim()
-    if (!apiKey) return error('service_unavailable', 'Speech provider is not configured.', 503, false, cors)
+    const accountId = Deno.env.get('CLOUDFLARE_ACCOUNT_ID')?.trim()
+    const apiToken = Deno.env.get('CLOUDFLARE_API_TOKEN')?.trim()
+    if (!/^[a-f0-9]{32}$/i.test(accountId ?? '') || !apiToken) return error('service_unavailable', 'Cloud speech recognition is not configured.', 503, false, cors)
     const mimeType = (request.headers.get('content-type') || '').split(';')[0].trim().toLowerCase()
     const allowedAudioTypes = new Set(['audio/webm', 'audio/mp4', 'audio/m4a', 'audio/x-m4a', 'audio/aac', 'audio/x-aac', 'audio/ogg', 'audio/wav', 'audio/mpeg', 'audio/mp3', 'audio/flac'])
     if (!allowedAudioTypes.has(mimeType)) return error('invalid_request', 'Unsupported audio format.', 415, false, cors)
@@ -300,103 +301,48 @@ Deno.serve(async (request) => {
       if (cause instanceof Error && cause.message === 'body_too_large') return error('invalid_request', 'Audio segment is too large.', 413, false, cors)
       return error('invalid_request', 'Audio segment is missing.', 400, false, cors)
     }
-    // Short utterances on iOS Safari can produce compact MP4 segments.
-    // Do not silently acknowledge them as successful empty transcripts; only
-    // discard truly empty/tiny payloads and let the provider decode short speech.
     if (audio.byteLength < 256) {
       console.info('[jarvis] ignored near-empty speech segment', { bytes: audio.byteLength, mimeType })
       return response({ version: VERSION, text: '' }, 200, cors)
     }
-    const upstream = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-transcribe:generateContent', {
+    const upstream = await fetch(`https://api.cloudflare.com/client/v4/accounts/${accountId}/ai/run/@cf/openai/whisper`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
-      body: JSON.stringify({
-        contents: [{ role: 'user', parts: [
-          { text: 'Transcribe exactly what the speaker says. Automatically detect the spoken language. Preserve the original language and wording. The speaker may switch between Portuguese and English within the same conversation. Return only the transcript.' },
-          { inlineData: { mimeType, data: encodeBase64(audio) } },
-        ] }],
-        generationConfig: { temperature: 0 },
-      }),
+      headers: { 'Content-Type': 'application/octet-stream', Authorization: 'Bearer ' + apiToken },
+      body: audio,
       signal: AbortSignal.timeout(30_000),
     }).catch(() => null)
     if (!upstream) return error('service_unavailable', 'Speech transcription service could not be reached.', 503, true, cors)
+    const payload = await upstream.json().catch(() => null)
     if (!upstream.ok) {
-      // Preserve provider throttling semantics so the client can distinguish
-      // exhausted quota from a network outage and honour a bounded cooldown.
-      console.warn('[jarvis] speech transcription provider returned non-success status', { status: upstream.status })
+      const providerErrors = isRecord(payload) && Array.isArray(payload.errors) ? payload.errors : []
+      const dailyQuotaExhausted = providerErrors.some((item) => isRecord(item) && String(item.code) === '3036')
+      console.warn('[jarvis] Cloudflare speech provider returned non-success status', { status: upstream.status, code: dailyQuotaExhausted ? 'daily_free_allocation_exhausted' : 'provider_error' })
+      if (dailyQuotaExhausted) {
+        const now = new Date()
+        const nextReset = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1)
+        const retryAfter = Math.max(60, Math.min(86_400, Math.ceil((nextReset - now.getTime()) / 1_000)))
+        return error('quota_exhausted', 'The Workers AI free daily allocation has been reached. It resets at 00:00 UTC.', 429, true, { ...cors, 'Retry-After': String(retryAfter) })
+      }
       if (upstream.status === 429) {
         const retryAfter = upstream.headers.get('retry-after')
         const seconds = retryAfter && /^\d{1,4}$/.test(retryAfter) ? Math.min(300, Math.max(5, Number(retryAfter))) : 60
-        return error('rate_limited', 'Speech transcription quota is temporarily unavailable. Please wait before trying again.', 429, true, {
-          ...cors,
-          'Retry-After': String(seconds),
-        })
+        return error('rate_limited', 'Speech transcription is temporarily rate limited. Please wait before trying again.', 429, true, { ...cors, 'Retry-After': String(seconds) })
       }
       return error('service_unavailable', 'Speech transcription failed. Please try again.', 503, true, cors)
     }
-    const payload = await upstream.json().catch(() => null)
     const transcript = extractSpeechTranscript(payload)
     if (!transcript) {
-      console.warn('[jarvis] speech provider returned an empty transcript', {
-        audioBytes: audio.byteLength,
-        mimeType,
-        candidateCount: countSpeechCandidates(payload),
-      })
+      console.warn('[jarvis] speech provider returned an empty transcript', { audioBytes: audio.byteLength, mimeType })
       return error('service_unavailable', 'Speech transcription returned no text. Please try again.', 503, true, cors)
     }
     return response({ version: VERSION, text: transcript }, 200, cors)
   }
 
   if (request.method === 'POST' && matchesPath('/tts')) {
-    const allowed = await consumeLimit('speech_synthesis_minute', 30, 60)
-    if (allowed === null) return error('service_unavailable', 'Speech synthesis rate limiter is unavailable.', 503, true, cors)
-    if (!allowed) return error('rate_limited', 'Too many speech requests. Please pause briefly.', 429, true, cors)
-    let body: unknown
-    try { body = await readBoundedJson(request, 8_192) }
-    catch (cause) {
-      if (cause instanceof Error && cause.message === 'body_too_large') return error('invalid_request', 'Speech text is too large.', 413, false, cors)
-      return error('invalid_request', 'Speech request must be valid JSON.', 400, false, cors)
-    }
-    if (!isRecord(body) || body.version !== VERSION || typeof body.text !== 'string') return error('invalid_request', 'Invalid speech request.', 400, false, cors)
-    const text = body.text.replace(/[\u0000-\u001f\u007f]/g, ' ').replace(/\s+/g, ' ').trim()
-    if (!text || text.length > 2_000) return error('invalid_request', 'Speech text must contain between 1 and 2,000 characters.', 400, false, cors)
-    const apiKey = Deno.env.get('GOOGLE_AI_STUDIO_API_KEY')?.trim()
-    if (!apiKey) return error('service_unavailable', 'Speech provider is not configured.', 503, false, cors)
-    let upstream: Response | null = null
-    for (let attempt = 0; attempt < 2; attempt++) {
-      upstream = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-tts-preview:generateContent', {
-        method: 'POST', headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
-        body: JSON.stringify({
-          contents: [{ role: 'user', parts: [{ text: 'TTS the following transcript. Speak it exactly as written, in a composed, warm, precise male assistant voice with measured pacing and clear diction. Use natural Brazilian Portuguese for Portuguese text and neutral British English for English text. Do not translate, paraphrase, or add words. Transcript: ' + text }] }],
-          generationConfig: { responseModalities: ['AUDIO'], speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Charon' } } } },
-        }),
-        signal: AbortSignal.timeout(30_000),
-      }).catch(() => null)
-      if (upstream?.ok) break
-      if (attempt === 0 && upstream && upstream.status < 500 && upstream.status !== 429) break
-    }
-    if (!upstream) return error('service_unavailable', 'Speech synthesis service could not be reached.', 503, true, cors)
-    if (!upstream.ok) {
-      console.warn('[jarvis] speech synthesis provider returned non-success status', { status: upstream.status })
-      return error('service_unavailable', 'Speech synthesis failed. Please try again.', 503, true, cors)
-    }
-    const payload = await upstream.json().catch(() => null)
-    const parts = payload && typeof payload === 'object' ? (payload as { candidates?: Array<{ content?: { parts?: Array<{ inlineData?: { mimeType?: string; data?: string } }> } }> }).candidates?.[0]?.content?.parts ?? [] : []
-    const audioPart = parts.find((part) => part.inlineData?.data)
-    if (!audioPart?.inlineData?.data || (audioPart.inlineData.mimeType || '').split(';')[0].toLowerCase() !== 'audio/l16') return error('service_unavailable', 'Speech synthesis returned no compatible audio.', 503, true, cors)
-    let binary: string
-    try { binary = atob(audioPart.inlineData.data) } catch { return error('service_unavailable', 'Speech synthesis returned invalid audio.', 503, true, cors) }
-    const pcm = new Uint8Array(binary.length)
-    for (let i = 0; i < binary.length; i++) pcm[i] = binary.charCodeAt(i)
-    if (pcm.length < 2 || pcm.length > 4 * 1024 * 1024) return error('service_unavailable', 'Speech synthesis audio size is invalid.', 503, true, cors)
-    const wav = new Uint8Array(44 + pcm.length)
-    const view = new DataView(wav.buffer)
-    const ascii = (offset: number, value: string) => { for (let i = 0; i < value.length; i++) wav[offset + i] = value.charCodeAt(i) }
-    ascii(0, 'RIFF'); view.setUint32(4, 36 + pcm.length, true); ascii(8, 'WAVE')
-    ascii(12, 'fmt '); view.setUint32(16, 16, true); view.setUint16(20, 1, true); view.setUint16(22, 1, true)
-    view.setUint32(24, 24_000, true); view.setUint32(28, 48_000, true); view.setUint16(32, 2, true); view.setUint16(34, 16, true)
-    ascii(36, 'data'); view.setUint32(40, pcm.length, true); wav.set(pcm, 44)
-    return new Response(wav, { status: 200, headers: { ...cors, 'Content-Type': 'audio/wav', 'Content-Length': String(wav.byteLength), 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' } })
+    // Gemini Free is not an eligible provider for this EEA-hosted personal app.
+    // Keep device-native speech as the only active output until an approved
+    // Portuguese/English cloud TTS provider is configured and tested.
+    return error('service_unavailable', 'Cloud speech synthesis is not configured. Use the device voice.', 503, false, cors)
   }
 
   if (request.method === 'GET' && matchesPath('/provider-status')) {
