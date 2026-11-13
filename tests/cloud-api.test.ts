@@ -709,7 +709,7 @@ test('cloud client rejects malformed action approval identifiers and digests loc
     getAccessToken: async () => 'approval-token',
     fetchImpl: async () => { throw new Error('fetch must not run for invalid approval input') },
   })
-  await assert.rejects(
+  assert.throws(
     () => client.decideActionApproval({
       request_id: 'not-a-uuid',
       session_id: 'session-a',
