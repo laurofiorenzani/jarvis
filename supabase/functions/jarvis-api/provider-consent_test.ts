@@ -1,5 +1,8 @@
-import { assertEquals } from 'jsr:@std/assert'
 import { isApprovedZdrSpeechRoute } from './provider-consent.ts'
+
+function assertEquals(actual: unknown, expected: unknown, message = 'unexpected value'): void {
+  if (actual !== expected) throw new Error(`${message}: expected ${String(expected)}, got ${String(actual)}`)
+}
 
 const policyVersion = '2026-11-13-v2'
 const acceptedPreference = { zdr_pool_enabled: true, policy_version: policyVersion }
