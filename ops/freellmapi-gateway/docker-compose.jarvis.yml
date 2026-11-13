@@ -1,0 +1,32 @@
+services:
+  # Merge this overlay with FreeLLMAPI's official docker-compose.yml.
+  # The dashboard stays bound to host loopback; only the allowlisted proxy is tunneled.
+  freellmapi:
+    environment:
+      HOST_BIND: "0.0.0.0"
+
+  jarvis-freellmapi-proxy:
+    build:
+      context: ./jarvis-gateway
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      FREELLMAPI_ORIGIN: "http://freellmapi:3001"
+      FREELLMAPI_API_KEY: ${FREELLMAPI_API_KEY:?Set FREELLMAPI_API_KEY in .env.jarvis}
+      JARVIS_GATEWAY_TOKEN: ${JARVIS_GATEWAY_TOKEN:?Set JARVIS_GATEWAY_TOKEN in .env.jarvis}
+      PORT: "3002"
+    expose:
+      - "3002"
+    depends_on:
+      - freellmapi
+
+  # Quick Tunnel is free and requires no custom domain. Its URL can change
+  # after a restart; use a named tunnel/domain for a permanent hostname.
+  jarvis-cloudflared:
+    image: cloudflare/cloudflared:latest
+    command: tunnel --no-autoupdate --url http://jarvis-freellmapi-proxy:3002
+    restart: unless-stopped
+    profiles:
+      - public-tunnel
+    depends_on:
+      - jarvis-freellmapi-proxy
