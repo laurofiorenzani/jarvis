@@ -1,6 +1,6 @@
 begin;
 
-select plan(17);
+select plan(19);
 
 insert into auth.users (id, aud, role, email, encrypted_password, email_confirmed_at, created_at, updated_at)
 values
@@ -43,11 +43,18 @@ select lives_ok(
 );
 
 select throws_ok(
-  $$insert into public.jarvis_cfo_transactions
+  $insert into public.jarvis_cfo_transactions
     (owner_user_id, account_id, transaction_at, description, amount, currency, status, confidence, source_type, source_name, observed_at, effective_at)
-    values ('00000000-0000-4000-8000-000000000011', '10000000-0000-4000-8000-000000000012', '2026-11-13', 'Cross-owner account', 1.00, 'EUR', 'posted', 'verified', 'manual', 'synthetic-test', now(), '2026-11-13')$$,
+    values ('00000000-0000-4000-8000-000000000011', '10000000-0000-4000-8000-000000000012', '2026-11-13', 'Cross-owner account', 1.00, 'EUR', 'posted', 'verified', 'manual', 'synthetic-test', now(), '2026-11-13')$,
   '23503', null,
   'transaction cannot reference another user account'
+);
+select throws_ok(
+  $insert into public.jarvis_cfo_balance_snapshots
+    (owner_user_id, account_id, observed_at, amount, currency, confidence, source_type, source_name, effective_at)
+    values ('00000000-0000-4000-8000-000000000011', '10000000-0000-4000-8000-000000000012', now(), 1.00, 'EUR', 'verified', 'manual', 'synthetic-test', '2026-11-13')$,
+  '23503', null,
+  'balance snapshot cannot reference another user account'
 );
 select throws_ok(
   $$insert into public.jarvis_cfo_transactions
@@ -77,10 +84,16 @@ select throws_ok(
   'authenticated user cannot write financial transactions directly'
 );
 select throws_ok(
-  $$update public.jarvis_cfo_accounts set account_label = 'Cross-account mutation'
-    where owner_user_id = '00000000-0000-4000-8000-000000000012'$$,
+  $update public.jarvis_cfo_accounts set account_label = 'Cross-account mutation'
+    where owner_user_id = '00000000-0000-4000-8000-000000000012'$,
   '42501', null,
   'authenticated user cannot update financial account records directly'
+);
+select throws_ok(
+  $delete from public.jarvis_cfo_accounts
+    where owner_user_id = '00000000-0000-4000-8000-000000000011'$,
+  '42501', null,
+  'authenticated user cannot delete financial account records directly'
 );
 
 select set_config('request.jwt.claim.sub', '00000000-0000-4000-8000-000000000012', true);
