@@ -425,3 +425,68 @@ The current work has not yet produced one official `main`, and it has not comple
 - All other 207 tests in that run passed or were skipped as configured. CI #803: https://github.com/laurofiorenzani/jarvis/actions/runs/43379063821
 - Observer Validation #52 passed on the same candidate head. Re-run the full CI after this test correction before treating the branch as green.
 - Mainline comparison has narrowed to 3 commits on `main` not yet in the candidate and 517 candidate-only commits. Preserve and explicitly reconcile those 3 mainline commits before changing PR #12's base or promoting to `main`.
+
+
+## 20. Multi-branch reconciliation checkpoint — 2026-11-13 06:35 Europe/Dublin
+
+### Latest exact-head verification
+- Candidate head: `7b24f2c52c180f9deef10598c56fb6a6c4f48c4e`.
+- Full CI #804: **SUCCESS** on that exact SHA — https://github.com/laurofiorenzani/jarvis/actions/runs/43379408618
+  - typecheck and production build;
+  - all 208 tests (205 passed, 2 skipped, 1 previously stale assertion fixed);
+  - lint;
+  - Deno provider privacy and semantic-memory policy tests;
+  - Supabase Edge Function typecheck;
+  - isolated Supabase startup, all migrations, SQL account-isolation tests and authenticated semantic-memory API test with two isolated users;
+  - production API/CORS and canonical-preview CORS smoke tests.
+- Observer Validation #53: **SUCCESS** on the same SHA — https://github.com/laurofiorenzani/jarvis/actions/runs/43379408649
+- Vercel deployment for the same SHA: **READY**, alias `https://jarvis-git-work-jarvis-canonical-integration-lauro-fiorenzani.vercel.app`. This is a Preview, not production.
+- The failed CI #803 was a stale assertion in `tests/cloud-default.test.ts`; corrected it to reflect the new truthful cloud connectivity contract. No application feature was disabled to make the test pass.
+- PR #12 remains OPEN and DRAFT, with base `work/intelligent-memory-foundation`. It has not been merged or promoted.
+
+### Mainline-only commit audit — all three reconciled by decision
+The three commits present on `main` but absent from the candidate were inspected individually:
+1. `1a963651` added the first CloudAccess UI with a cloud speech adapter callback. Its behavior is superseded by the more complete candidate CloudAccess and voice wiring.
+2. `e18151ca` reverted the cloud speech adapter callback pending review. This is a rollback, not a feature to restore; the candidate includes the tested cloud STT callback.
+3. `da4e4591` deleted CloudAccess from the main preview to fix an orphaned import/build issue. The candidate restores CloudAccess as an actual mounted, authenticated UI, rather than reviving the orphaned state.
+Decision: do not cherry-pick those three commits. The candidate contains the intended functionality with the current amber interface and passing CI. Their rationale is preserved here.
+
+### All 19 canonical-repository branches inventoried and compared against the candidate
+- `main`: production default branch; three mainline-only commits above must be superseded by the final integration before promotion.
+- `work/jarvis-canonical-integration`: canonical integration candidate; retain until final release.
+- `work/memory-integration-ready`, `work/intelligent-memory-foundation`: ancestors in the cloud-first/semantic-memory PR stack; retain until the final candidate is merged.
+- `work/jarvis-amber-command-center`: its observer, command-center, experience vision and HUD changes are included in the candidate; eligible for retirement after final verification.
+- `work/jarvis-amber-production-track`: current amber UI lineage is included; unique local-bridge approval primitives and SSE helper/tests are not copied blindly. Their useful approval semantics are documented for cloud implementation; the cloud client already has a typed SSE reader with size bounds and cancellation.
+- `work/jarvis-voice-locale`: cloud STT/TTS, language-aware prompts and account-switch guards are represented in the candidate; preserve until physical-device tests pass.
+- `work/jarvis-cloud-status-accuracy`: cloud status semantics are now in candidate code and regression tests.
+- `work/self-evolution-engine-foundation`: observer, privacy-bounded telemetry, triage and tests are included; its current observer is read-only, not an autonomous code-writing agent.
+- `work/mobile-companion`: cloud API and mobile architecture material is present; actual Capacitor/iOS app remains pending.
+- `fix/auth-invite-password-recovery`: compared the unique auth/UI/tests; candidate has invite/recovery, password setup, resend confirmation and a stricter no-duplicate-account sign-in UI. The candidate's auth code is newer; no CREATE ACCOUNT action is exposed.
+- `feature/live-vision`: its camera/live-vision architecture note is present in the candidate; no live vision capability is claimed as shipped.
+- `feature/gemini-live-voice`: entirely behind the candidate with no candidate-relative unique file changes; stale/superseded.
+- `fix/restore-main-preview-build`: candidate-relative compare reports no unique file changes; stale/superseded.
+- `work/jarvis-master-record`, `work/remove-shortcut-architecture`: earlier continuity/architecture snapshots; the single updated `JARVIS_MASTER_RECORD.md` and README pointer supersede their record copies.
+- `feature/intelligent-memory`: 17 unique commits/7 changed files containing an older local bridge memory runtime. Superseded as the runtime architecture by account-isolated Supabase semantic memory, but unique tests/design must be reviewed and captured before branch deletion.
+- `work/memory-integration`: 148 unique commits/42 changed files with encryption/key-provider, backup, audit and memory-approval prototypes. Do not merge into the active Supabase store or delete until a security review extracts and records any reusable protections; the D1/bridge implementation is not the production memory architecture.
+- `work/freellmapi-backend-prototype`: 32 unique commits/21 files, a local loopback bridge adapter. Keep as research until its provider policy, tool loop and tests are reviewed; it is not the cloud/iPhone FreeLLMAPI integration.
+- `work/jarvis-amber-production-track` also contains local bridge action-approval code. Its canonical argument hashing, fail-closed risk classification, short TTL, one-use approval, and session cancellation are useful invariants, but the in-memory Node registry cannot be used as the cloud production approval service.
+- The branch list was paged to completion (19 branches); no branch has been deleted.
+
+### PR dependency stack and safe consolidation rule
+- PR #1 (cloud-first foundation) -> main; head CI #487 passed.
+- PR #4 (semantic memory) -> PR #1 branch; head CI #668 passed.
+- PR #12 (current amber interface + auth + voice + semantic memory + observer) -> PR #4 branch; current full CI #804 and Observer #53 passed.
+- PR #7/#8/#9 form a separate amber/voice/status stack; their unique changes are covered by the candidate or explicitly recorded as non-production local-bridge research.
+- Do not merge intermediate PRs into production one by one: that could briefly replace the current amber interface or reintroduce the removed auth regression. Keep production untouched; after the remaining migration review and iPhone test, consolidate the complete tested candidate in one controlled mainline release.
+- No branch or repository is deleted until every unique item is classified as migrated, superseded with evidence, or deliberately retained as research.
+
+### Remaining work before mainline release
+1. Review the unique 7-file `feature/intelligent-memory`, 42-file `work/memory-integration`, and 21-file FreeLLMAPI prototype; extract useful security/test knowledge into the single master record and selected production implementation.
+2. Complete the iOS native app: Capacitor project, real Keychain plugin, audio lifecycle, push notifications/haptics and signed build; PWA preview is not the native app.
+3. Implement cloud-side approval registry/UI/notifications/execution; local bridge approval prototypes are not sufficient.
+4. Implement a bounded self-evolution development agent (proposal -> isolated branch -> tests -> review); observer remains read-only.
+5. Verify Oracle VM status and secure ingress before deciding whether FreeLLMAPI can be hosted there. Current Cloudflare account inventory shows no tunnel, Worker, D1 or zone.
+6. Verify real authenticated provider inference and physical iPhone PT/EN STT/TTS, account switching, session persistence and app lifecycle.
+7. Retarget the complete candidate to `main` only after the unique branch review and device/release gates pass; then remove redundant PRs/branches and finally retire `jarvis-personal-cloud` after its unique research is preserved.
+
+**Current state:** CI and observer are green on the candidate, and its preview is READY. The project is not yet merged to `main`; production remains unchanged. This master record is the only authoritative progress/decision ledger.
