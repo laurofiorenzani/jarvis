@@ -1,7 +1,7 @@
 import { createClient } from '@supabase/supabase-js'
 import { getApiRoutePathCandidates } from './route-path.ts'
 import { extractSpeechTranscript } from './speech-transcript.ts'
-import { getFreeProviderStatus, startFreeModelStream, type FreeLlmApiTaskType } from './model-router.ts'
+import { classifyFreeLlmTask, getFreeProviderStatus, startFreeModelStream } from './model-router.ts'
 import { isSemanticMemoryId, isSafeAutoMemorySource, mergeSemanticMemoryPreferences, normalizeSemanticMemoryQuery, parseAutoMemoryCandidates, parseSemanticMemoryCandidate, parseSemanticMemoryDecision, parseSemanticMemorySearch } from './semantic-memory.ts'
 
 const VERSION = 1
@@ -72,12 +72,6 @@ function corsHeaders(origin: string | null): HeadersInit {
 
 function isRecord(value: unknown): value is Json {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
-}
-
-function classifyFreeLlmTask(text: string): FreeLlmApiTaskType {
-  if (/(?:\b(?:code|coding|program|programming|script|function|typescript|javascript|python|sql|debug|stack trace|compile|commit|pull request|repository|git|npm|api)\b|c[oó]digo|programa[cç][aã]o|depurar|reposit[oó]rio)/i.test(text)) return 'code'
-  if (text.length < 500) return 'chat'
-  return 'auto'
 }
 
 async function readBoundedBytes(request: Request, maxBytes: number): Promise<Uint8Array> {
