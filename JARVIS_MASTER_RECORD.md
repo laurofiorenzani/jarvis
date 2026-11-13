@@ -567,3 +567,12 @@ The older `docs/PROJECT_DECISIONS.md`, `docs/architecture/IMPLEMENTATION_STATUS_
 - PR #12 remains OPEN/DRAFT and stacked on `work/intelligent-memory-foundation`. The final candidate has not been merged to `main`; the current production UI is untouched.
 - No branch or repository has been deleted. All work-bearing branches and the private memory workbench are preserved until their unique contributions and release dependencies are fully closed. The connected GitHub actions available in this session do not expose branch-ref or repository deletion, so cleanup must be performed through an authorized GitHub interface after final integration, not simulated by deleting source files.
 - The one required external validation before the next release gate is a real iPhone Safari test of the stable Preview: existing-account login, Portuguese and English microphone transcription, and spoken response. This cannot be truthfully certified by CI or a Vercel READY state.
+
+
+## 2026-11-13 — iPhone login false-expiry root cause and correction
+
+- The iPhone Safari request logs show repeated unauthenticated GET requests to /functions/v1/jarvis-preview-api/v1/health with HTTP 401 immediately after the preview was opened. The preview function is mounted as jarvis-preview-api, while the Edge handler previously stripped only the hard-coded /jarvis-api marker.
+- This caused the public health route to miss its health-route match and fall through to the bearer-token guard. During sign-in, CloudAccess obtains the session and then calls activateRuntime(); brain.warm() calls the health endpoint, so the 401 is surfaced as “session expired” even though the user has just entered credentials. This explains the misleading UI message; it is not evidence that a new account is needed.
+- Corrected supabase/functions/jarvis-api/index.ts on work/jarvis-canonical-integration to strip the actual Supabase function mount generically, covering both production and preview slugs. Commit: 2b5bb37abd6c427b44c8139d421f4f76cb08c167.
+- This is a source/PR change only. It has not been deployed to Supabase production and no account, password, session, auth setting, or production data was changed.
+- Required validation: exact-head CI and Observer checks, new Vercel preview, and then physical iPhone sign-in again. After that, confirm authenticated health, conversation creation, PT/EN STT and TTS. Keep PR #12 Draft and do not promote to production until these gates pass.
