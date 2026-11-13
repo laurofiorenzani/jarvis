@@ -2142,3 +2142,38 @@ G. User action: BMW CarData client registration and device consent will be requi
 H. Next: inspect exact PR #34 files and implement only safe authenticated BMW API plumbing that remains disabled until owner OAuth; inspect PR #26 UI/API wiring; keep parallel checks on provider and CFO; no production changes.
 I. GitHub: `laurofiorenzani/jarvis`; PR #23/#26/#31/#32/#33/#34 remain open Draft; no merge.
 J. Next conversation: Continue from this checkpoint. Exact CI green: #23/#1052, #26/#1078, #31/#1054 + Observer #176, #32/#1039, #33/#1083, #34/#1084. OpenClaw review says reuse device pairing/capability scopes/token revocation and node protocol ideas, but do not install a second Gateway or duplicate Supabase memory; keep JARVIS first-party iOS. BMW PR is source/isolated-CI only, no live account or endpoints. Supabase prod v32/Preview v23, live migrations through 20261113125437. Keep €0 recurring cost and production untouched.
+
+
+## 2026-11-13 — Action approval UI implementation and OpenClaw decision recorded
+
+### Action approval UI / PR #26
+- Added authenticated cloud-client methods for listing approvals, resolving approve/reject decisions and cancelling pending requests. Request UUID and SHA-256 argument digest are validated client-side; server remains authoritative.
+- Added a pending-approval panel to the existing Cloud Access HUD. It displays title, target, impact, reversibility, capability, expiry and a shortened digest only; raw arguments are never returned/displayed.
+- Explicit warning in the UI: approval records a decision only; this panel does not execute an external action. This preserves the boundary between approval state and future execution adapters.
+- Added API client regression tests for authenticated bearer forwarding, exact context binding and invalid UUID/digest rejection. Corrected the client/UI contract to use the SQL resolver's `status` result (not a non-existent `decision` property).
+- Current PR #26 head `7a92d99de93d1716a17c9f7e54162cc08fb2aa1a`. CI #1088 (`43522861440`) is running; tests stage is in progress. CI #1078 remains valid for the previous server/API/migration head only, not the new UI/client changes.
+
+### OpenClaw documentation and validation
+- OpenClaw evaluation document committed at `docs/architecture/OPENCLAW_EVALUATION.md` (commit `7e650063f3d6e3b9678844b0bd70a44e4738cd44`). Master record updated in commit `c579863a1d52a0c341b40c2efccfac5808583cb0`.
+- CI #1085 on the doc-only commit was cancelled by GitHub Actions concurrency; CI #1089 is now running on the latest ledger head. Prior CI #1083 SUCCESS validates the provider-lockout code tree, which was not changed by the OpenClaw documentation.
+- Decision unchanged: OpenClaw is a design reference only; no runtime installation, Gateway, WhatsApp Web/Baileys account, provider, or extra memory was created.
+
+### Latest independent exact-head validations
+- PR #23: CI #1052 SUCCESS on `ead81317ba70c9a88a61cf7bc477540eb44e7763`.
+- PR #26: CI #1078 SUCCESS on prior server/API head; new UI/client exact-head CI #1088 in progress.
+- PR #31: CI #1054 and Observer #176 SUCCESS on `7849419dfeef11984cdac4be0458678623d199ac`.
+- PR #32: CI #1039 SUCCESS on `dfea9b296647ed257915932998700ce0fbe4ac39`.
+- PR #33: CI #1083 SUCCESS on provider-lockout head; docs/ledger-only latest head CI #1089 in progress.
+- PR #34: CI #1084 SUCCESS on `9846edb396250e9e5f1810d03fa631ca1395b593`.
+
+### Handoff update
+A. State: action approval service now has a first UI/client surface in a Draft PR; OpenClaw review is documented; other validated PRs remain open and unmerged.
+B. Completed: action approval list/decision client methods; pending queue UI with metadata-only disclosure; client tests; OpenClaw evaluation document and master ledger entry.
+C. In progress: CI #1088 for PR #26 UI/client; CI #1089 for PR #33 documentation/ledger.
+D. Evidence: PR #26 head `7a92d99de93d1716a17c9f7e54162cc08fb2aa1a`; PR #33 doc commit `7e650063f3d6e3b9678844b0bd70a44e4738cd44`, ledger commit `c579863a1d52a0c341b40c2efccfac5808583cb0`; CI run IDs #1088 `43522861440`, #1089 `43522905916`.
+E. Decisions: no action executor is wired; approving only records consent. OpenClaw remains a reference, not a second brain. Keep production untouched and €0 recurring cost.
+F. Pending: after UI CI, add isolated authenticated two-user integration coverage for action-approval routes; implement capability registry and separately gated executor; BMW OAuth routes still need user-owned client registration and secure pending-flow lifecycle; provider billing attestation remains unset; iOS Keychain/node work remains.
+G. User action: none for current code validation. BMW client registration/device consent and Cloudflare Free/no-overage confirmation will be needed before enabling those integrations.
+H. Next: complete CI #1088/#1089; then add isolated Edge Function two-user integration test for approvals and continue BMW OAuth server adapter only with safe persisted PKCE/device state. No deployment or production migrations.
+I. GitHub: `laurofiorenzani/jarvis`; PR #26, #33 open Draft; no merge/deploy.
+J. Next conversation: Continue from this handoff. PR #26 has a new authenticated pending-action approval UI/client; it only records approve/reject and never executes. Exact-head CI #1088 in progress. OpenClaw is documented as a reference for device pairing/capability approval, not a dependency. PR #33 doc/ledger update CI #1089 in progress. PR #34 BMW CarData CI #1084 green in isolated CI only; no account/credentials/live route. Keep production untouched and €0 recurring cost.
