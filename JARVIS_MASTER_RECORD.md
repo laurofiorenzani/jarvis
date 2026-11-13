@@ -1909,3 +1909,13 @@ G. User action: none immediately; Mac/Xcode and physical iPhone will be required
 H. Next: query CI for head `c45b97b1...`; inspect failure logs if any; only then continue CFO review. Continue safe parallel source-level work without touching production.
 I. GitHub: `laurofiorenzani/jarvis`; PR #32 https://github.com/laurofiorenzani/jarvis/pull/32; branch above; no merge/deploy.
 J. Next conversation: Resume from this ledger. PR #32 prior head CI #1019 passed, but a post-CI correctness fix changed amount columns from NUMERIC(30,9) to unconstrained numeric and added two tests because typmod rounding could bypass the exponent validator. Current head c45b97b1ff3ead9ba57136e8e516d8c5bfc6db7b needs new exact-head CI. Keep Draft; no live migration. PR #31 Observer CI #1014 + Observer #172 validated. Continue multitask under €0 recurring cost.
+
+
+## 2026-11-13 — CI infrastructure failure and CFO SQL hardening
+
+- PR #32 run #1022 (`43480174308`) failed before executing the SQL tests. Logs show the migrations (including both CFO migrations) applied successfully to the ephemeral local database, but Supabase CLI then failed to start the optional Inbucket container because host port 54324 was already in use. This is a CI container-startup collision, not evidence of a SQL assertion failure. No production resource was touched.
+- Corrected CI startup to exclude both Inbucket and Mailpit: `supabase start --exclude inbucket,mailpit`, following the earlier verified CLI setup fix that excluded Mailpit alone. Commit `d07b3e857589eb44b81dfe36e3e4b337e6419c5e`.
+- Source hardening: currency registry now grants SELECT only to service_role, not authenticated; this matches the function's service-role-only precision check and avoids exposing unreviewed registry metadata before a pinned snapshot exists. Commit `f00808bd516a5935b7b9763a4108633899648083`.
+- Current PR #32 exact head must be queried after these commits; earlier CI #1022 failure must not be represented as an SQL test failure or as validation success. The migration application itself did complete before the optional container collision.
+- Vercel Hobby cap is still active; no deployment retries/upgrades. Existing bot note showed a preview ready for the previous commit but no new deployment should be triggered by manual action.
+- Next: wait for exact-head CI after these two isolated commits; if startup succeeds, inspect SQL test assertions and two-user isolation result. Keep PR Draft; no merge, live migration, registry seed or financial data.
