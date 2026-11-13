@@ -138,3 +138,71 @@ test('proxy refuses weak gateway credentials and non-origin upstream URLs', () =
     upstreamApiKey: 'freellmapi-private-unified-key',
   }), /plain HTTP\(S\) origin/)
 })
+
+
+test('proxy enforces the per-minute request budget and model query allowlist', async (t) => {
+  let upstreamCalls = 0
+  const upstream = createServer((_request, response) => {
+    upstreamCalls += 1
+    response.writeHead(200, { 'content-type': 'application/json' })
+    response.end('{"data":[]}')
+  })
+  const upstreamPort = await listen(upstream)
+  t.after(() => close(upstream))
+  const proxy = createGatewayProxy({
+    origin: 'http://127.0.0.1:' + upstreamPort,
+    gatewayToken: 'j'.repeat(64),
+    upstreamApiKey: 'freellmapi-private-unified-key',
+    maxRequestsPerMinute: 1,
+    logger: { info() {}, warn() {} },
+  })
+  const proxyPort = await listen(proxy)
+  t.after(() => close(proxy))
+  const base = 'http://127.0.0.1:' + proxyPort
+  const headers = { authorization: 'Bearer ' + 'j'.repeat(64) }
+
+  const allowed = await fetch(base + '/v1/models?execution_status=ready', { headers })
+  assert.equal(allowed.status, 200)
+  const unsupportedQuery = await fetch(base + '/v1/models?include_keys=true', { headers })
+  assert.equal(unsupportedQuery.status, 400)
+  const secondAllowed = await fetch(base + '/v1/models', { headers })
+  assert.equal(secondAllowed.status, 429)
+  assert.equal(upstreamCalls, 1)
+})
+
+test('proxy logs only bounded routing metadata and never request content or credentials', async (t) => {
+  const entries = []
+  const upstream = createServer(async (request, response) => {
+    for await (const _chunk of request) { /* consume synthetic body */ }
+    response.writeHead(200, { 'content-type': 'application/json', 'x-routed-via': 'synthetic/model' })
+    response.end('{"ok":true}')
+  })
+  const upstreamPort = await listen(upstream)
+  t.after(() => close(upstream))
+  const proxy = createGatewayProxy({
+    origin: 'http://127.0.0.1:' + upstreamPort,
+    gatewayToken: 'j'.repeat(64),
+    upstreamApiKey: 'freellmapi-private-unified-key',
+    logger: {
+      info: (_message, metadata) => entries.push(metadata),
+      warn: (_message, metadata) => entries.push(metadata),
+    },
+  })
+  const proxyPort = await listen(proxy)
+  t.after(() => close(proxy))
+  const response = await fetch('http://127.0.0.1:' + proxyPort + '/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      authorization: 'Bearer ' + 'j'.repeat(64),
+      'content-type': 'application/json',
+    },
+    body: JSON.stringify({ messages: [{ role: 'user', content: 'SYNTHETIC_PRIVATE_PROMPT_MARKER' }] }),
+  })
+  assert.equal(response.status, 200)
+  const serialized = JSON.stringify(entries)
+  assert.equal(serialized.includes('SYNTHETIC_PRIVATE_PROMPT_MARKER'), false)
+  assert.equal(serialized.includes('freellmapi-private-unified-key'), false)
+  assert.equal(serialized.includes('jjjjjjjj'), false)
+  assert.equal(entries[0].route, '/v1/chat/completions')
+  assert.equal(entries[0].status, 200)
+})
