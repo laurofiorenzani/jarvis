@@ -935,3 +935,34 @@ The available Supabase connector cannot inspect or set Edge Function secrets. Do
 - Exact latest-head Observer Validation #100 passed on `762488c23845c81cf1a5195fda3bc2716c0a5b76` (tests, typecheck/build and lint all successful). Full repository CI #889 was still running at last check. This branch is not merged or production-enabled; scheduled observation will not become active until the workflow is merged to the default branch.
 - Deployment metadata observation remains pending; no Vercel token or deployment write permission was added. No automated remediation, database persistence, self-approval, merge, or production deployment was introduced.
 
+
+
+## 2026-11-13 — Family CFO synthetic domain foundation + CI reliability
+
+### Family CFO implementation
+- Added `src/lib/family-cfo.ts`: strict Zod contracts for currency, decimal money strings, source provenance, transaction and balance snapshot records. The module is validation/calculation-only; no bank connectors, persistence, or money-moving actions.
+- Added `tests/family-cfo.test.ts`: synthetic fixtures for provenance validation, malformed owner IDs, missing source evidence, balance snapshots, exact BigInt minor-unit arithmetic, and mixed-currency rejection.
+- Exact-head CI #892 passed on `fdbebbd58f229bdd7164ad5e99325178dc46ee5a`: typecheck/build, all Node tests (including CFO), lint, provider privacy tests, semantic-memory tests, Edge Function typecheck, speech transcript tests, local Supabase startup, migrations, SQL RLS/isolation tests, authenticated two-user semantic-memory integration, stack cleanup, production API/CORS smoke and canonical preview CORS smoke all succeeded.
+- The Family CFO schema remains synthetic-first and is not migrated to Supabase. No real financial data, bank credentials, statements, or balances were imported.
+
+### Self-Evolution validation
+- Read-only observer branch `work/self-evolution-engine-foundation` at `762488c23845c81cf1a5195fda3bc2716c0a5b76` passed full CI #889 and Observer Validation #100. Its scheduled observer checks production API/PWA availability and reads latest CI metadata with read-only GitHub Actions permissions. It is not merged/enabled on the default branch.
+
+### FreeLLMAPI proxy hardening and CI maintenance
+- Added tests on `work/jarvis-freellmapi-cloud-gateway` for per-minute request budgets, model-query allowlisting, and ensuring prompts/tokens are not written to proxy logs (commit `64d3c5d3e65e6f1215dff7e700751165014862a6`).
+- The latest prior PR #13 CI failure was caused by `supabase/setup-cli@v1` resolving `latest` through GitHub Releases and hitting the unauthenticated GitHub API rate limit; application tests/build/typecheck/lint and provider/memory/speech tests had passed before that setup step. Updated the PR #13 workflow to `supabase/setup-cli@v3` with `version: v2.stable` (commit `fe5673b81c95fca24dd13778d48b6d24a4add050`). Applied the same documented version-pinned setup to the canonical branch to reduce nondeterministic release lookup. This preserves Supabase CLI v2 while using the current v3 setup action.
+- Current PR #13 remains Draft because private persistent hosting, gateway credentials, exact-head full CI and provider eligibility/consent remain unverified. No host, tunnel, secrets or inference have been provisioned.
+
+### Current release boundary
+- PR #12 remains OPEN, Ready for Review, mergeable, head `fdbebbd58f229bdd7164ad5e99325178dc46ee5a` before this documentation/CI maintenance commit, base `work/intelligent-memory-foundation`. It is not merged to `main`.
+- Vercel READY deployment `jarvis-94ta6vje2-lauro-fiorenzani.vercel.app` is still built from older commit `153e69baab4a2b055f30d20ce0d9b163fbaa5592`; it is not the current PR head. No deployment of CFO changes or latest branch head is claimed.
+- Supabase Production `jarvis-api` v32 and Preview `jarvis-preview-api` v23 remain unchanged. Security Advisor findings remain unchanged: rate-limit RLS with no client policies (INFO; fail-closed) and leaked-password protection disabled (WARN; requires a separate owner decision).
+- No production mutation, secret changes, authentication changes, billing changes, paid service activation, or user data transfer occurred.
+
+### Next actions
+1. Run exact-head CI after the pinned Supabase CLI workflow update; require all migration, two-user isolation and CORS checks to pass.
+2. Keep PR #12 open until explicit release gates are met; no merge/production promotion from broad autonomy alone.
+3. Keep PR #13 Draft until a private persistent €0 host is verified and provider credentials/quotas/consents are configured safely.
+4. Extend Family CFO deterministic calculations (cash flow, transfer pairing, duplicate import fingerprints) using synthetic fixtures only; schema/RLS migration remains gated.
+5. Continue iOS native app preparation; no Xcode build/signing or physical-device validation has been completed in this environment.
+

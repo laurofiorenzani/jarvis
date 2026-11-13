@@ -133,7 +133,7 @@ Do not create these tables until the schema, indexes, RLS policies, retention/de
 ## 9. Delivery sequence
 
 1. Review this contract and approve the household sharing model.
-2. Implement synthetic-only TypeScript domain schemas and deterministic calculation tests.
+2. [x] Implement synthetic-only TypeScript domain schemas and deterministic calculation tests (`src/lib/family-cfo.ts`, `tests/family-cfo.test.ts`).
 3. Add a read-only statement import pipeline with pending-review status and deduplication.
 4. Add account-scoped CFO views; do not yet combine household data.
 5. Add explicit household sharing and two-user isolation tests.
