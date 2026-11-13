@@ -1455,3 +1455,27 @@ This checkpoint is a read-only state reconciliation plus documentation update. I
 6. Keep all production resources unchanged until release gates and human review are complete.
 
 This checkpoint is an evidence-based status update, not a declaration that JARVIS is complete or production-ready.
+
+
+## 2026-11-13 — parallel continuation / hosting re-verification
+
+### Verified positive change: Vercel Preview capacity
+- The earlier Hobby deployment-rate failure is no longer blocking every deployment: Vercel accepted a fresh Git Preview for the canonical branch at exact commit `5d6b4edfeee838f57a7bf75298b8d650b46e8f50`.
+- Deployment ID `dpl_HnjDEdsBZTGd21NKmQSoHR3KGVBr`, state READY, source Git, branch `work/jarvis-canonical-integration`, exact SHA `5d6b4ed...`. Preview alias: `https://jarvis-git-work-jarvis-canonical-integration-lauro-fiorenzani.vercel.app`.
+- The GitHub commit status for this exact SHA reports context `Vercel` = SUCCESS / “Deployment has completed”. This proves deployment readiness only, not browser UX, API, authentication, account isolation or production health. Production alias was not changed. Team remains Hobby; no upgrade or billing change.
+
+### CI state on current canonical checkpoint
+- GitHub CI run #1000 (run ID `43472284595`) started on exact commit `5d6b4ed...`. Typecheck/build, app tests, lint, provider privacy routing, semantic-memory policy, Edge Function type-check and speech extraction tests all completed SUCCESS. Isolated Supabase startup was still in progress at the time of this observation; migration, SQL isolation, two-user integration and Production/Preview CORS smoke tests were pending. Do not label CI #1000 complete until GitHub reports a final conclusion.
+- Observer Validation #159 remains SUCCESS on prior canonical code head `86fd7cc...`; the checkpoint commit changes only the master ledger.
+
+### Live Supabase / Cloudflare read-only snapshot
+- Supabase project `Jarvis` (`undmhmdwhxvjgvezvucy`) remains ACTIVE_HEALTHY, region `eu-west-3`, PostgreSQL 17.11.0.018.
+- Live Edge Functions remain `jarvis-api` ACTIVE v32 and `jarvis-preview-api` ACTIVE v23. Applied migration history ends with `20261113125425_jarvis_provider_preferences` and `20261113125437_provider_preferences_rls_initplan`; no Family CFO migration appears in live history.
+- Security advisor still reports the intentional service-role-only RLS table `jarvis_rate_limits` as INFO and leaked-password protection disabled as WARN. No auth/security change was made. Health advisor returned no lints.
+- Cloudflare account inventory currently returns zero Worker scripts. No Worker, AI Gateway, secret, inference, bucket or billing configuration was created/changed. JARVIS therefore still has no Cloudflare-hosted Worker runtime; Cloudflare Workers AI remains only a candidate provider route in source, not a verified active provider.
+
+### Continuation actions and limits
+- Preserve PR review gates: do not merge #22–#28 in bulk, do not apply CFO migrations, do not activate provider pools, and do not promote Production.
+- The five continuity docs other than `JARVIS_MASTER_RECORD.md` were not present in the root tree at canonical HEAD; the repository tree contained 219 paths and only this master ledger matched the requested document names. Treat this as a single-file continuity ledger for now; do not create duplicate root docs.
+- Next: confirm CI #1000 final result; run read-only preview smoke checks against the new exact-head Preview; separately obtain exact-head CI/Observer evidence for PR #25; continue CFO currency-contract design without choosing a financial policy on the user's behalf.
+- No live database, user data, provider secrets, production deployment, auth setting or billing configuration was changed in this continuation.
