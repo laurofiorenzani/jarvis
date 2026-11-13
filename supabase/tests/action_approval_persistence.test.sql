@@ -37,6 +37,7 @@ select ok(
 select ok(
   has_function_privilege('service_role', 'public.jarvis_create_action_approval(uuid,uuid,text,text,text,text,text,text,text,text,text,timestamptz,text)', 'EXECUTE')
   and has_function_privilege('service_role', 'public.jarvis_resolve_action_approval(uuid,uuid,text,text,text,text,text,text)', 'EXECUTE')
+  and has_function_privilege('service_role', 'public.jarvis_cancel_action_approval(uuid,uuid,text,text,text)', 'EXECUTE')
   and has_function_privilege('service_role', 'public.jarvis_claim_action_approval_execution(uuid,uuid,text,text,text,text,text)', 'EXECUTE')
   and has_function_privilege('service_role', 'public.jarvis_complete_action_approval_execution(uuid,uuid,uuid,text,text)', 'EXECUTE'),
   'service_role can execute the approval lifecycle RPCs'
