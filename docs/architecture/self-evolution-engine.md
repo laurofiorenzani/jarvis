@@ -81,7 +81,8 @@ Signals → Observer → Triage → Improvement proposal
 - [x] Normalize allowlisted service metadata into a strict observation contract; reject unknown sources, invalid timestamps and inconsistent HTTP status.
 - [x] Add bounded severity classification, low-cardinality fingerprints and deterministic deduplication/triage.
 - [x] Add tests proving prompt-like strings and bearer tokens are not retained, and every proposed remediation remains subject to human approval.
-- [ ] Extend observation to CI and deployment metadata using read-only GitHub/Vercel permissions.
+- [x] Extend observation to latest repository CI status using a read-only GitHub Actions token; only run number/status/time are emitted, never workflow payloads.
+- [ ] Extend observation to Vercel deployment metadata using read-only permissions and bounded, non-sensitive fields.
 - [ ] Persist sanitized snapshots and incident records only after retention, access and RLS policies are implemented and reviewed.
 
 The workflow runs on branch pushes and can be manually dispatched. Its scheduled checks become active only after the workflow is merged into the default branch. It performs HTTP availability checks only; it does not collect logs, request bodies, private messages, credentials or account data.
