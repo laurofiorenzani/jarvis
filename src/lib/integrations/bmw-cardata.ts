@@ -159,13 +159,22 @@ export async function refreshBMWAccessToken(
 }
 
 export class BMWCarDataClient {
+  private readonly ownerId: string
+  private readonly budget: BMWDailyRequestBudget
+  private readonly fetchImpl: BMWFetch
+  private readonly now: () => Date
+
   constructor(
-    private readonly ownerId: string,
-    private readonly budget: BMWDailyRequestBudget,
-    private readonly fetchImpl: BMWFetch = fetch,
-    private readonly now: () => Date = () => new Date(),
+    ownerId: string,
+    budget: BMWDailyRequestBudget,
+    fetchImpl: BMWFetch = fetch,
+    now: () => Date = () => new Date(),
   ) {
     if (!ownerId.trim()) throw new TypeError('A verified JARVIS owner ID is required.')
+    this.ownerId = ownerId
+    this.budget = budget
+    this.fetchImpl = fetchImpl
+    this.now = now
   }
 
   private async get<T>(path: string, accessToken: string): Promise<T> {
