@@ -152,3 +152,10 @@ Do not create these tables until the schema, indexes, RLS policies, retention/de
 - Reports expose assumptions and missing data.
 - No financial action can be executed by the analysis-only release.
 - The feature operates within the project's €0 recurring-cost policy.
+
+
+## Synthetic implementation status — 2026-11-13
+
+The first TypeScript domain layer is now implemented in `src/lib/family-cfo.ts`, with regression coverage in `tests/family-cfo.test.ts`. The full CI run #892 passed on code-equivalent commit `fdbebbd58f229bdd7164ad5e99325178dc46ee5a`, including the new CFO tests, TypeScript build, lint, migration application, SQL isolation tests, and authenticated two-user semantic-memory integration. The following documentation/workflow-only commit updates the Supabase CLI setup action to the current `setup-cli@v3` with the v2 stable CLI line; that workflow adjustment still requires an exact-head CI run.
+
+No CFO database migrations, real bank data, financial imports, or external account connections have been created. All CFO fixtures remain synthetic.
