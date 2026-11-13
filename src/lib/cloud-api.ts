@@ -256,7 +256,7 @@ export function createCloudApiClient(options: CloudApiOptions) {
           (decision !== 'approved' && decision !== 'rejected')) {
         throw new CloudApiError('Invalid action approval.', 400, 'invalid_request')
       }
-      return request<{ version: typeof CLOUD_API_VERSION; result: { valid: boolean; reason: string; decision?: string } }>(
+      return request<{ version: typeof CLOUD_API_VERSION; result: { valid: boolean; reason: string; status?: string } }>(
         `/v1/action-approvals/${encodeURIComponent(approval.request_id)}/decision`,
         {
           method: 'POST',
