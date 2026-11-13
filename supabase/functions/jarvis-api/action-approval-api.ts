@@ -69,7 +69,8 @@ function assertCreateInput(input: unknown): asserts input is CreateActionApprova
     !requiredText(value.target, 300) ||
     !requiredText(value.impact, 500) ||
     !requiredText(value.reversibility, 500) ||
-    !Object.prototype.hasOwnProperty.call(value, 'arguments')
+    !Object.prototype.hasOwnProperty.call(value, 'arguments') ||
+    value.arguments === undefined
   ) {
     throw new ActionApprovalServiceError('invalid_request', 400)
   }
