@@ -1300,3 +1300,11 @@ Canonical development head before this ledger update: `f217feccdaceddfc12a72437f
 - Canonical development branch now points to `23cb46722ff7c2a348cfea97dc0ab4dcf2387a06` after the project-ledger reconciliation commit. No production deploy or live database change was performed.
 
 Next: allow PR #23 CI #966 to finish; obtain a fresh exact-head CI run for PR #26 after its branch stabilizes; keep all merges behind review and retain the €0/no-production-mutation gates.
+
+## 2026-11-13 — latest isolated-branch test hardening
+
+- PR #26 advanced to `1447d916dfa1de63dcc23c6334a69231db0a13ad` with two additional negative assertions: malformed decision digests and malformed envelope digests are rejected. The existing branch also revalidates protocol version and the maximum ten-minute TTL at decision time. Exact-head CI #971 is pending; no pass is claimed.
+- PR #23 remains at `983133f8a8046fb2874124a16216b38676f898ba`; exact-head CI #966 is still in progress. No provider pool or inference has been activated.
+- Canonical ledger head before this update is `feca87a44b04069ab1ab8eac4840e7522fa26c45`. Canonical CI #970 and Observer Validation #146 were in progress at the last check; no result is claimed yet.
+- PR #27 exact-head CI #961: success. PR #22 exact-head CI #959: success. PR #25 CI #955 and Observer #144: success, but branch divergence remains. These PRs remain open for review; none was merged in this pass.
+- This update records test/branch state only. No production deployment, migration, user data, credentials, provider inference, or billing settings were changed.
