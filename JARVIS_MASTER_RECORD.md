@@ -1109,3 +1109,30 @@ The available Supabase connector cannot inspect or set Edge Function secrets. Do
 4. Native iOS: prepare a separate, isolated app target only after reviewing the existing architecture and signing/build constraints; do not call the current PWA a native app.
 5. Family CFO: implement as an agent/service within the existing JARVIS backend and memory/permissions architecture, not as a separate project or database.
 6. Integrations: verify official API feasibility and permission boundaries before building vendor connectors.
+
+## 2026-11-13 — continuation: Workers Free confirmation and live platform recheck
+
+### Cloudflare plan and account safety
+- Owner supplied a Cloudflare Billing → Subscriptions screenshot showing **Workers Free — Active** under Subscribed, plus an “Upgrade to Workers Paid” offer. No Workers Paid subscription is shown; the visible payment-method section says no payment method on file. This confirms Workers Free for the account shown. No upgrade or billing change was made.
+- Live read-only Cloudflare API check still returns zero deployed Workers scripts. No Worker was created and no Workers AI inference request was sent.
+- The screenshot establishes the plan, not the exact remaining daily Workers AI Neurons balance or spend-policy configuration. Continue fail-closed behavior and do not use any paid fallback.
+
+### Live runtime inventory
+- Supabase project `undmhmdwhxvjgvezvucy` currently reports `ACTIVE_HEALTHY`, region `eu-west-3`.
+- Live Edge Function inventory: `jarvis-api` ACTIVE v32 (Production) and `jarvis-preview-api` ACTIVE v23 (Preview). The provider-preferences migrations `20261113125425` and `20261113125437` are present in the migration history.
+- Public schema currently contains 11 JARVIS tables, all with RLS enabled. The provider-preferences table is empty; no provider consent was switched on. The memory tables remain in place; no second memory store was created.
+- Vercel deployment `jarvis-i9i2a5urt-lauro-fiorenzani.vercel.app` is READY and is tied to exact commit `34757f1346ba2ad3bee0a503a2c8eb2cd6476247` on `work/jarvis-freellmapi-cloud-gateway`. This is a Preview deployment, not a Production release.
+- GitHub Actions lookup for exact commit `34757f1346ba2ad3bee0a503a2c8eb2cd6476247` returned no workflow runs. Do not reuse historical CI #871 as validation for this exact commit.
+
+### Voice/provider implementation review
+- The active Preview v23 source contains an authenticated `/stt` route using Cloudflare Workers AI Whisper. It applies a per-user rate limit (30 requests/minute), an 8 MiB audio-body cap, MIME allowlisting, and returns a fail-closed unavailable response when `CLOUDFLARE_ACCOUNT_ID` or `CLOUDFLARE_API_TOKEN` is missing.
+- The route recognizes Cloudflare's daily free-allocation exhaustion response and returns HTTP 429 with a reset at 00:00 UTC; it does not intentionally switch to a paid provider. This is source-level evidence, not a live STT test.
+- `/tts` remains intentionally unavailable in the cloud; the source directs the client to device voice. Do not describe cloud TTS as implemented.
+- The latest owner-provided Cloud Access screenshot still shows `NO AI PROVIDER CONFIGURED · CLOUD CHAT DISABLED`, with both provider pools not configured. The secret-presence check for Cloudflare credentials is unavailable through the connected Supabase tools; values were not accessed.
+- No audio was uploaded, no provider pool enabled, no new secrets added, and no production function deployed.
+
+### Next actions
+1. Continue read-only review and local/unit test coverage of the STT quota/error path and provider routing; do not invoke Workers AI until the secure provider configuration and zero-cost guard are verified.
+2. Inspect the FreeLLMAPI proxy and memory modules for isolated, testable improvements without duplicating the Supabase memory store.
+3. Keep Production v32 untouched; require exact-head CI and a deliberate release review before any merge or production deployment.
+4. Native iOS and Family CFO remain unimplemented in the audited PR branch; scope them as separate workstreams after confirming their existing source lineage.
