@@ -1769,3 +1769,37 @@ G. User action: none immediately. Mac/Xcode and physical iPhone will be needed f
 H. Next: continue read-only route/auth/provider review, resolve CFO schema contract on isolated branch, and prepare Observer exact-head workflow validation without creating unnecessary Vercel deployments.
 I. GitHub: laurofiorenzani/jarvis; canonical work/jarvis-canonical-integration; latest ledger update will be the documentation-only commit below.
 J. Next conversation: Continue from latest JARVIS_MASTER_RECORD.md. PR #30 CI #1009 passed end-to-end but PR remains Draft/non-mergeable. PR #25 exact-head checks missing. Live Supabase production API v32 and Preview API v23 are materially different (Google STT vs Cloudflare Whisper and CORS/routing differences); perform route-by-route parity review. PR #22 CFO migration numeric(20,2) conflicts with PR #29 currency exponent design; do not migrate. PR #28 native adapter remains unmerged/unwired; PR #26 approval is domain-only. Continue multitask, no paid services, no provider activation, no production mutation without gates.
+## 2026-11-13 — resumed multitask session (Observer integration)
+
+### Verified CI completion
+- Rechecked PR #30 exact-head CI run #1009 (`43475736715`) on `4e56733f1c2e18d592794eb48e1fce55de00f0f4`: COMPLETED SUCCESS. All 47 job steps completed successfully, including dependency/security checks, typecheck/build, unit tests, lint, provider privacy, semantic-memory policy, Edge Function typecheck, isolated Supabase start, migrations, SQL isolation regression, authenticated two-user semantic-memory API, stack stop, production API/CORS smoke test and canonical Preview CORS smoke test. PR #30 remains Draft/open/non-mergeable; no automatic merge.
+
+### Self-Evolution / Observer work executed
+- PR #25 contained the already-reviewed Observer extension but was based on stale canonical ledger commit `86d171b3...`, creating avoidable ancestry/ledger conflicts. Instead of merging or force-updating it, created isolated branch `work/observer-ci-refresh-20261113` from the current canonical commit `5430babd6191bd09d3393fc7597592ec953eb2ab`.
+- Ported four reviewed files from PR #25: `.github/workflows/jarvis-observer-validation.yml`, `.github/workflows/jarvis-readonly-observer.yml`, `docs/architecture/self-evolution-engine.md`, and `tests/system-observer.test.ts`.
+- The extension checks both production and canonical Preview API health using expected JSON `status: ok`, bounded 10-second timeouts and redirect rejection; filters the canonical branch's CI run by branch and push event; reads only the GitHub `Vercel` commit-status context with `statuses: read`; emits normalized status/time only. No Vercel deployment is required to run GitHub Actions tests.
+- Added Draft PR #31: https://github.com/laurofiorenzani/jarvis/pull/31. Head `56f9871d92aa3a45fed02bbd7944af5774e64f67`, base canonical `5430babd6191bd09d3393fc7597592ec953eb2ab`; GitHub reports mergeable=true at creation, but exact-head CI and Observer validation still pending. No merge.
+- Workflow run discovery through the available GitHub connector filters only pull-request-triggered runs; it returned no run for the branch push before PR creation. Exact-head PR run should be checked next.
+
+### Other fronts rechecked
+- PR #23 provider consent/FreeLLMAPI routing remains open, non-mergeable, head `2e9f3de2ddc0cdf46464e3f385aff97e5e54fbc3`; its earlier exact-head CI #982 passed. Provider pools remain disabled; no inference, key/secret change, or billing modification.
+- PR #22 CFO persistence remains incompatible with PR #29 currency precision design; no migration or financial import.
+- PR #28 native secure-storage adapter remains unmerged and unwired; no Capacitor package/native project/physical-device validation.
+- PR #26 approval primitives remain domain-only; no persistent approval endpoint, atomic consumption or external execution.
+- Vercel free deployment daily limit remains an operational blocker; this Observer integration deliberately relies on GitHub Actions and does not create Vercel deployments.
+
+### Actions/evidence
+- Created branch `work/observer-ci-refresh-20261113`; four sequential file commits culminated in head `56f9871d92aa3a45fed02bbd7944af5774e64f67`.
+- Created PR #31 (Draft). No production deploy, database migration, live data change, secret/auth/billing change, provider inference, external action or paid service.
+
+### Handoff — next session
+A. State: Observer feature ported onto current canonical ancestry in PR #31; exact-head validation pending.
+B. Completed: PR #30 CI #1009 fully green (all steps); PR #31 created with reviewed code and current canonical base.
+C. In progress: PR #31 CI + Observer exact-head validation; CFO currency precision reconciliation; production/Preview route parity; provider consent/no-billing evidence; iOS native integration; persistent action-approval lifecycle.
+D. Evidence: repo `laurofiorenzani/jarvis`; canonical `work/jarvis-canonical-integration` at `5430babd6191bd09d3393fc7597592ec953eb2ab`; PR #31 branch `work/observer-ci-refresh-20261113`, head `56f9871d92aa3a45fed02bbd7944af5774e64f67`; PR #30 CI run #1009 success.
+E. Decisions: keep PR #31 Draft until exact-head checks pass; do not merge automatically; no unnecessary Vercel deployment; no live migrations or provider activation.
+F. Pending: Self-Evolution—exact-head CI/Observer for PR #31; Cloud Brain—production v32 vs Preview v23 route/auth/provider parity; Multi-AI—per-user consent and downstream no-overage/EEA/retention checks; CFO—currency exponent registry and settled-vs-original FX model; iOS—native target, plugin wiring, physical device test; Actions—DB-backed one-time approval state machine.
+G. User action: none now; Mac/Xcode and physical iPhone later for native acceptance.
+H. Next: fetch PR #31 workflow runs and job steps; fix only evidence-backed failures; inspect provider-consent PR #23 and design CFO currency schema in an isolated branch.
+I. GitHub: `laurofiorenzani/jarvis`; canonical `work/jarvis-canonical-integration`; feature `work/observer-ci-refresh-20261113`; PR #31 Draft.
+J. Next conversation: Continue from this latest ledger. PR #30 CI #1009 is fully SUCCESS across all steps. PR #31 ports reviewed Observer changes onto current canonical base, head `56f9871d92aa3a45fed02bbd7944af5774e64f67`; check exact-head CI/Observer, do not merge before green. Keep Vercel deploys paused due free-tier rate limit. CFO currency contract, provider consent, iOS and approval persistence remain pending; maintain €0 recurring-cost rule and account isolation.
