@@ -4,6 +4,7 @@ import { env } from '../config'
 import { createCloudRuntime } from '../lib/cloud-runtime'
 import type { CloudRuntimeOptions } from '../lib/cloud-runtime'
 import { selectCloudBrain, selectConfiguredBrain } from '../lib/brain'
+import type { ActionApprovalRecord } from '../lib/cloud-api'
 
 function createVolatileTokenStore() {
   const values = new Map<string, string>()
@@ -68,6 +69,9 @@ export function CloudAccess({ onConnected, onDisconnected, onResumeConversation,
   const [message, setMessage] = useState('')
   const [memories, setMemories] = useState<CloudMemory[]>([])
   const [memoryCandidates, setMemoryCandidates] = useState<SemanticMemoryCandidate[]>([])
+  const [actionApprovals, setActionApprovals] = useState<ActionApprovalRecord[]>([])
+  const [actionApprovalAvailable, setActionApprovalAvailable] = useState(false)
+  const [actionApprovalBusy, setActionApprovalBusy] = useState(false)
   const [memoryReviewAvailable, setMemoryReviewAvailable] = useState(false)
   const [memoryReviewBusy, setMemoryReviewBusy] = useState(false)
   const [conversations, setConversations] = useState<ConversationSummary[]>([])
@@ -118,6 +122,16 @@ export function CloudAccess({ onConnected, onDisconnected, onResumeConversation,
       // The feature-branch UI may be previewed before the matching Edge Function is deployed.
       setMemoryCandidates([])
       setMemoryReviewAvailable(false)
+    }
+    try {
+      const approvals = await runtime.api.listActionApprovals()
+      if (!isCurrentRuntime(runtime, generation)) return
+      setActionApprovals(approvals.approvals.filter((item) => item.status === 'pending'))
+      setActionApprovalAvailable(true)
+    } catch {
+      if (!isCurrentRuntime(runtime, generation)) return
+      setActionApprovals([])
+      setActionApprovalAvailable(false)
     }
     let cloudProviderReady = false
     let cloudSpeechReady = false
@@ -548,6 +562,46 @@ export function CloudAccess({ onConnected, onDisconnected, onResumeConversation,
     }
   }
 
+  const refreshActionApprovals = async () => {
+    const runtime = runtimeRef.current
+    const generation = runtimeGeneration.current
+    if (!runtime || actionApprovalBusy) return
+    setActionApprovalBusy(true)
+    try {
+      const result = await runtime.api.listActionApprovals()
+      if (!isCurrentRuntime(runtime, generation)) return
+      setActionApprovals(result.approvals.filter((item) => item.status === 'pending'))
+      setActionApprovalAvailable(true)
+    } catch (error) {
+      if (isCurrentRuntime(runtime, generation)) setMessage(error instanceof Error ? error.message : 'Action approvals could not be loaded.')
+    } finally {
+      if (runtimeGeneration.current === generation) setActionApprovalBusy(false)
+    }
+  }
+
+  const decideActionApproval = async (approval: ActionApprovalRecord, decision: 'approved' | 'rejected') => {
+    const runtime = runtimeRef.current
+    const generation = runtimeGeneration.current
+    if (!runtime || actionApprovalBusy || approval.status !== 'pending') return
+    setActionApprovalBusy(true)
+    try {
+      const result = await runtime.api.decideActionApproval(approval, decision)
+      if (!isCurrentRuntime(runtime, generation)) return
+      if (result.result.valid !== true || result.result.status !== decision) {
+        throw new Error('This approval expired or no longer matches the original request.')
+      }
+      setActionApprovals((items) => items.filter((item) => item.request_id !== approval.request_id))
+      setMessage(decision === 'approved'
+        ? 'APPROVAL RECORDED · NO EXTERNAL ACTION WAS EXECUTED'
+        : 'ACTION REQUEST REJECTED')
+    } catch (error) {
+      if (isCurrentRuntime(runtime, generation)) setMessage(error instanceof Error ? error.message : 'Action approval could not be saved.')
+      // Keep the item visible after a failed decision; the owner can refresh explicitly.
+    } finally {
+      if (runtimeGeneration.current === generation) setActionApprovalBusy(false)
+    }
+  }
+
   const saveMemory = async (event: FormEvent) => {
     event.preventDefault()
     const runtime = runtimeRef.current
@@ -710,6 +764,42 @@ export function CloudAccess({ onConnected, onDisconnected, onResumeConversation,
                 {!memoryCandidates.length && <div style={{ color: '#7797a2', letterSpacing: 0 }}>No pending memory candidates.</div>}
               </div>}
             </section>
+            {actionApprovalAvailable && (
+              <section aria-label="Pending action approvals" style={{ borderTop: '1px solid #214653', borderBottom: '1px solid #214653', padding: '10px 0', marginBottom: 12 }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 8 }}>
+                  <strong style={{ color: '#83d9e8' }}>ACTION APPROVALS · {actionApprovals.length}</strong>
+                  <button type="button" disabled={actionApprovalBusy} onClick={() => void refreshActionApprovals()} style={{ ...buttonStyle, padding: '5px 7px' }}>
+                    {actionApprovalBusy ? 'LOADING…' : 'REFRESH'}
+                  </button>
+                </div>
+                <div style={{ color: '#ffbd91', lineHeight: 1.5, letterSpacing: 0, marginBottom: 8 }}>
+                  Approving records your decision only. No vehicle, home, messaging or other external action is executed by this screen.
+                </div>
+                <div style={{ display: 'grid', gap: 8 }}>
+                  {actionApprovals.map((approval) => (
+                    <article key={approval.request_id} style={{ border: '1px solid #214653', borderRadius: 4, padding: 8, letterSpacing: 0 }}>
+                      <div style={{ color: '#83d9e8', marginBottom: 5 }}>{approval.title}</div>
+                      <div style={{ color: '#c1dce2', lineHeight: 1.45, overflowWrap: 'anywhere' }}>{approval.target}</div>
+                      <div style={{ color: '#c1dce2', lineHeight: 1.45, marginTop: 5 }}>{approval.impact}</div>
+                      <div style={{ color: '#7797a2', lineHeight: 1.45, marginTop: 5 }}>REVERSIBILITY · {approval.reversibility}</div>
+                      <div style={{ color: '#7797a2', fontSize: 9, margin: '6px 0' }}>
+                        {approval.capability_id} · EXPIRES {new Date(approval.expires_at).toLocaleString()}
+                      </div>
+                      <div style={{ color: '#7797a2', fontSize: 9, overflowWrap: 'anywhere', marginBottom: 7 }}>
+                        ARGUMENT DIGEST · {approval.argument_digest.slice(0, 16)}…
+                      </div>
+                      <div style={{ display: 'flex', gap: 6 }}>
+                        <button type="button" disabled={actionApprovalBusy || Date.parse(approval.expires_at) <= Date.now()}
+                          onClick={() => void decideActionApproval(approval, 'approved')} style={{ ...buttonStyle, flex: 1 }}>RECORD APPROVAL</button>
+                        <button type="button" disabled={actionApprovalBusy}
+                          onClick={() => void decideActionApproval(approval, 'rejected')} style={{ ...buttonStyle, flex: 1 }}>REJECT</button>
+                      </div>
+                    </article>
+                  ))}
+                  {!actionApprovals.length && <div style={{ color: '#7797a2', letterSpacing: 0 }}>No pending action approvals.</div>}
+                </div>
+              </section>
+            )}
             <section aria-label="Saved cloud conversations" style={{ borderTop: '1px solid #214653', borderBottom: '1px solid #214653', padding: '10px 0', marginBottom: 12 }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 8 }}>
                 <strong style={{ color: '#83d9e8' }}>SAVED CONVERSATIONS · {conversations.length}</strong>

@@ -5,6 +5,7 @@ import { getApiRoutePathCandidates } from './route-path.ts'
 import { extractSpeechTranscript, isCloudflareDailyQuotaExhausted } from './speech-transcript.ts'
 import { classifyFreeLlmTask, getFreeProviderStatus, startFreeModelStream, type ProviderRouteDiagnostics } from './model-router.ts'
 import { isSemanticMemoryId, isSafeAutoMemorySource, mergeSemanticMemoryPreferences, normalizeSemanticMemoryQuery, parseAutoMemoryCandidates, parseSemanticMemoryCandidate, parseSemanticMemoryDecision, parseSemanticMemorySearch } from './semantic-memory.ts'
+import { ActionApprovalServiceError, cancelActionApprovalRecord, createActionApprovalRecord, resolveActionApprovalRecord, type ActionApprovalRpcClient } from './action-approval-api.ts'
 
 const VERSION = 1
 const FREE_PROVIDER_POLICY_VERSION = '2026-11-13-v2'
@@ -433,6 +434,99 @@ Deno.serve(async (request) => {
       standardPoolEnabled: updated.standard_pool_enabled === true,
       acceptedAt: updated.accepted_at ?? null,
     }, 200, cors)
+  }
+
+  // Persistent action approvals are metadata-only. These endpoints never execute integrations.
+  if (request.method === 'GET' && matchesPath('/action-approvals')) {
+    const allowed = await consumeLimit('action_approval_read_minute', 30, 60)
+    if (allowed === null) return error('service_unavailable', 'Action approval limiter is unavailable.', 503, true, cors)
+    if (!allowed) return error('rate_limited', 'Action approval read limit reached.', 429, true, cors)
+    const { data, error: readError } = await db.from('jarvis_action_approvals')
+      .select('request_id,session_id,conversation_id,invocation_id,capability_id,argument_digest,title,target,impact,reversibility,policy_version,status,created_at,expires_at,decided_at,execution_started_at,executed_at,failure_code')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false })
+      .limit(50)
+    if (readError) return error('service_unavailable', 'Action approvals could not be loaded.', 503, true, cors)
+    return response({ version: VERSION, approvals: data ?? [] }, 200, cors)
+  }
+
+  if (request.method === 'POST' && matchesPath('/action-approvals')) {
+    const allowed = await consumeLimit('action_approval_create_hour', 20, 3600)
+    if (allowed === null) return error('service_unavailable', 'Action approval limiter is unavailable.', 503, true, cors)
+    if (!allowed) return error('rate_limited', 'Action approval creation limit reached.', 429, true, cors)
+    let body: unknown
+    try { body = await readBoundedJson(request, 72 * 1024) }
+    catch (cause) {
+      if (cause instanceof Error && cause.message === 'body_too_large') return error('invalid_request', 'Action approval request is too large.', 413, false, cors)
+      return error('invalid_request', 'Action approval request must be valid JSON.', 400, false, cors)
+    }
+    try {
+      const approval = await createActionApprovalRecord(db as unknown as ActionApprovalRpcClient, userId, body)
+      // The response contains the digest and display summary, never raw arguments.
+      return response({ version: VERSION, approval }, 201, cors)
+    } catch (cause) {
+      if (cause instanceof ActionApprovalServiceError) {
+        return error(cause.code, 'Action approval could not be processed.', cause.status, cause.status >= 500, cors)
+      }
+      if (cause instanceof TypeError) return error('invalid_request', 'Action approval arguments are invalid.', 400, false, cors)
+      return error('service_unavailable', 'Action approval persistence is unavailable.', 503, true, cors)
+    }
+  }
+
+  const approvalDecisionMatch = request.method === 'POST'
+    ? matchPath(/^\/action-approvals\/([0-9a-f-]{36})\/decision$/i)
+    : null
+  if (approvalDecisionMatch && UUID.test(approvalDecisionMatch[1])) {
+    const allowed = await consumeLimit('action_approval_decision_minute', 10, 60)
+    if (allowed === null) return error('service_unavailable', 'Action approval limiter is unavailable.', 503, true, cors)
+    if (!allowed) return error('rate_limited', 'Action approval decision limit reached.', 429, true, cors)
+    let body: unknown
+    try { body = await readBoundedJson(request, 4 * 1024) }
+    catch {
+      return error('invalid_request', 'Action approval decision must be valid JSON.', 400, false, cors)
+    }
+    try {
+      const result = await resolveActionApprovalRecord(
+        db as unknown as ActionApprovalRpcClient, userId, approvalDecisionMatch[1], body,
+      )
+      if (result.valid !== true) {
+        const reason = typeof result.reason === 'string' ? result.reason : 'invalid_envelope'
+        const status = reason === 'not_found' ? 404 : 409
+        return error(`approval_${reason}`, 'Approval is no longer valid for this action.', status, false, cors)
+      }
+      return response({ version: VERSION, result }, 200, cors)
+    } catch (cause) {
+      if (cause instanceof ActionApprovalServiceError) {
+        return error(cause.code, 'Action approval could not be processed.', cause.status, cause.status >= 500, cors)
+      }
+      return error('service_unavailable', 'Action approval resolution is unavailable.', 503, true, cors)
+    }
+  }
+
+  const approvalCancelMatch = request.method === 'POST'
+    ? matchPath(/^\/action-approvals\/([0-9a-f-]{36})\/cancel$/i)
+    : null
+  if (approvalCancelMatch && UUID.test(approvalCancelMatch[1])) {
+    const allowed = await consumeLimit('action_approval_cancel_minute', 10, 60)
+    if (allowed === null) return error('service_unavailable', 'Action approval limiter is unavailable.', 503, true, cors)
+    if (!allowed) return error('rate_limited', 'Action approval cancellation limit reached.', 429, true, cors)
+    let body: unknown
+    try { body = await readBoundedJson(request, 4 * 1024) }
+    catch {
+      return error('invalid_request', 'Action approval cancellation must be valid JSON.', 400, false, cors)
+    }
+    try {
+      const cancelled = await cancelActionApprovalRecord(
+        db as unknown as ActionApprovalRpcClient, userId, approvalCancelMatch[1], body,
+      )
+      if (!cancelled) return error('approval_not_cancellable', 'Approval is no longer pending or does not match this session.', 409, false, cors)
+      return response({ version: VERSION, cancelled: true }, 200, cors)
+    } catch (cause) {
+      if (cause instanceof ActionApprovalServiceError) {
+        return error(cause.code, 'Action approval could not be processed.', cause.status, cause.status >= 500, cors)
+      }
+      return error('service_unavailable', 'Action approval cancellation is unavailable.', 503, true, cors)
+    }
   }
 
   // Explicit candidates remain pending until this authenticated user approves them.
