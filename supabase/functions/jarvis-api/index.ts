@@ -1,10 +1,11 @@
 import { createClient } from '@supabase/supabase-js'
 import { getApiRoutePathCandidates } from './route-path.ts'
 import { extractSpeechTranscript } from './speech-transcript.ts'
-import { getFreeProviderStatus, startFreeModelStream } from './model-router.ts'
+import { getFreeProviderStatus, startFreeModelStream, type FreeLlmApiTaskType } from './model-router.ts'
 import { isSemanticMemoryId, isSafeAutoMemorySource, mergeSemanticMemoryPreferences, normalizeSemanticMemoryQuery, parseAutoMemoryCandidates, parseSemanticMemoryCandidate, parseSemanticMemoryDecision, parseSemanticMemorySearch } from './semantic-memory.ts'
 
 const VERSION = 1
+const FREE_PROVIDER_POLICY_VERSION = '2026-11-13-v1'
 const MAX_TEXT = 20_000
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
 
@@ -71,6 +72,12 @@ function corsHeaders(origin: string | null): HeadersInit {
 
 function isRecord(value: unknown): value is Json {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
+}
+
+function classifyFreeLlmTask(text: string): FreeLlmApiTaskType {
+  if (/(?:\\b(?:code|coding|program|programming|script|function|typescript|javascript|python|sql|debug|stack trace|compile|commit|pull request|repository|git|npm|api)\\b|c[oó]digo|programa[cç][aã]o|depurar|reposit[oó]rio)/i.test(text)) return 'code'
+  if (text.length < 500) return 'chat'
+  return 'auto'
 }
 
 async function readBoundedBytes(request: Request, maxBytes: number): Promise<Uint8Array> {
@@ -358,6 +365,64 @@ Deno.serve(async (request) => {
     } catch {
       return error('service_unavailable', 'Model provider configuration is invalid.', 503, false, cors)
     }
+  }
+
+  if (request.method === 'GET' && matchesPath('/provider-preferences')) {
+    const allowed = await consumeLimit('provider_preferences_read_minute', 30, 60)
+    if (allowed === null) return error('service_unavailable', 'Provider preference limiter is unavailable.', 503, true, cors)
+    if (!allowed) return error('rate_limited', 'Provider preference limit reached.', 429, true, cors)
+    const { data: preference, error: preferenceError } = await db.from('jarvis_provider_preferences')
+      .select('zdr_pool_enabled,standard_pool_enabled,policy_version,accepted_at')
+      .eq('user_id', userId).maybeSingle()
+    if (preferenceError) return error('service_unavailable', 'Provider preferences could not be loaded.', 503, true, cors)
+    const accepted = preference?.policy_version === FREE_PROVIDER_POLICY_VERSION
+    return response({
+      version: VERSION,
+      currentPolicyVersion: FREE_PROVIDER_POLICY_VERSION,
+      zdrPoolEnabled: accepted && preference?.zdr_pool_enabled === true,
+      standardPoolEnabled: accepted && preference?.standard_pool_enabled === true,
+      acceptedAt: accepted ? preference?.accepted_at ?? null : null,
+    }, 200, cors)
+  }
+
+  if (request.method === 'PUT' && matchesPath('/provider-preferences')) {
+    const allowed = await consumeLimit('provider_preferences_write_hour', 10, 3600)
+    if (allowed === null) return error('service_unavailable', 'Provider preference limiter is unavailable.', 503, true, cors)
+    if (!allowed) return error('rate_limited', 'Provider preference update limit reached.', 429, true, cors)
+    let body: unknown
+    try { body = await readBoundedJson(request, 2_048) }
+    catch (cause) {
+      if (cause instanceof Error && cause.message === 'body_too_large') return error('invalid_request', 'Provider preference request is too large.', 413, false, cors)
+      return error('invalid_request', 'Provider preference request must be valid JSON.', 400, false, cors)
+    }
+    if (!isRecord(body) || body.version !== VERSION ||
+        typeof body.zdrPoolEnabled !== 'boolean' || typeof body.standardPoolEnabled !== 'boolean') {
+      return error('invalid_request', 'Invalid provider preference payload.', 400, false, cors)
+    }
+    const anyEnabled = body.zdrPoolEnabled || body.standardPoolEnabled
+    if (anyEnabled && body.policyVersion !== FREE_PROVIDER_POLICY_VERSION) {
+      return error('invalid_request', 'Review the current provider policy before enabling AI providers.', 409, false, cors)
+    }
+    const now = new Date().toISOString()
+    const { data: updated, error: updateError } = await db.from('jarvis_provider_preferences')
+      .upsert({
+        user_id: userId,
+        zdr_pool_enabled: body.zdrPoolEnabled,
+        standard_pool_enabled: body.standardPoolEnabled,
+        policy_version: anyEnabled ? FREE_PROVIDER_POLICY_VERSION : null,
+        accepted_at: anyEnabled ? now : null,
+        updated_at: now,
+      }, { onConflict: 'user_id' })
+      .select('zdr_pool_enabled,standard_pool_enabled,policy_version,accepted_at')
+      .single()
+    if (updateError || !updated) return error('service_unavailable', 'Provider preferences could not be saved.', 503, true, cors)
+    return response({
+      version: VERSION,
+      currentPolicyVersion: FREE_PROVIDER_POLICY_VERSION,
+      zdrPoolEnabled: updated.zdr_pool_enabled === true,
+      standardPoolEnabled: updated.standard_pool_enabled === true,
+      acceptedAt: updated.accepted_at ?? null,
+    }, 200, cors)
   }
 
   // Explicit candidates remain pending until this authenticated user approves them.
@@ -816,19 +881,49 @@ Deno.serve(async (request) => {
       }
     }
 
+    const { data: providerPreference, error: providerPreferenceError } = await db.from('jarvis_provider_preferences')
+      .select('zdr_pool_enabled,standard_pool_enabled,policy_version')
+      .eq('user_id', userId).maybeSingle()
+    if (providerPreferenceError) {
+      await db.from('jarvis_turns').update({ status: 'failed', error_code: 'service_unavailable' })
+        .eq('id', turnId).eq('user_id', userId).eq('status', 'running')
+      return error('service_unavailable', 'Provider preferences could not be checked.', 503, true, cors)
+    }
+    const policyAccepted = providerPreference?.policy_version === FREE_PROVIDER_POLICY_VERSION
+    const allowZdrPool = policyAccepted && providerPreference?.zdr_pool_enabled === true
+    const allowStandardPool = policyAccepted && providerPreference?.standard_pool_enabled === true
+
     const upstreamAbort = new AbortController()
     let upstream: Response
     try {
-      const routed = await startFreeModelStream([
+      const messages = [
         {
-          role: 'system',
+          role: 'system' as const,
           content: "You are JARVIS, a precise and helpful personal assistant. Detect the language of each user message and reply in that same language. Support Portuguese and English and switch naturally whenever the user switches, including mid-conversation. Use natural Brazilian Portuguese when the user speaks Portuguese. Never force one language when the user is speaking another. Never claim to have performed an action unless a connected tool confirms it." + approvedMemoryContext,
         },
         ...(history ?? []).reverse().map((item) => ({
           role: item.role as 'user' | 'assistant',
           content: item.content as string,
         })),
-      ], AbortSignal.any([upstreamAbort.signal, AbortSignal.timeout(130_000)]))
+      ]
+      const signal = AbortSignal.any([upstreamAbort.signal, AbortSignal.timeout(130_000)])
+      let routed
+      if (allowStandardPool) {
+        try {
+          routed = await startFreeModelStream(messages, signal, {
+            pool: 'standard',
+            taskType: classifyFreeLlmTask(text),
+          })
+        } catch (standardError) {
+          if (!allowZdrPool) throw standardError
+          console.warn('[jarvis] standard provider pool unavailable; using the account-approved ZDR pool')
+          routed = await startFreeModelStream(messages, signal, { pool: 'default' })
+        }
+      } else if (allowZdrPool) {
+        routed = await startFreeModelStream(messages, signal, { pool: 'default' })
+      } else {
+        throw new Error('provider_consent_required')
+      }
       upstream = routed.response
     } catch (cause) {
       console.warn('[jarvis] model provider unavailable', {
