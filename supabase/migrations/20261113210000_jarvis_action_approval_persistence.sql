@@ -156,27 +156,27 @@ begin
     return;
   end if;
 
-  update public.jarvis_action_approvals
+  update public.jarvis_action_approvals as a
   set status = 'expired', decided_at = v_now, decided_by = null
-  where request_id = p_request_id and user_id = p_user_id
-    and status = 'pending' and expires_at <= v_now;
+  where a.request_id = p_request_id and a.user_id = p_user_id
+    and a.status = 'pending' and a.expires_at <= v_now;
 
-  update public.jarvis_action_approvals
+  update public.jarvis_action_approvals as a
   set status = p_decision, decided_at = v_now, decided_by = p_user_id
-  where request_id = p_request_id and user_id = p_user_id
-    and session_id = p_session_id and invocation_id = p_invocation_id
-    and capability_id = p_capability_id
-    and argument_digest = pg_catalog.lower(p_argument_digest)
-    and policy_version = p_policy_version
-    and status = 'pending' and expires_at > v_now;
+  where a.request_id = p_request_id and a.user_id = p_user_id
+    and a.session_id = p_session_id and a.invocation_id = p_invocation_id
+    and a.capability_id = p_capability_id
+    and a.argument_digest = pg_catalog.lower(p_argument_digest)
+    and a.policy_version = p_policy_version
+    and a.status = 'pending' and a.expires_at > v_now;
 
   if found then
     return query select true, 'resolved'::text, p_decision, v_now;
     return;
   end if;
 
-  select * into v_row from public.jarvis_action_approvals
-  where request_id = p_request_id and user_id = p_user_id;
+  select * into v_row from public.jarvis_action_approvals as a
+  where a.request_id = p_request_id and a.user_id = p_user_id;
 
   if not found then
     return query select false, 'not_found'::text, null::text, null::timestamptz;
