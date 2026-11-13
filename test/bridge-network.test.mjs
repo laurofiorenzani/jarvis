@@ -169,6 +169,37 @@ test('paid speech proxy rejects requests without a browser Origin', async () => 
   }
 })
 
+test('metered speech endpoints fail closed even for an allowed browser origin', async () => {
+  const isolated = await startBridge()
+  try {
+    for (const [route, body] of [['/tts', '{"text":"test"}'], ['/stt', '{}']]) {
+      const status = await new Promise((resolve, reject) => {
+        const req = request({
+          host: '127.0.0.1',
+          port: isolated.port,
+          path: route,
+          method: 'POST',
+          headers: {
+            host: `127.0.0.1:${isolated.port}`,
+            origin: 'http://localhost:5173',
+            'content-type': 'application/json',
+          },
+          timeout: 3000,
+        }, (res) => {
+          res.resume()
+          resolve(res.statusCode)
+        })
+        req.on('error', reject)
+        req.on('timeout', () => req.destroy(new Error('timeout')))
+        req.end(body)
+      })
+      assert.equal(status, 503, `${route} must remain unavailable without paid speech credentials`)
+    }
+  } finally {
+    isolated.child.kill()
+  }
+})
+
 test('paid speech proxy enforces per-minute request quotas', async () => {
   const post = (route) => new Promise((resolve, reject) => {
     const req = request({
