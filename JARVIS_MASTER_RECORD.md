@@ -1840,3 +1840,45 @@ G. User action: none immediately. Mac/Xcode and physical iPhone will eventually 
 H. Next: implement CFO schema compatibility in an isolated branch; inspect production/Preview handler route branches and compare auth; review PR #23 fallback-before-dispatch behavior and provider policy evidence.
 I. GitHub: `laurofiorenzani/jarvis`; canonical `work/jarvis-canonical-integration`; PR #31 `work/observer-ci-refresh-20261113`; no merge or deployment.
 J. Next conversation: Continue from this checkpoint. PR #31 exact-head CI #1014 and Observer #172 both SUCCESS; PR remains Draft/non-mergeable. Supabase prod v32 lacks Preview's /provider-preferences route; route parity review required. PR #22 numeric(20,2) conflicts with PR #29 currency exponent registry; no live CFO migration. PR #23 provider pools remain disabled pending per-provider EEA/free-quota/retention/no-overage evidence. Vercel Hobby daily deployment cap reached; do not upgrade/bypass. Continue multitask under €0 recurring cost.
+
+
+## 2026-11-13 — multi-front continuation: CFO currency schema and cloud route parity
+
+### Family CFO — implementation proposal in isolated branch
+- Created branch `work/cfo-currency-exponent-schema-20261113` from the current canonical ledger head `2512258b08ca684fd48206fee274524f8a6f1919`.
+- Ported the owner-scoped CFO schema and its synthetic two-user RLS/least-privilege tests from PR #22 into this current-ancestry branch.
+- Added versioned/effective-dated `jarvis_cfo_currency_registry`, exact `NUMERIC(30,9)` amount storage, and a fail-closed precision validator that rejects amounts beyond each currency's minor-unit exponent, unknown currency codes, unsupported registry versions and out-of-date records.
+- Account currency also requires an explicitly seeded and effective registry entry. The registry intentionally has no production seed data. EUR/JPY/KWD test values are explicitly synthetic only.
+- Added nine focused currency tests and updated isolation fixtures to use a synthetic EUR registry row.
+- Opened Draft PR #32: https://github.com/laurofiorenzani/jarvis/pull/32. Head `ef658432986da1cd561b25dc5618288ed98b0d61`; GitHub currently reports mergeable=true, but no exact-head CI run was returned yet. Keep Draft; no merge or live migration.
+- Important pre-validation caveat: inspect SQL test ordering and run full `supabase test db` before considering the schema validated. This is an implementation proposal, not an approved migration.
+
+### Currency source research
+- ISO confirms currency codes include minor-unit information and that SIX Financial Information AG maintains ISO 4217 on ISO's behalf. SIX amendment 180 (22 Sep 2025) records Bulgaria's EUR transition effective 1 Jan 2026. Sources: ISO overview https://www.iso.org/standard/64758.html (see also https://www.iso.org/cms/%20render/live/en/sites/isoorg/home/standards/popular-standards/iso-4217--currency-codes.html); SIX amendment 180 https://www.six-group.com/dam/download/financial-information/data-center/iso-currrency/amendments/dl-currency-iso-amendment-180.pdf.
+- Current production allowlist and registry version are deliberately not populated from secondary copies. Obtain/pin the authoritative SIX List One snapshot, record retrieval date and review the allowed code set before seeding.
+
+### Cloud Brain — route/auth comparison
+- Re-read live Supabase Edge Function source: production `jarvis-api` ACTIVE v32; Preview `jarvis-preview-api` ACTIVE v23. Both set `verify_jwt=false`, but the source places bearer token validation (`auth.getUser`) before the authenticated route handlers. Public health is intentionally pre-auth.
+- Preview has authenticated GET/PUT `/provider-preferences`; production v32 does not. Preview also has POST `/semantic-memory/candidates`; production route inventory shows GET only. Production and Preview are therefore not functionally equivalent.
+- Both versions expose STT/TTS, provider status, semantic-memory search/list, memory preferences, memories, conversations, turn cancellation and turns. Preview additionally packages dedicated CORS, route-path and speech-transcript modules and a broader Preview-origin policy. Do not promote Preview wholesale; implement a reviewed route-by-route patch and regression tests first.
+- Live migrations remain through `20261113125437_provider_preferences_rls_initplan`; CFO tables are still absent in production.
+
+### Multi-AI — release gate
+- PR #23 provider preferences/FreeLLMAPI routing remains non-released. Per-account pools remain disabled. Gateway metadata and routing headers are not proof of the downstream fallback provider's privacy, retention, geography or cost.
+- Before enabling any pool, verify the active FreeLLMAPI fallback chain before dispatch (not only after response), current no-cost quotas, no payment method/overage, Ireland/EEA eligibility, personal-use terms and retention/training per provider. No inference was sent.
+
+### Session safety
+- No production deployment, live migration, secret/auth/billing change, provider activation, personal financial data access, external financial action or paid service.
+- Vercel Hobby daily deployment cap remains active; no deployment retry, upgrade or bypass.
+
+### Handoff
+A. State: Observer CI PR #31 validated; CFO exponent schema now proposed in PR #32; cloud production/Preview route gaps confirmed. JARVIS remains in development.
+B. Completed: PR #32 branch/PR created with schema + synthetic tests; production/Preview auth ordering and missing routes inspected; official ISO/SIX currency-source context checked.
+C. In progress: PR #32 exact-head CI and SQL test validation; production/Preview route parity; downstream provider policy attestation; persistent atomic action approvals; iOS native target/device path.
+D. Evidence: repo `laurofiorenzani/jarvis`; canonical base `2512258b08ca684fd48206fee274524f8a6f1919`; PR #32 head `ef658432986da1cd561b25dc5618288ed98b0d61`; Supabase production v32 / Preview v23; live migrations through `20261113125437`.
+E. Decisions: no CFO registry seed until pinned official SIX List One reviewed; no live migration; no Preview promotion; no provider activation; no paid Vercel tier.
+F. Pending: CFO—validate test ordering, function/constraint behavior, migration reset and SQL isolation; Cloud—implement missing production routes only after parity contract review; Multi-AI—prove provider fallback chain pre-dispatch and no-cost/privacy; iOS—native build/device acceptance; action approvals—persistent one-time state machine.
+G. User action: none now. Mac/Xcode and physical iPhone will eventually be required for native acceptance.
+H. Next: inspect PR #32 CI once available; fix any SQL/test failures on the isolated branch; continue source-level route diff and provider fallback review.
+I. GitHub: `laurofiorenzani/jarvis`; canonical `work/jarvis-canonical-integration`; PR #31 Observer validated; PR #32 CFO currency exponent Draft.
+J. Next conversation: Continue from this checkpoint. PR #31 exact-head CI #1014 + Observer #172 SUCCESS. PR #32 adds currency exponent registry and synthetic tests, head `ef658432986da1cd561b25dc5618288ed98b0d61`; exact-head CI not yet confirmed. Prod Supabase v32 lacks Preview's GET/PUT /provider-preferences and POST /semantic-memory/candidates; both handler sources validate bearer auth before authenticated handlers. CFO registry empty until official SIX list review; no live migration. Provider pools off; Vercel free cap respected. Continue multitask under €0 recurring cost.
