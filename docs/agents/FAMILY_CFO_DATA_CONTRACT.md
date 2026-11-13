@@ -178,3 +178,10 @@ Financial amount columns use finite `NUMERIC(20,2)`: NaN, positive infinity, and
 The proposed first persistence layer contains only owner-scoped account metadata, source-backed transactions and dated balance snapshots. Authenticated clients have SELECT access to their own records only; direct client INSERT/UPDATE/DELETE is denied. Composite account/owner foreign keys prevent cross-owner references. No household sharing, bank connector, import, budget engine, financial calculations or money movement is included.
 
 Money columns use finite NUMERIC(20,2). NaN is rejected by the finite-value check; positive and negative infinity overflow the bounded numeric type and are rejected by PostgreSQL. CI run #952 passed all 23 synthetic Family CFO SQL isolation assertions, migration application, two-user semantic-memory integration and deployed API/CORS smoke tests on the pre-rebase code head. The PR was subsequently rebased onto the latest canonical documentation head; exact-head CI must pass again before review. The migration remains unapplied to live Supabase.
+
+
+### Least-privilege grants and final SQL coverage — 2026-11-13
+
+- Revoke all table privileges from PUBLIC, anon, authenticated and service_role before applying explicit grants.
+- Authenticated receives SELECT only. service_role receives only SELECT, INSERT, UPDATE and DELETE; TRUNCATE and other unnecessary privileges are not granted.
+- Synthetic tests verify anon cannot read or write, service_role has only the required DML privileges, transaction NaN is rejected, and balance negative infinity is rejected.

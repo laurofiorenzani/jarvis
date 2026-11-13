@@ -108,13 +108,13 @@ create policy "Users can read their own CFO balance snapshots"
   on public.jarvis_cfo_balance_snapshots for select to authenticated
   using ((select auth.uid()) = owner_user_id);
 
-revoke all on table public.jarvis_cfo_accounts from anon, authenticated;
-revoke all on table public.jarvis_cfo_transactions from anon, authenticated;
-revoke all on table public.jarvis_cfo_balance_snapshots from anon, authenticated;
+revoke all on table public.jarvis_cfo_accounts from public, anon, authenticated, service_role;
+revoke all on table public.jarvis_cfo_transactions from public, anon, authenticated, service_role;
+revoke all on table public.jarvis_cfo_balance_snapshots from public, anon, authenticated, service_role;
 grant select on table public.jarvis_cfo_accounts to authenticated;
 grant select on table public.jarvis_cfo_transactions to authenticated;
 grant select on table public.jarvis_cfo_balance_snapshots to authenticated;
 
-grant all on table public.jarvis_cfo_accounts to service_role;
-grant all on table public.jarvis_cfo_transactions to service_role;
-grant all on table public.jarvis_cfo_balance_snapshots to service_role;
+grant select, insert, update, delete on table public.jarvis_cfo_accounts to service_role;
+grant select, insert, update, delete on table public.jarvis_cfo_transactions to service_role;
+grant select, insert, update, delete on table public.jarvis_cfo_balance_snapshots to service_role;

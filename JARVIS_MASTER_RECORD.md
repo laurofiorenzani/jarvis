@@ -1325,3 +1325,11 @@ Latest verified CI at this checkpoint: PR #27 #961 success; PR #22 #959 success;
 
 ### PR #22 exact-head refresh — 2026-11-13
 - Rebased the owner-scoped, read-only Family CFO persistence proposal onto canonical ledger commit 86d171b3e869bee138795342963995adaa302b93. Migration and 23 synthetic SQL assertions are unchanged from the green CI #959 run; a new exact-head CI run is required. No live CFO migration/table was applied.
+
+
+## 2026-11-13 — Family CFO least-privilege schema review (PR #22)
+- PR #22 exact-head CI #976 passed the isolated migration, SQL isolation, authenticated two-user API and CORS stages on head `2558cb84e7e17a5064ae009ca010c1bd55d414c4`.
+- Follow-up hardening now explicitly revokes all table privileges from PUBLIC, anon, authenticated and service_role, then grants authenticated SELECT only and service_role SELECT/INSERT/UPDATE/DELETE only. Synthetic tests assert service_role lacks TRUNCATE and anon cannot read/write.
+- Amount constraints reject NaN and both infinities; tests cover transaction NaN and balance-snapshot negative infinity in addition to existing cases.
+- The migration remains source-only and is not applied to live Supabase. No financial records, bank credentials, imports, payments, transfers, trades or production schema changes.
+- Exact-head CI after this least-privilege follow-up is pending; PR remains Draft for review.
