@@ -2026,3 +2026,37 @@ J. Next conversation: Continue from this checkpoint. PR #31 exact-head CI #1014 
 6. CarPlay voice-based conversation is technically possible subject to Apple's entitlement and native app acceptance.
 
 No third-party integration was connected, no credentials were requested, no data was transferred, no message was sent, and no device was controlled during this research.
+
+
+## 2026-11-13 — Action approval exact-head pass and BMW adapter kickoff
+
+### Action approval persistence — PR #26
+- Exact-head CI #1063 (`43510991390`) SUCCESS on `9cd41bfdd95c2d3e1c2ee6bbe756dd4b0fc2d005` after adding an explicit RESET ROLE in the pgTAP harness.
+- Build, 238 TypeScript tests passed (2 skipped, 0 failed), lint, Deno checks, Edge Function typecheck, isolated Supabase migration, 35 action-approval SQL assertions, 12 semantic-memory SQL assertions, authenticated two-user API integration and CORS smoke tests passed.
+- The schema and five SECURITY INVOKER RPCs are isolated-CI validated only. PR #26 remains Draft; no production migration, Edge API route, UI approval flow or action execution adapter exists yet.
+
+### BMW CarData read-only adapter — PR #34
+- New Draft PR #34: https://github.com/laurofiorenzani/jarvis/pull/34; branch `work/bmw-cardata-readonly-20261113`, initial code head `e9427f2be3016f4a216eb3c5ef49d14b12457141`.
+- Added official BMW personal CarData Device Code Flow with PKCE S256, token exchange/refresh, read-only vehicle mappings/basic data/telematics and an injected atomic daily budget that fails closed at 50 REST requests/day.
+- Seven mocked tests; no BMW credentials, VIN, vehicle data or external network request. Exact-head CI #1066 is in progress.
+- The adapter does not implement vehicle commands. Personal use is documented as free by BMW; service-provider data access has separate charges. Production enablement still requires owner-created client ID, explicit device consent, encrypted server-side token storage and a persistent Supabase budget RPC. No token or account setup performed.
+
+### Current release gate
+- PRs #23, #26, #28, #31, #32, #33 and #34 remain Draft/open. No merge or deployment.
+- Cloudflare billing plan remains unverified; `JARVIS_FREE_PROVIDER_BILLING_ATTESTATION` remains unset and provider pools remain disabled.
+- No production Supabase migration or Edge Function change; no paid service; no external integration connected; no vehicle control, message send or data transfer.
+
+### Next
+1. Inspect PR #34 exact-head CI #1066; fix any source/test issue and record result.
+2. After PR #26 is reviewed/merged, wire its RPCs into the authenticated existing `jarvis-api` and add route-level two-user tests; keep actual actions disabled until the approval UI/capability policy is connected.
+3. For BMW, owner must create the CarData client ID and authorize device flow only after encrypted token storage and persistent daily budget are ready. Never add remote command methods without official API support.
+4. Continue Cloudflare Free plan verification; do not set the operator billing attestation until confirmed.
+
+### Current exact-head evidence
+- PR #23 CI #1052 SUCCESS; provider billing gate remains unset.
+- PR #26 CI #1063 SUCCESS; migration not deployed.
+- PR #28 CI #1060 SUCCESS; native iOS build/device validation absent.
+- PR #31 CI #1054 and Observer #176 SUCCESS.
+- PR #32 CI #1039 SUCCESS.
+- PR #33 CI #1053 SUCCESS on unchanged code tree; branch includes documentation-only ledger updates.
+- PR #34 CI #1066 in progress.
