@@ -146,7 +146,10 @@ Deno.serve(async (request) => {
     url.pathname === '/health' ||
     url.pathname === '/v1/health' ||
     url.pathname.endsWith('/jarvis-api/health') ||
-    url.pathname.endsWith('/jarvis-api/v1/health')
+    url.pathname.endsWith('/jarvis-api/v1/health') ||
+    // The preview function has a different slug; the public health endpoint
+    // must remain reachable before a bearer token exists for every deployment.
+    url.pathname.endsWith('/v1/health')
   if (request.method === 'GET' && isHealthRoute) {
     return response({ version: VERSION, status: 'ok' }, 200, cors)
   }
