@@ -943,3 +943,29 @@ The available Supabase connector cannot inspect or set Edge Function secrets. Do
 - Read-only source inspection of deployed Supabase functions confirms: Preview v21 contains semantic-memory and Cloudflare Workers AI code, but no provider-preferences route and no FreeLLMAPI gateway-token integration. Production v32 contains semantic-memory code, but no Cloudflare Workers AI or FreeLLMAPI gateway-token integration. Thus the PR #13 provider-preferences and FreeLLMAPI code is not live in either deployed function.
 - The latest READY Preview deployment on the gateway branch is built from commit `9265f7c`, an ancestor of the branch head observed before this session's documentation-only commits. It is not proof that the current PR #13 head or its FreeLLMAPI gateway path is running.
 - Direct HTTP checks of the Preview page and public health URLs could not be completed with the available web fetch capability. Deployment readiness and Supabase function inventory/source are verified; end-to-end browser/API health is not newly verified.
+
+
+## 2026-11-13 — Preview bootstrap CORS regression fix (v22)
+
+### Root cause confirmed from the user's live deployment and Supabase logs
+
+- The screenshot URL `jarvis-7g68mgue9-lauro-fiorenzani.vercel.app` is Vercel deployment `dpl_G1WEVwcipT15HFN3NMbVzDduEg13`, branch `work/jarvis-freellmapi-cloud-gateway`, commit `9265f7c44de2630b48fdda5cee18f614a141e04b`, state READY.
+- Its branch-scoped Preview environment is configured with `VITE_BACKEND=cloud`, the existing Supabase project URL, and `VITE_SUPABASE_FUNCTION_NAME=jarvis-preview-api`. No Production environment values were changed.
+- Supabase Auth logs for the user's browser show password sign-in HTTP 200 at 12:31:35 UTC, followed by client logout HTTP 204 at 12:31:37 UTC. This proves credentials were accepted and the UI signed out after its cloud bootstrap failed; do not ask the user to reset a password or recreate the account.
+- The same browser sent `OPTIONS /functions/v1/jarvis-preview-api/v1/health` at 12:31:37 UTC. Source inspection showed the public-health preflight's `Access-Control-Allow-Headers` omitted `x-region`, while the frontend's health request always sends `x-region: eu-west-3`. The general authenticated CORS policy already allowed `x-region`. This mismatch caused the browser preflight to fail before the health GET, and the UI surfaced the generic “Cloud service could not be reached” message.
+- This is a precise code-level root cause supported by the screenshot, Vercel deployment metadata, Supabase Auth logs, Supabase Edge logs, frontend client code and Preview function source. Do not change Auth, accounts, passwords or production to address it.
+
+### Fix implemented and deployed
+
+- In the existing PR #13 branch, extracted the public-health preflight policy into `supabase/functions/jarvis-api/cors.ts`; it now includes `x-region` while keeping the endpoint restricted to GET/OPTIONS and non-sensitive wildcard CORS.
+- Updated `supabase/functions/jarvis-api/index.ts` to use that shared helper.
+- Added `cors_test.ts` regression tests for the regional header and restricted methods; wired the test into `.github/workflows/ci.yml`.
+- Deployed the updated function bundle to non-production `jarvis-preview-api` only. Supabase reports ACTIVE version 22; live source inspection confirms the helper is present and `x-region` is allowed. Production `jarvis-api` remains v32 and unchanged.
+- No database migration, account/auth change, provider secret, inference call, billing change or production deployment occurred.
+
+### Validation / remaining gates
+
+- Code and regression tests are committed on PR #13's existing branch. GitHub workflow runs for the new PR head were not yet returned by the connector at inspection time; exact-head CI is therefore pending, not claimed passed.
+- Vercel created a Preview deployment from an intermediate fix commit and later queued/began builds for the branch. Its combined status reported the Free plan build-rate-limit failure. The existing screenshot deployment remains READY and now points to the updated shared Preview Edge Function, so a new frontend deployment is not required to retest this server-side fix.
+- Supabase function source/version verification passed. A browser-origin OPTIONS + subsequent health GET and a fresh authenticated sign-in / memory bootstrap are still required to confirm end-to-end recovery. The owner can refresh the existing screenshot URL and use the same existing account; do not clear account data or create a new account.
+- PR #12's latest canonical integration head `0cf362fd8e6fbf95303cf38e124631f74596f3ac` has CI #876 SUCCESS and Observer Validation #89 SUCCESS. It remains separate from PR #13 and is not merged or promoted.
