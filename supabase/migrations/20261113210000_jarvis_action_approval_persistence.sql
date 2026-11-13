@@ -180,10 +180,10 @@ begin
 
   if not found then
     return query select false, 'not_found'::text, null::text, null::timestamptz;
+  elsif v_row.status = 'expired' or v_row.expires_at <= v_now then
+    return query select false, 'expired'::text, v_row.status, v_row.decided_at;
   elsif v_row.status <> 'pending' then
     return query select false, 'already_resolved'::text, v_row.status, v_row.decided_at;
-  elsif v_row.expires_at <= v_now then
-    return query select false, 'expired'::text, v_row.status, v_row.decided_at;
   elsif v_row.session_id <> p_session_id
     or v_row.invocation_id <> p_invocation_id
     or v_row.capability_id <> p_capability_id then
