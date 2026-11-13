@@ -18,6 +18,7 @@ function bannerWith(overrides) {
       mcpServers: {
         search: { command: 'true' },
         mailer: { command: 'true' },
+        elevenlabs: { command: 'true' },
       },
     }),
   )
@@ -52,10 +53,10 @@ test('unset passes no configured server by default (fail closed)', async () => {
   assert.match(await bannerWith({}), /config: none ·/)
 })
 
-test('JARVIS_MCP_SERVERS passes only the named servers', async () => {
-  const line = await bannerWith({ JARVIS_MCP_SERVERS: 'search' })
+test('JARVIS_MCP_SERVERS passes only named non-metered servers', async () => {
+  const line = await bannerWith({ JARVIS_MCP_SERVERS: 'search,elevenlabs' })
   assert.match(line, /config: search ·/)
-  assert.doesNotMatch(line, /mailer/)
+  assert.doesNotMatch(line, /mailer|elevenlabs/)
 })
 
 test('an empty JARVIS_MCP_SERVERS passes none', async () => {
