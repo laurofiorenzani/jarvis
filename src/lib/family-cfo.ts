@@ -103,7 +103,7 @@ export function matchInternalTransfers(
   const eligible = transactions.filter((tx) =>
     tx.status === 'posted' && tx.recordStatus === 'confirmed' &&
     (tx.confidence === 'verified' || tx.confidence === 'user_confirmed') &&
-    tx.internalTransferPairId !== null && tx.postedAt !== null,
+    typeof tx.internalTransferPairId === 'string' && tx.postedAt !== null,
   )
   const candidates = new Map<string, Set<string>>()
   for (let i = 0; i < eligible.length; i += 1) {
