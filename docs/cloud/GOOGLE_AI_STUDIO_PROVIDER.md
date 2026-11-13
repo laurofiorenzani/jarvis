@@ -16,7 +16,7 @@ The current Google pricing documentation lists `gemini-3.1-flash-lite` with free
 
 Store these values as Supabase Edge Function secrets only:
 
-- `GEMINI_API_KEY` — the Google AI Studio API key.
+- `GOOGLE_AI_STUDIO_API_KEY` — the Google AI Studio API key. This is the same server-side secret used by JARVIS Gemini speech-to-text and fallback text-to-speech.
 - `JARVIS_MODEL_PROVIDERS` — the JSON provider list:
 
 ```json
@@ -27,7 +27,7 @@ Store these values as Supabase Edge Function secrets only:
     "model": "gemini-3.1-flash-lite",
     "tier": "free",
     "billingMode": "free_quota_only",
-    "apiKeyEnv": "GEMINI_API_KEY"
+    "apiKeyEnv": "GOOGLE_AI_STUDIO_API_KEY"
   }
 ]
 ```
@@ -44,8 +44,10 @@ For private/personal production use, choose a provider and plan whose data-handl
 
 1. Confirm the model and free quota in Google AI Studio.
 2. Review Google's current data-use terms for the account/project.
-3. Add the two secrets in Supabase only after explicit approval.
+3. Add the two secrets in Supabase only after the account owner has reviewed and explicitly accepted the applicable Google data-use terms.
 4. Check `GET /provider-status` using an authenticated JARVIS session. This confirms declared configuration only.
 5. Run one synthetic, non-personal, low-token inference and inspect the response. This is the first evidence of actual reachability; it still does not prove future quota availability.
 
-The existing local FreeLLMAPI configuration is not automatically available to Supabase. Cloud provider credentials must be configured separately as server-side secrets.
+The same `GOOGLE_AI_STUDIO_API_KEY` is read by the cloud STT and fallback TTS routes; referencing it in `JARVIS_MODEL_PROVIDERS` avoids storing a duplicate copy under a second environment-variable name. The existing local FreeLLMAPI configuration is not automatically available to Supabase. Cloud provider credentials must be configured separately as server-side secrets.
+
+A `429` from Gemini means the request was throttled or quota-limited; inspect the Google AI Studio project's current model quotas and wait for the retry window rather than repeatedly retrying voice segments. The app must not treat a `200` empty transcript as a successful recognition.
