@@ -1696,3 +1696,38 @@ G. **User action:** none currently.
 H. **Next:** inspect run #1009 final result; if failure, use logs to isolate cause and make minimal branch-only fix. Continue PR #25 exact-head validation and source parity.
 I. **GitHub:** `laurofiorenzani/jarvis`; canonical `work/jarvis-canonical-integration`; PR #30 branch `work/ci-supabase-start-resilience`, commit `4e56733...`; ledger updated below.
 J. **Next conversation:** “Continue from latest JARVIS_MASTER_RECORD.md. PR #30 CI #1009 is in progress: code checks and local Supabase startup passed; db reset is running, SQL isolation/two-user/CORS still pending. PR #25 observer code reviewed but exact-head CI remains missing. Reconcile CFO PR #22 NUMERIC(20,2) against PR #29 currency exponent contract; no live migrations. Continue Cloud Brain parity and Multi-AI verification. Respect €0 cost and Vercel Hobby limit.”
+
+## 2026-11-13 — CI completion and next-preview readiness checkpoint
+
+### Verified progress
+- PR #30 exact-head CI run #1009 (43475736715), job 132058961144, completed SUCCESS. All substantive steps passed: dependency install/security checks, typecheck/build, tests, lint, Deno/provider privacy checks, semantic-memory policy checks, Edge Function typecheck, speech tests, isolated local Supabase startup, supabase db reset, SQL isolation regression, authenticated semantic-memory API with two isolated users, stack shutdown, production API/CORS smoke test and canonical Preview API/CORS smoke test.
+- PR #30 remains open/Draft and current metadata reports mergeable=false; do not merge merely because CI is green. Reconcile branch ancestry/review and keep human merge control.
+- PR #25 Observer exact-head lookup for 725e1bbdf7ef8a68b34f9f3c7a7c6b960bd47a5b still returns no PR workflow runs. Older CI/Observer successes do not validate this head. No merge.
+- PR #28 iOS secure-storage adapter remains Draft/open/non-mergeable. Code CI #996 passed on 56c6e5cc..., but later docs-only commits mean current head abac40a... has no physical-device validation. No Capacitor dependency, iOS target, signed build or iPhone Keychain test is claimed. Free local testing requires macOS/Xcode; TestFlight/App Store remain outside the €0 recurring-cost boundary.
+- PR #29 currency contract exact-head CI #1004 remains SUCCESS. Keep its versioned currency exponent / exact-decimal design coordinated with CFO PR #22; no live migration.
+- PR #26 action-approval primitives remain domain-only: no persistence, atomic transitions, UI or external execution.
+
+### Deployment readiness / limits
+- Vercel deployment inventory still shows recent deployments as READY with target=null (Preview/untargeted records), not Production. READY is not a functional browser or native-device acceptance test.
+- Vercel previously reported the daily free deployment cap (>100 deployments/day), with retry window stated as 24 hours. Do not spam retries, upgrade, or bypass. Recheck only when a deployment is genuinely needed and the free window has recovered.
+- If a fresh Preview becomes available, validate sign-in/session, responsive HUD, cloud API health, authenticated model turn (only after provider billing/EEA/retention/consent gates are verified), memory isolation for both accounts, speech round trip, and error/recovery paths.
+
+### Session actions
+- Rechecked CI #1009 final job state and all substantive steps: SUCCESS.
+- Rechecked PR #30 metadata; it remains Draft/non-mergeable.
+- Rechecked PR #25 exact-head workflow lookup: no runs.
+- Rechecked PR #28 native-storage status and PR #26 approval scope.
+- Rechecked Vercel latest deployment inventory; recent records remain target=null, and prior free daily deployment cap remains an operational constraint.
+- No source changes, PR merges, production deployments, live migrations, provider activation, secret/auth/billing changes or financial actions were made.
+
+### Handoff
+A. State: JARVIS is progressing through CI and cloud foundations; not yet production-ready or a complete iPhone app.
+B. Completed/validated: PR #30 full exact-head CI #1009 passed end-to-end, including isolated DB migrations, SQL/two-user isolation and production/Preview CORS smoke checks.
+C. In progress: PR #30 branch reconciliation/review; PR #25 exact-head validation; Cloud Brain production/Preview parity; provider downstream billing/EEA/retention/consent verification; CFO currency compatibility; iOS native target and device test.
+D. Evidence: PR #30 commit 4e56733f1c2e18d592794eb48e1fce55de00f0f4; CI run 43475736715; job 132058961144; PR #25 head 725e1bbdf7ef8a68b34f9f3c7a7c6b960bd47a5 with no exact-head runs; PR #28 head abac40a19f2adb730b328258a76d8f4de80d3510; PR #29 CI run 43474129034 SUCCESS.
+E. Decisions: Green CI is not deployment or product acceptance. Do not merge automatically, activate providers, apply live CFO migrations, promote Preview, buy Apple/Vercel upgrades, or bypass free quotas. Preserve €0 recurring cost and human approval gates.
+F. Pending: Self-Evolution—exact-head Observer validation and PR #30 ancestry/review; Cloud Brain—API version parity/auth review; Multi-AI—provider chain and no-billing verification; CFO—currency exponent integration; iOS—macOS/Xcode/native target/device validation; integrations—official API feasibility and consent boundaries.
+G. User action: None required immediately. A physical iPhone + Mac/Xcode will eventually be needed for native Keychain/device acceptance; do not purchase a paid Apple Developer subscription.
+H. Next: Continue independent source reviews and safe branch work; recheck Vercel only after the free deployment window, then run a real Preview smoke/acceptance test if available.
+I. GitHub: laurofiorenzani/jarvis; canonical branch work/jarvis-canonical-integration; PR #30 remains Draft/open/non-mergeable; no merges or production changes in this checkpoint.
+J. Next conversation: Continue JARVIS from the latest JARVIS_MASTER_RECORD.md. PR #30 exact-head CI #1009 completed SUCCESS across build/tests/lint, isolated Supabase migrations, SQL/two-user isolation and production/Preview CORS; PR #30 remains Draft/non-mergeable pending ancestry/review. PR #25 exact-head has no workflow runs. PR #28 secure-storage code passed older CI #996 but current head/device validation is pending. PR #29 currency CI #1004 passed; reconcile with CFO PR #22. Vercel records are READY target=null and Hobby daily deployment cap was reached. Continue multitask, preserve €0 recurring cost, do not merge/deploy/migrate/activate providers without gates.
