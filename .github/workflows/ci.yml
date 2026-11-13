@@ -122,7 +122,11 @@ jobs:
 
       - name: Stop isolated local Supabase stack
         if: always() && steps.setup_supabase_cli.outcome == 'success'
-        run: supabase stop --no-backup
+        shell: bash
+        run: |
+          if ! supabase stop --no-backup; then
+            echo "::warning::Local Supabase teardown failed after the database and authenticated API checks completed; the ephemeral GitHub runner will reclaim remaining containers."
+          fi
 
       - name: Smoke-test deployed cloud API and production CORS
         shell: bash
