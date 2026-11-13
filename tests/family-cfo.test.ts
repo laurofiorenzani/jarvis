@@ -118,6 +118,7 @@ test('cash flow requires an explicit currency when the period has no eligible re
   const { calculateCashFlow } = await import('../src/lib/family-cfo.ts')
   const period = { start: '2026-11-01', end: '2026-11-30' }
   assert.throws(() => calculateCashFlow([], period), /explicit currency/)
+  assert.throws(() => calculateCashFlow([validTransaction], { ...period, currency: 'JPY' }), /does not match/)
   assert.deepEqual(calculateCashFlow([], { ...period, currency: 'JPY' }), {
     currency: 'JPY', inflows: '0', outflows: '0', net: '0',
     includedCount: 0, excludedTransferCount: 0,
