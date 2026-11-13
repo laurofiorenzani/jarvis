@@ -197,3 +197,19 @@ At the start of each JARVIS work session:
 - Cloudflare account has no active Cloudflare Tunnel returned by the read-only account query. Therefore a Cloudflare Tunnel is **not configured/verified in the connected account** at this time. No tunnel or DNS was created.
 - Oracle Cloud remains unverified because no OCI connector is available in this session.
 - No resources were deleted, no PR was merged, and no production settings were modified.
+
+
+## 2026-11-13 07:13 UTC — cross-branch authentication regression audit
+
+- Re-listed GitHub repositories: canonical app repo `laurofiorenzani/jarvis` (default branch `main`) and private workbench `laurofiorenzani/jarvis-personal-cloud` (default branch `main`) are both still present. No repository or branch was deleted.
+- Re-listed all visible canonical app branches: 19 branches were returned. They include the amber UI, voice locale, memory, mobile companion, FreeLLMAPI, self-evolution, auth repair, canonical integration and master-record lines. This confirms branch cleanup is not yet complete; do not delete any until feature/commit reachability is proven.
+- Verified current newest repository commit from GitHub commit search: `da4e4591a0fe364ba5823d44ee2954b88ffd3383`, message `fix(build): remove orphaned cloud access UI from main preview`. Its diff deletes `src/ui/CloudAccess.tsx` (531 lines). The combined status endpoint reports a successful Vercel context for this commit; that status is not a functional auth test.
+- Cross-branch source comparison:
+  - `work/jarvis-amber-production-track`: `src/App.tsx` does not reference `CloudAccess`; `src/ui/CloudAccess.tsx` is absent.
+  - `work/self-evolution-engine-foundation`: `src/App.tsx` imports/renders `CloudAccess`; `src/ui/CloudAccess.tsx` exists (blob `937b760abd64ce192c7e7551a901fb13e4b2302f`) and includes sign-in, registration, recovery, session restore, cloud conversation and memory controls.
+  - `work/memory-integration-ready`: `src/App.tsx` imports/renders `CloudAccess`; `src/ui/CloudAccess.tsx` exists (blob `97289c64da70d9bf1478a9bb881e0a357fa16600`).
+  - The amber branch does contain `src/lib/cloud-auth.ts`, but that alone does not provide a rendered login experience.
+- Diagnosis: the login regression is confirmed at the integration/UI layer. The complete auth UI survives on the self-evolution and memory-integration branches but is absent from the selected amber UI baseline. This is not evidence that existing Supabase accounts were deleted.
+- Current private workbench recent commits were also enumerated; its history remains distinct and has not been migrated or deleted.
+- No code was merged, no production deployment was made, no auth/database settings or user accounts were changed, and no repository/branch was deleted.
+- Next parallel workstreams: (1) inspect the exact App/HUD integration seam and auth API compatibility before a minimal amber-preserving restoration; (2) compare voice-locale and memory implementations against the same auth/session contract; (3) inventory unique branch commits/files and PR state; (4) refresh CI on exact candidate heads. Any merge, production release, schema/auth mutation or deletion remains gated until the evidence and owner approval requirements are met.
