@@ -1982,3 +1982,47 @@ J. Next conversation: Continue from this checkpoint. PR #31 exact-head CI #1014 
 - PR #31 `7849419dfeef11984cdac4be0458678623d199ac` — CI #1054 and Observer #176 SUCCESS; Draft.
 - PR #32 `dfea9b296647ed257915932998700ce0fbe4ac39` — CI #1039 SUCCESS; Draft.
 - PR #33 code tree `7cfa58933af77def7b4c47cf96f8479b83218713` — CI #1053 SUCCESS; current branch head also includes documentation-only ledger commit `8f802abfdd210f47e371804d09205791f441ffbf`; Draft.
+
+
+## 2026-11-13 — Official integration capability review (read-only research)
+
+### BMW iX1 / BMW CarData
+- BMW CarData's personal customer portal explicitly states personal use is free and supports a Device Code Flow, REST API and MQTT streaming. The API requires a customer-created client ID and explicit scopes `cardata:api:read` / `cardata:streaming:read`; the published integration guide documents a 50 REST requests/day limit and refresh tokens valid for 14 days.
+- This is a read-only telematics/data product: BMW's own CarData information says direct access to the vehicle is not possible. It does not provide official remote commands for climate, doors, trunk or windows. Do not implement remote control through CarData or reverse-engineered ConnectedDrive endpoints.
+- Potential next step: implement a personal, read-only CarData adapter for vehicle status, mileage, charging/battery and service events after the owner creates a client ID and explicitly authorizes the device flow. Keep the 50/day limit and token refresh schedule enforced. Streaming needs a long-lived MQTT-capable cloud worker; Supabase Edge Functions are not suitable for a persistent MQTT session.
+- Personal-use pricing must remain distinct from the BMW third-party service-provider platform, which charges for telematics data. No account registration or token request was made.
+- Official sources: https://bmw-cardata.bmwgroup.com/customer/public/ ; https://bmw-cardata.bmwgroup.com/customer/public/api-documentation ; https://www.bmwgroup.com/en/general/regulations/cardata.html
+
+### Blink cameras
+- Blink's EU third-party data-transfer feature can share selected device settings, motion/event data and location data after explicit authorization. Blink states video data is not included in these third-party transfers.
+- This does not establish an official live camera-stream API. Do not promise live view, snapshots or camera control through this data-transfer interface; keep those capabilities blocked unless Blink provides a supported official API/SDK.
+- Official source: https://support.blinkforhome.com/en_US/contact-support/transfer-your-blink-data-to-third-parties
+
+### Dreame vacuum
+- No official public developer API/SDK or supported third-party cloud API was identified in this review. Community integrations commonly rely on unofficial protocols; those are not approved under JARVIS's official-API/no-security-bypass rules.
+- Keep cloud control disabled until Dreame confirms an official supported API or publishes a developer program. No reverse-engineered endpoints or credentials were used.
+
+### WhatsApp
+- Meta's Cloud API is part of the WhatsApp Business Platform and charges for conversations; it is not a free personal-account inbox API. It is incompatible with the strict €0 rule unless Meta's actual account pricing and a hard zero-spend boundary are proven, and it does not provide access to a normal personal WhatsApp account.
+- Do not use unofficial WhatsApp Web automation, browser scraping or device-session extraction. Revisit only if the user chooses a business-number integration and explicitly approves any conversation charges (which would be a change to the €0 rule).
+- Official source: https://developers.facebook.com/docs/whatsapp/cloud-vs-onprem
+
+### Instagram
+- Meta's Instagram Messaging API supports messaging for Instagram Professional accounts linked to a Facebook Page, with required permissions and App Review/advanced access for relevant data. It is not a general personal-account inbox API.
+- Potential next step: if the intended account is Business/Creator and linked to a Page, implement the official webhook/Graph API flow after app review and explicit account authorization. Do not scrape consumer accounts or automate the Instagram app UI.
+- Official sources: https://developers.facebook.com/documentation/business-messaging/instagram-messaging ; https://developers.facebook.com/docs/graph-api/reference/message
+
+### Apple CarPlay
+- Apple documents a dedicated `com.apple.developer.carplay-voice-based-conversation` entitlement for apps that answer questions/requests and perform actions. CarPlay is therefore a plausible JARVIS voice interface, but entitlement approval and supported CarPlay templates are required; it is not permission to draw an unrestricted holographic/custom desktop UI on the CarPlay screen.
+- Continue with the iOS secure-storage adapter and later build a native voice-first CarPlay experience using approved templates only. No entitlement request or app submission was made.
+- Official sources: https://developer.apple.com/carplay/ ; https://developer.apple.com/documentation/bundleresources/entitlements/com.apple.developer.carplay-voice-based-conversation
+
+### Resulting integration priorities
+1. BMW CarData read-only personal integration is the strongest official, potentially free path; remote vehicle commands remain unsupported.
+2. Instagram is conditional on Professional account + linked Page + Meta App Review.
+3. Blink can potentially provide EU-authorized event/settings exports, but not live video through the reviewed third-party transfer API.
+4. Dreame remains blocked pending official API confirmation.
+5. WhatsApp Cloud API conflicts with €0 and personal-account access requirements; no unofficial workaround.
+6. CarPlay voice-based conversation is technically possible subject to Apple's entitlement and native app acceptance.
+
+No third-party integration was connected, no credentials were requested, no data was transferred, no message was sent, and no device was controlled during this research.
