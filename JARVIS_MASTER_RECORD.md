@@ -986,3 +986,17 @@ The available Supabase connector cannot inspect or set Edge Function secrets. Do
 - Corrected the implementation to use the whitespace matcher `/\\s+/g`, preserving the intended stable fingerprint behavior.
 - Observer Validation #107 passed on the same pre-fix head. The corrective commit is `668125a078db63edd7f21b1150476593728187bd`; a new exact-head CI run is required before declaring this fix validated.
 - PR #12 was confirmed mergeable again and remains open/Ready for Review. It is 120 commits ahead of its base and zero commits behind; no merge or production promotion was performed.
+
+
+## 2026-11-13 — exact-head CI diagnosis and CFO reporting-period correction
+
+- Exact-head CI #898 completed with failure after typecheck, production build, unit tests, lint, provider privacy tests, semantic-memory policy tests, Edge Function type-check and speech tests all passed.
+- Failure was environmental during isolated Supabase startup: Docker could not bind Inbucket's default host port `54324` because it was already in use. The migrations had begun applying; subsequent isolated SQL, two-user API and cloud CORS steps were skipped. This is not evidence of an application or migration assertion failure.
+- Observer Validation #109 passed on commit `8be3eba8bb871a5029f0c58592d47b1af64f2ee2`.
+- Fixed CI startup to exclude the unused Inbucket service (`supabase start --exclude inbucket`) in commit `98b02aead64e956d352615419a11355a1016f3db`. A new exact-head run is required; do not mark the integration suite green yet.
+- Found and corrected a Family CFO edge case: the cash-flow report previously counted two excluded transfer legs whenever the debit leg was in-period, even if the credit leg was outside the period; it also reported zero when only the credit leg was in-period. The count now measures each matched transfer leg actually within the requested period.
+- Added synthetic regression assertions for both cross-period directions. Implementation commit `b0e2d01ad449aae7c9a62bac453322e7b830c83d`; test commit `4a2ec51f1735c9b4f9cf8ab9accc4056e2355259`. These changes still require fresh exact-head CI.
+- Current canonical PR #12 head after the CI workflow correction: `98b02aead64e956d352615419a11355a1016f3db`; PR remains OPEN, unmerged and mergeable at last check. The subsequent CFO/test commits precede this workflow commit in branch history.
+- Read-only platform check: Supabase project `Jarvis` remains ACTIVE_HEALTHY in `eu-west-3`; Production `jarvis-api` v32 and Preview `jarvis-preview-api` v23 remain unchanged. Migrations list includes provider preferences migrations `20261113125425` and `20261113125437`.
+- Vercel currently reports a READY Preview for commit `668125a078db63edd7f21b1150476593728187bd`; this predates the latest CFO edge-case and CI workflow changes. It is not evidence that those newest changes are deployed.
+- No production deployment, provider activation, credentials/secrets change, billing change, authentication change, real bank import, or financial transaction occurred.
