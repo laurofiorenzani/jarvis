@@ -988,3 +988,28 @@ The available Supabase connector cannot inspect or set Edge Function secrets. Do
 - Deployed `jarvis-preview-api` successfully as ACTIVE version 23. Production `jarvis-api` remains v32 and was not touched. No migration, auth/account update, secret change, provider inference or billing change was performed.
 - This fixes the known module-export mismatch at source/package level. End-to-end boot and health still require a fresh request to the Preview function; no successful runtime request after v23 has yet been observed in logs at the time of this entry.
 - Follow-up: owner should refresh the same Vercel Preview URL and sign in with the existing account. Inspect Supabase `function_logs` and `function_edge_logs` for v23 boot/runtime results before proceeding to chat/memory/model tests.
+
+
+## 2026-11-13 — provider preferences migration and follow-up validation (12:55 UTC)
+
+### Owner authorization and schema change
+- The owner explicitly authorized continuation and the requested shared-schema migration in this session.
+- Applied the exact additive migration from PR #13 as 20261113125425_jarvis_provider_preferences.
+- Created public.jarvis_provider_preferences with one row per existing Auth user, both provider pools disabled by default, explicit policy-version/acceptance fields, and a foreign key to auth.users.
+- RLS is enabled. Authenticated users can SELECT only their own row. anon has no SELECT; authenticated has no INSERT. The Edge Function service role remains the only writer.
+- The table currently has 0 rows; no account consent has been granted and no provider pool was enabled. Existing users, sessions, conversations and memory were not modified.
+- Applied a second performance-only policy refinement as 20261113125437_provider_preferences_rls_initplan, changing the policy predicate to (select auth.uid()) = user_id to avoid per-row auth function re-evaluation.
+- SQL verification confirms RLS enabled, the expected ownership predicate, anon SELECT=false, authenticated SELECT=true, authenticated INSERT=false, and zero rows. Security advisor no longer reports the new table; existing unrelated warnings remain for leaked-password protection and service-role-only rate-limit table RLS policy.
+
+### Voice and cloud diagnostics
+- The supplied iPhone screenshots show two distinct states: the login UI reported a generic cloud-service error, while the later diagnostics panel showed Cloud Account Connected but zero accepted wake events, three transcription failures and no audio handed to the OS.
+- Supabase logs around 12:49:50 UTC showed the preview provider-status endpoint returning HTTP 200 and provider-preferences returning HTTP 503 because the table was absent. The schema migration removes that specific database prerequisite failure; an authenticated browser request is still needed to verify the endpoint now returns HTTP 200.
+- Cloudflare account inventory confirms one account and zero Workers scripts. No Worker was created. This does not prove whether the Cloudflare account/API token values are configured as Supabase Edge Function secrets; secret values were not read.
+- Cloud STT configuration and the iPhone authenticated speech-session lifecycle remain unverified. No audio, transcript or personal prompt was sent to a model provider.
+
+### Deployment and release controls
+- Supabase jarvis-preview-api remains ACTIVE v23; production jarvis-api remains v32. No production function deployment occurred.
+- PR #13 remains OPEN/DRAFT and unmerged. Current PR head observed before this ledger update: fc2a9b7c437d65e40e35a44cb6ee01b0e9a290c8.
+- GitHub combined status for that head reports Vercel failure with the Hobby free-plan build-rate-limit URL. No paid upgrade or billing change was made.
+- Migration is now applied to the shared database, so the next validation must exercise the Preview endpoint and two-account read isolation. Provider consent remains default-off; do not create preferences rows or enable pools without each account holder's separate consent.
+- Next steps: inspect current PR head CI after the ledger commit; make an authenticated Preview GET /provider-preferences and test each existing account sees only its own row; verify the iPhone Cloud Access bootstrap; inspect STT logs/configuration without reading secret values; keep Production v32 untouched until exact-head CI and device E2E pass.
