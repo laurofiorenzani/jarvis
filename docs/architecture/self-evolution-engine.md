@@ -84,7 +84,7 @@ Signals → Observer → Triage → Improvement proposal
 - [x] Extend observation to latest repository CI status using a read-only GitHub Actions token; only run number/status/time are emitted, never workflow payloads.
 - [x] Add a public canonical Preview API health check alongside production API and PWA checks; require the expected JSON health contract and fail closed on redirects, malformed payloads, timeouts or non-success responses.
 - [x] Trigger read-only observation on canonical development-branch pushes so the active development line is checked before promotion.
-- [ ] Extend observation to Vercel deployment metadata using read-only permissions and bounded, non-sensitive fields.
+- [x] Observe the latest canonical Vercel deployment status through the GitHub commit-status API with `statuses: read`; emit only normalized status and observation time, never deployment URLs, payloads or credentials.
 - [ ] Persist sanitized snapshots and incident records only after retention, access and RLS policies are implemented and reviewed.
 
 The workflow runs on branch pushes and can be manually dispatched. Its scheduled checks become active only after the workflow is merged into the default branch. It performs HTTP availability checks only; it does not collect logs, request bodies, private messages, credentials or account data.
