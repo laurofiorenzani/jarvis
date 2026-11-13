@@ -37,7 +37,7 @@ export const usingBridge = BACKEND === 'bridge'
  *  needs the browser to thread the transcript history through each request. */
 export async function ask(
   prompt: string,
-  history: Msg[],
+  _history: Msg[],
   handlers: AskHandlers,
 ): Promise<{ text: string; tools: string[] }> {
   if (activeCloudBrain) return activeCloudBrain.ask(prompt, history, handlers)
