@@ -1321,3 +1321,52 @@ The canonical branch has three additional documentation-only ledger commits afte
 The three commits after f217 on canonical are ledger-only updates to `JARVIS_MASTER_RECORD.md`; no source-code changes were introduced by them. The divergence is therefore documentation/ancestry drift, not proof of code conflict. Do not force-push or reconstruct full branch trees. Before any merge, inspect the actual PR mergeability/diff and ensure the current canonical ledger remains intact. Exact-head CI remains the merge gate; review remains human-owned.
 
 Latest verified CI at this checkpoint: PR #27 #961 success; PR #22 #959 success; PR #25 #955 and Observer #144 success; PR #23 #966 in progress; PR #26 #971 pending. Canonical CI #970 and Observer #146 were in progress at the prior check. No merge or production change is authorized by this status note.
+
+
+## 2026-11-13 — verified multi-front handoff (late session)
+
+### Canonical development and repository continuity
+- Canonical development branch: `work/jarvis-canonical-integration`, verified head `86d171b3e869bee138795342963995adaa302b93`. No merge to `main` or production deployment was performed.
+- `laurofiorenzani/jarvis` is the active implementation repository. Its default `main` branch is not the current canonical integration target; the GitHub compare currently reports 606 commits ahead / 3 behind from canonical to main, so do not merge or force-reconcile this history without a separate review.
+- `laurofiorenzani/jarvis-personal-cloud` is a separate private, older planning/documentation workspace (last pushed 2026-11-10). Its documents describe an earlier local-first plan and an earlier scope; current project instructions are cloud-first. It was read for continuity only and was not changed, deleted or archived. Decide later whether to migrate any still-relevant documents into the active repo and archive it; do not destroy it without approval.
+- Keep `JARVIS_MASTER_RECORD.md` as the single active project ledger. Other handoff/status files named in the project instructions were not found in the active repo tree during this pass; do not create duplicate ledgers until their intended canonical location is agreed.
+
+### Completed / merged into canonical development
+- PR #17 STT daily-quota classifier: merged; exact-head CI #926 and canonical CI #928 passed; Observer #139 passed.
+- PR #18 applied-migration source provenance: merged; exact-head CI #929 passed. It restored only the source file for an already-applied migration; no live migration was run.
+- PR #19 private FreeLLMAPI reverse proxy with named-profile allowlist: merged as `36d4fa7d1491e44c5f97a0bab9800858def45815`; exact-head CI #934 passed. The gateway package is source-only; no host, tunnel, secret, provider key or inference was deployed.
+- PR #16 is closed as superseded by PR #17.
+
+### Current open PRs — exact heads and validation
+- PR #23 provider preferences / privacy pools / FreeLLMAPI integration: READY FOR REVIEW, not merged. Head `2e9f3de2ddc0cdf46464e3f385aff97e5e54fbc3`, base canonical `86d171b3e869bee138795342963995adaa302b93`. Exact-head CI #982 passed, including build/typecheck, tests, lint, Deno, provider privacy, isolated Supabase migrations, SQL isolation, two-user provider-preference integration and CORS. Added bounded, sanitized diagnostics for configured provider/profile, downstream route (when returned by gateway) and fallback-attempt count in the Diagnostics panel. No prompts, credentials or raw fallback trail are exposed.
+- PR #23 remaining release gates: both provider pools remain default-off; live provider-preferences row count is zero; no provider secret was read and no inference request was sent. A concrete named FreeLLMAPI fallback profile still needs a documented provider manifest proving free quota/reset, no payment method, no overage/paid fallback, Ireland/EEA eligibility, personal-use terms, retention/training and processing region. Physical iPhone PT-BR/English STT → model → audible TTS E2E is not complete. Vercel Hobby 100-deployments/day limit remains; no paid upgrade.
+- PR #26 action-approval primitives: READY FOR REVIEW, not merged. Head `59e454969cf3f2875b18ee50dfea48b98c9e3425`, base canonical `86d171b3e869bee138795342963995adaa302b93`. Exact-head CI #979 passed. Pure foundation only: risk classification, canonical JSON/SHA-256 argument digest, 64 KiB argument bound, digest-only envelope, max 10-minute TTL and user/session/invocation/capability/digest binding. It does not persist approvals, perform atomic database transitions, expose approval UI or execute external actions.
+- PR #27 CFO transfer pairing: READY FOR REVIEW, not merged. Head `4c31dc2032b4217a887f483b3ec943e1647fbbe0`, base canonical `86d171b3e869bee138795342963995adaa302b93`. Exact-head CI #987 passed. Cash-flow exclusion now requires a shared `internalTransferPairId` explicitly assigned after user review, plus a unique one-to-one match and owner/currency/account/amount/date/confidence checks. Amount/date/confidence heuristics alone never exclude records; unpaired records remain in totals. Pure calculations/tests only; no financial records accessed.
+- PR #22 Family CFO read-only persistence: remains DRAFT, not merged. Head `c3d3edc2ed91f88994cb93bb6acc7843f09992c0`, base canonical `86d171b3e869bee138795342963995adaa302b93`. Exact-head CI #984 passed, including isolated migration reset, SQL RLS/isolation, two-user integration and CORS. No live migration or personal financial data was used. Explicit reviewed transfer-pair IDs are in the proposed schema. Merge is blocked pending a currency precision decision: `NUMERIC(20,2)` plus a three-letter regex is not ISO-4217 validation and does not support 0-/3-decimal currencies. Decide either a documented two-decimal v1 allowlist or currency-specific minor-unit support; clarify account vs original merchant currency for FX/card purchases.
+- PR #25 Preview read-only observer: remains DRAFT. Current head `431cb78a31e439f94a048754b3a8d9ae5195c730`, base canonical `86d171b3e869bee138795342963995adaa302b93`. Latest final-head CI #993 and Observer Validation #155 were cancelled before completing; earlier CI #977 and Observer #149 passed on a prior head only. Latest source now validates Production and Preview health JSON `status: ok`, scopes CI metadata to canonical push runs, and adds a static test for read-only permissions/GET-only bounded health checks. Do not mark ready or merge until a fresh exact-head CI and Observer Validation complete.
+- PR #13 remains OPEN/Draft and divergent; its provider integration work has been selectively ported into PR #23 and its private proxy into PR #19. Do not close until PR #23 has human review/merge and a final changed-file reconciliation. Exclude its duplicate migration `20261113110000_jarvis_provider_preferences.sql`.
+
+### Live platform verification — read-only
+- Supabase `Jarvis`: ACTIVE_HEALTHY in `eu-west-3` (Paris), PostgreSQL 17.11.0.018. `jarvis_provider_preferences` row count remains 0; migration history contains `20261113125425` and `20261113125437`. Production `jarvis-api` remains ACTIVE v32; Preview `jarvis-preview-api` remains ACTIVE v23.
+- Supabase security advisor: `jarvis_rate_limits` INFO finding is intentional under current service_role-only grants/RPC execution; no public policy added. Auth leaked-password protection remains disabled (WARN); not changed because it is a security-setting decision. Eighteen unused-index INFO findings remain; no index removed.
+- Cloudflare API inventory: zero Worker scripts and zero AI Gateway gateways; AI Gateway credit balance 0; no default payment method; automatic top-up threshold/amount 0. Account plan / Workers AI paid-tier entitlement remains unverified. No worker, gateway, tunnel, secret, paid plan or provider inference was created.
+- Vercel Preview is constrained by the Hobby 100-deployments/day limit. No paid upgrade or quota bypass.
+- No production Edge Function, Vercel alias, database schema/data, auth setting, provider secret, provider preference, billing setting or user data was changed in this pass.
+
+### Native iOS, integrations and Family CFO readiness
+- No native Swift/Xcode or Capacitor iOS project, signed IPA, TestFlight build or physical-device E2E exists. The remembered hardware status is that the user has no personal Mac mini/macOS build host; only a company Windows laptop was available in earlier project context. Do not claim local Xcode capability or use the company laptop as a 24/7 server. Any macOS CI/build route must be verified for zero recurring cost before use.
+- BMW, Blink, Dreame, WhatsApp, Instagram, Maps/CarPlay and bank connectors remain unimplemented or feasibility-only; no vendor action is claimed.
+- Family CFO has synthetic-first pure calculation functions and proposed read-only schema only. No CFO tables are live, no bank import/connector is active, and no household balances or transactions were read.
+- Observer remains read-only; no autonomous production self-modification or deployment.
+
+### Human decisions / next gates
+1. Review PR #23 and PR #26; do not self-approve or merge.
+2. Resolve PR #22 currency precision/ISO-4217 contract before the Family CFO schema is approved.
+3. Complete a fresh exact-head CI + Observer Validation for PR #25; keep it Draft until both pass.
+4. Review PR #27 explicit transfer-pair logic before merging.
+5. Decide whether to consolidate the private historical planning repo into the active implementation repo; preserve it until approved.
+6. Decide whether to enable Supabase leaked-password protection; no auth security setting is changed without approval.
+7. Do not enable any provider pool until the provider manifest and per-account consent are complete; no paid fallback or recurring spend.
+8. Continue native iOS only with a verified zero-recurring build/signing path; no App Store/paid developer subscription is authorized.
+
+No new PRs were merged, no live migrations were run, and no production deployment occurred in this handoff.
