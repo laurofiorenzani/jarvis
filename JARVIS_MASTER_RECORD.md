@@ -1606,3 +1606,42 @@ G. **User action/blockers:** no immediate action required. Vercel Hobby limits, 
 H. **Next actions:** (1) check CI #1006 final status and logs; (2) update this ledger with final conclusion; (3) continue PR #25 source and exact-head validation; (4) review production/Preview route and provider-policy parity; (5) refine CFO v1 currency allowlist/registry design without applying migrations; (6) continue action approval persistence design in an isolated branch only after current code/PR tree is reviewed.
 I. **GitHub:** repo `laurofiorenzani/jarvis`; canonical branch `work/jarvis-canonical-integration`; latest ledger update commit to be recorded by GitHub response; PR #12 canonical candidate, PR #22 CFO schema Draft, PR #23 provider consent, PR #25 Observer Draft, PR #26 action approval, PR #27 transfer matching, PR #28 secure storage, PR #29 currency contract Draft.
 J. **Next conversation message:** “Continue JARVIS from the latest `JARVIS_MASTER_RECORD.md` on `work/jarvis-canonical-integration`. First check canonical CI #1006 (`43474640259`) final status and Observer #165; PR #29 CI #1004 is SUCCESS. Continue in parallel with PR #25 exact-head Observer validation, production/Preview provider-policy parity, CFO currency/FX contract, and action-approval persistence design. Preserve €0 recurring cost, do not activate providers, apply migrations, merge PRs in bulk, alter production or change accounts. Update this same master record with evidence and a complete handoff.”
+
+
+## 2026-11-13 — continuation / CI root-cause and parallel review
+
+### Exact evidence and corrections
+- Canonical development branch remains `work/jarvis-canonical-integration`; latest observed Vercel Preview record is for commit `d2d96473834c45e01b74a427425806c79dede89c`. Vercel records are `READY` Preview deployments (target=null), not Production promotions.
+- CI run `43474640259` / run #1006 was **CANCELLED**, but its job log shows checkout of PR #12's synthetic merge ref `refs/remotes/pull/12/merge` at `23a8503780268bdc04dd3c6c983a775d045b2aab`; it was not a canonical branch push validation. Initial build, tests, lint, provider privacy, semantic-memory policy, Edge Function typecheck and speech tests passed. Local Supabase startup then failed repeatedly with Docker registry `Rate exceeded`, after which the operation was cancelled. The log also shows `--exclude inbucket` is obsolete; current Supabase CLI lists `mailpit` as the valid container name. Database reset, SQL isolation, two-user API integration and cloud/Preview CORS checks were skipped. Do not label this run a canonical CI pass.
+- Exact-head lookup for PR #25 head `725e1bbdf7ef8a68b34f9f3c7a7c6b960bd47a5b` returned no workflow runs. Its current workflow source contains the canonical branch/event filter, strict JSON health payload check (`payload.status === 'ok'`), Preview health check, and Vercel context selection limited to `context === 'Vercel'`. Source review is positive; exact-head CI/Observer validation remains unproven. Keep Draft.
+- PR #29 remains Draft/design-only, head `adf66467070e2fe24b1837b36880ff553ce67af3`; CI #1004 previously passed fully. Current PR metadata reports mergeable=false; do not merge.
+- PR #23 remains open/non-mergeable, head `2e9f3de2ddc0cdf46464e3f385aff97e5e54fbc3`. It documents that both provider pools are default-off, provider preferences table has zero rows, and downstream FreeLLMAPI terms/free quota/EEA/retention/no-overage remain unverified. No inference or provider activation.
+- PR #26 remains open/non-mergeable, head `59e454969cf3f2875b18ee50dfea48b98c9e3425`; domain approval primitives only, no persistence, UI or external execution.
+- Family CFO contract remains design-only. It explicitly requires source-backed exact currency, provenance-rich FX, separate account consent and bilateral household sharing; no financial schema/data imports are live.
+- Supabase recheck: project ACTIVE_HEALTHY; `jarvis-api` ACTIVE v32 and `jarvis-preview-api` ACTIVE v23; live migrations still end at `20261113125437_provider_preferences_rls_initplan`. Security advisor: INFO `public.jarvis_rate_limits` RLS enabled with no policies; WARN leaked-password protection disabled. No auth/security change made.
+
+### Work performed this continuation
+- Re-read canonical master ledger, current PR #25 source workflows and observer normalizer, canonical CI workflow, PR #22/#23/#26/#29 metadata, Family CFO data contract, Supabase functions/migrations/security advisor and Vercel Preview history.
+- Retrieved CI #1006 job logs and identified Docker registry rate limiting as the immediate Supabase-start blocker plus an obsolete exclusion name (`inbucket` vs `mailpit`).
+- No source code or workflow changed; no PR merged; no live migration/data/auth/secret/provider/billing/deployment change; no inference.
+
+### Next actions
+1. Fix the obsolete Supabase CLI exclusion in an isolated branch (`mailpit`, not `inbucket`) and assess a bounded retry/backoff strategy for Docker registry rate limits without adding paid services or weakening the test gate.
+2. Obtain an exact-head CI/Observer run for PR #25 head `725e1bb...`; do not reuse older successful SHA results.
+3. Continue source-level production v32 vs Preview v23 parity matrix; do not deploy Preview code to production.
+4. Continue provider downstream attestation/zero-billing/privacy verification; pools stay disabled.
+5. Continue CFO ISO 4217 exponent/FX review and PR #22 schema review; no live migration.
+6. Keep Vercel Hobby deployment rate limit respected; no deployment spam or paid upgrade.
+7. Update this same ledger with every new verified result and complete handoff.
+
+### Session handoff — continuation
+A. **State:** JARVIS active development, not production-ready.
+B. **Completed:** CI #1006 root cause identified from raw logs; PR #25 workflow source re-reviewed; Supabase migrations/functions/security advisor and Vercel Preview state rechecked; CFO/provider/action approval PRs refreshed.
+C. **In progress:** isolated CI workflow remediation, exact-head Observer validation, production/Preview parity, provider attestation, CFO currency contract.
+D. **Evidence:** CI #1006 cancelled on PR #12 merge ref; Docker registry Rate exceeded; initial code checks passed, DB and CORS steps skipped. PR #29 CI #1004 previously SUCCESS. PR #25 exact-head run lookup empty. Supabase ACTIVE_HEALTHY; production v32/Preview v23; no CFO migration. Vercel recent records Preview-only.
+E. **Decisions:** preserve €0 recurring cost; do not activate providers, apply CFO migrations, merge PRs in bulk, change production/auth/secrets/billing, or promote Preview.
+F. **Pending:** Self-Evolution—fix CLI exclusion and registry retry resilience; Cloud Brain—parity matrix; Multi-AI—downstream verification; CFO—currency/FX and schema; iOS/integrations—continue source/feasibility work without assuming capability.
+G. **User action:** none required now; no paid upgrades or credentials requested.
+H. **Next:** create isolated CI fix branch from current canonical head; update workflow; validate exact PR head; then continue independent source reviews.
+I. **GitHub:** `laurofiorenzani/jarvis`; canonical `work/jarvis-canonical-integration`; ledger base blob SHA `8415234235304068e3300ce62f34c7169bdee3e5`; PRs #22–#29 remain open per above.
+J. **Next conversation:** “Continue JARVIS from the latest JARVIS_MASTER_RECORD.md. CI #1006 was cancelled on PR #12 merge ref due Docker registry Rate exceeded; it was not canonical CI. Fix obsolete Supabase exclusion in an isolated branch and evaluate bounded retries; secure exact-head validation for PR #25. Continue Cloud Brain parity, provider attestation, CFO currency/FX and action approval in parallel. Preserve €0 recurring cost and all production/data/provider safety gates.”
