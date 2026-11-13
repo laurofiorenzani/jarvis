@@ -126,6 +126,8 @@ function configuredProviders(secretName = 'JARVIS_MODEL_PROVIDERS'): Provider[] 
     if (secretName === 'JARVIS_MODEL_PROVIDERS' && item.privacyMode !== 'zdr') continue
     if (gateway === 'freellmapi' &&
         (secretName !== 'JARVIS_MODEL_PROVIDERS_STANDARD' || !isFreeLlmApiModel(item.model))) continue
+    // The standard-consent pool is exclusively the FreeLLMAPI gateway; never allow direct providers here.
+    if (secretName === 'JARVIS_MODEL_PROVIDERS_STANDARD' && !isAllowedStandardProvider(gateway)) continue
     if (secretName === 'JARVIS_MODEL_PROVIDERS_STANDARD' && item.privacyMode === 'zdr') continue
     let url: URL
     try { url = new URL(item.baseUrl) } catch { continue }
