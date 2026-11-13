@@ -36,7 +36,8 @@ jobs:
               signal: controller.signal,
               redirect: 'error',
             });
-            const healthy = response.ok;
+            const payload = response.ok ? await response.json().catch(() => null) : null;
+            const healthy = response.ok && payload?.status === 'ok';
             console.log(JSON.stringify({
               signal: 'production_api_http',
               status: response.status,
@@ -114,7 +115,8 @@ jobs:
           GH_REPOSITORY: ${{ github.repository }}
         run: |
           node --input-type=module <<'NODE'
-          const endpoint = `${process.env.GH_API_URL}/repos/${process.env.GH_REPOSITORY}/actions/workflows/ci.yml/runs?per_page=1`;
+          const canonicalBranch = encodeURIComponent('work/jarvis-canonical-integration');
+          const endpoint = `${process.env.GH_API_URL}/repos/${process.env.GH_REPOSITORY}/actions/workflows/ci.yml/runs?branch=${canonicalBranch}&event=push&per_page=1`;
           const controller = new AbortController();
           const timer = setTimeout(() => controller.abort(), 10000);
           try {
