@@ -21,8 +21,12 @@ type ProviderConfig = {
   tier: 'free'
   billingMode: 'free_quota_only'
   apiKeyEnv?: string
-  /** Enforce OpenRouter Zero Data Retention endpoints when privacy matters. */
+  /** Enforce OpenRouter/Cloudflare zero-retention endpoints when required. */
   privacyMode?: 'zdr'
+  /** FreeLLMAPI is a self-hosted multi-provider gateway, not an individual model host. */
+  gateway?: 'freellmapi'
+  /** FreeLLMAPI routing hint; it still enforces its configured fallback chain and quotas. */
+  taskType?: 'auto' | 'chat' | 'code'
 }
 
 type Provider = ProviderConfig & { apiKey?: string }
@@ -94,8 +98,12 @@ export function assertZdrProviderConfig(
   }
 }
 
-function configuredProviders(): Provider[] {
-  const raw = Deno.env.get('JARVIS_MODEL_PROVIDERS')?.trim()
+export function isAllowedStandardProvider(gateway: unknown): boolean {
+  return gateway === 'freellmapi'
+}
+
+function configuredProviders(secretName = 'JARVIS_MODEL_PROVIDERS'): Provider[] {
+  const raw = Deno.env.get(secretName)?.trim()
   if (!raw) return []
   let parsed: unknown
   try { parsed = JSON.parse(raw) } catch {
@@ -109,6 +117,16 @@ function configuredProviders(): Provider[] {
     if (!isRecord(item) || typeof item.name !== 'string' ||
         typeof item.baseUrl !== 'string' || typeof item.model !== 'string' ||
         item.tier !== 'free' || item.billingMode !== 'free_quota_only') continue
+    if (item.gateway !== undefined && item.gateway !== 'freellmapi') continue
+    if (item.taskType !== undefined && !['auto', 'chat', 'code'].includes(String(item.taskType))) continue
+    const gateway = item.gateway === 'freellmapi' ? 'freellmapi' : undefined
+    const taskType = item.taskType === 'chat' || item.taskType === 'code' ? item.taskType : 'auto'
+    // Keep the default pool strict: only explicitly ZDR providers are accepted.
+    // Standard-retention gateways/providers must use the separately consented pool.
+    if (secretName === 'JARVIS_MODEL_PROVIDERS' && item.privacyMode !== 'zdr') continue
+    if (gateway === 'freellmapi' &&
+        (secretName !== 'JARVIS_MODEL_PROVIDERS_STANDARD' || !isFreeLlmApiModel(item.model))) continue
+    if (secretName === 'JARVIS_MODEL_PROVIDERS_STANDARD' && item.privacyMode === 'zdr') continue
     let url: URL
     try { url = new URL(item.baseUrl) } catch { continue }
     // Secrets are server-side only. Reject non-HTTPS endpoints and URL-embedded
@@ -120,6 +138,10 @@ function configuredProviders(): Provider[] {
     assertProviderPrivacyMode(url.hostname, item.privacyMode === 'zdr' ? 'zdr' : undefined)
     const apiKeyEnv = typeof item.apiKeyEnv === 'string' ? item.apiKeyEnv : undefined
     const apiKey = apiKeyEnv ? Deno.env.get(apiKeyEnv)?.trim() : undefined
+    // FreeLLMAPI can route to many independently operated providers. It must
+    // stay in the standard-privacy pool unless its active chain is independently
+    // proven to contain only approved ZDR providers (not assumed from its API).
+    if (gateway === 'freellmapi' && (item.privacyMode === 'zdr' || !apiKeyEnv || !apiKey)) continue
     if (item.privacyMode === 'zdr') {
       // Do not skip an invalid ZDR entry and fall back to a standard provider.
       assertZdrProviderConfig(url.hostname, apiKeyEnv, apiKey, url.pathname)
@@ -134,6 +156,8 @@ function configuredProviders(): Provider[] {
       ...(apiKeyEnv ? { apiKeyEnv } : {}),
       ...(apiKey ? { apiKey } : {}),
       ...(item.privacyMode === 'zdr' ? { privacyMode: 'zdr' as const } : {}),
+      ...(gateway ? { gateway } : {}),
+      ...(gateway ? { taskType } : {}),
     })
   }
   assertConsistentProviderPrivacy(providers)
@@ -144,10 +168,15 @@ function configuredProviders(): Provider[] {
 /** Exposes only safe provider identity metadata for the client-side fail-closed activation check. */
 export function getFreeProviderStatus(): {
   configured: boolean
-  providers: { name: string; model: string; providerType: string; privacyMode: 'zdr' | 'standard' }[]
+  providers: { name: string; model: string; providerType: string; privacyMode: 'zdr' | 'standard'; pool: 'default' | 'standard' }[]
   speechProvider: 'cloudflare-whisper' | 'unconfigured'
 } {
-  const providers = configuredProviders()
+  const defaultProviders = configuredProviders('JARVIS_MODEL_PROVIDERS')
+  const standardProviders = configuredProviders('JARVIS_MODEL_PROVIDERS_STANDARD')
+  const providers = [
+    ...defaultProviders.map((provider) => ({ ...provider, pool: 'default' as const })),
+    ...standardProviders.map((provider) => ({ ...provider, pool: 'standard' as const })),
+  ]
   const accountId = Deno.env.get('CLOUDFLARE_ACCOUNT_ID')?.trim()
   const apiToken = Deno.env.get('CLOUDFLARE_API_TOKEN')?.trim()
   const speechProvider = /^[a-f0-9]{32}$/i.test(accountId ?? '') && apiToken
@@ -155,11 +184,14 @@ export function getFreeProviderStatus(): {
     : 'unconfigured'
   return {
     configured: providers.length > 0,
-    providers: providers.map(({ name, model, baseUrl, privacyMode }) => ({
+    providers: providers.map(({ name, model, baseUrl, privacyMode, gateway, pool }) => ({
       name,
       model,
-      providerType: new URL(baseUrl).hostname === 'api.cloudflare.com' ? 'cloudflare-workers-ai' : 'other',
+      providerType: gateway === 'freellmapi'
+        ? 'freellmapi'
+        : new URL(baseUrl).hostname === 'api.cloudflare.com' ? 'cloudflare-workers-ai' : 'other',
       privacyMode: privacyMode ?? 'standard',
+      pool,
     })),
     speechProvider,
   }
@@ -211,11 +243,66 @@ export function toChatCompletionsUrl(baseUrl: string): string {
  * Returns a normalized SSE response whose data frames use the minimal
  * Anthropic-compatible content_block_delta shape consumed by jarvis-api.
  */
+export type ModelProviderPool = 'default' | 'standard'
+export type FreeLlmApiTaskType = 'auto' | 'chat' | 'code'
+
+export type ProviderRouteDiagnostics = {
+  provider: string
+  model: string
+  routedVia?: string
+  fallbackAttempts: number
+}
+
+function safeRouteLabel(value: string | null | undefined, maxLength: number): string | undefined {
+  if (!value) return undefined
+  const raw = value.trim()
+  if (!raw || raw.length > maxLength || /[\u0000-\u001f\u007f]/.test(raw) ||
+      /bearer|sk-|AIza/i.test(raw)) return undefined
+  const normalized = raw.replace(/\s+/g, '-')
+  if (!/^[@A-Za-z0-9][A-Za-z0-9._:@/-]*$/.test(normalized)) return undefined
+  return normalized
+}
+
+export function buildProviderRouteDiagnostics(
+  provider: { name: string; model: string },
+  upstream: Response,
+): ProviderRouteDiagnostics {
+  const rawAttempts = upstream.headers.get('x-fallback-attempts') ?? '0'
+  const parsedAttempts = /^\d{1,2}$/.test(rawAttempts) ? Number(rawAttempts) : 0
+  const diagnostics: ProviderRouteDiagnostics = {
+    provider: safeRouteLabel(provider.name, 80) ?? 'unknown',
+    model: safeRouteLabel(provider.model, 120) ?? 'unknown',
+    fallbackAttempts: Math.min(parsedAttempts, 20),
+  }
+  const routedVia = safeRouteLabel(upstream.headers.get('x-routed-via'), 120)
+  if (routedVia) diagnostics.routedVia = routedVia
+  return diagnostics
+}
+
+
+export function isFreeLlmApiModel(model: string): boolean {
+  return /^auto:[a-z0-9][a-z0-9_-]{0,39}$/i.test(model.trim())
+}
+
+export function freeLlmApiTaskHeaders(taskType: FreeLlmApiTaskType = 'auto'): Record<string, string> {
+  return { 'X-FreeLLM-Task-Type': taskType }
+}
+
+export function classifyFreeLlmTask(text: string): FreeLlmApiTaskType {
+  if (/(?:\b(?:code|coding|program|programming|script|function|typescript|javascript|python|sql|debug|stack trace|compile|commit|pull request|repository|git|npm|api)\b|c[oó]digo|programa[cç][aã]o|depurar|reposit[oó]rio)/i.test(text)) return 'code'
+  if (text.length < 500) return 'chat'
+  return 'auto'
+}
+
 export async function startFreeModelStream(
   messages: ChatMessage[],
   signal: AbortSignal,
-): Promise<{ response: Response; provider: string }> {
-  const providers = configuredProviders()
+  options: { pool?: ModelProviderPool; taskType?: FreeLlmApiTaskType } = {},
+): Promise<{ response: Response; provider: string; diagnostics: ProviderRouteDiagnostics }> {
+  const secretName = options.pool === 'standard'
+    ? 'JARVIS_MODEL_PROVIDERS_STANDARD'
+    : 'JARVIS_MODEL_PROVIDERS'
+  const providers = configuredProviders(secretName)
   if (!providers.length) throw new ProviderUnavailableError()
 
   let lastFailure: unknown
@@ -232,6 +319,9 @@ export async function startFreeModelStream(
           'Content-Type': 'application/json',
           Accept: 'text/event-stream',
           ...(provider.apiKey ? { Authorization: 'Bearer ' + provider.apiKey } : {}),
+          ...(provider.gateway === 'freellmapi'
+            ? freeLlmApiTaskHeaders(options.taskType ?? provider.taskType ?? 'auto')
+            : {}),
         },
         body: JSON.stringify({
           model: provider.model,
@@ -374,6 +464,7 @@ export async function startFreeModelStream(
     })
     return {
       provider: provider.name,
+      diagnostics: buildProviderRouteDiagnostics(provider, upstream),
       response: new Response(normalized, {
         status: 200,
         headers: { 'Content-Type': 'text/event-stream; charset=utf-8', 'Cache-Control': 'no-cache' },

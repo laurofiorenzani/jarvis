@@ -86,7 +86,10 @@ export function createCloudBrain(api: CloudApi) {
         try {
           for await (const event of readCloudAssistantEvents(body)) {
             if (event.conversationId !== id || event.turnId !== turnId) continue
-            if (event.type === 'text.delta') {
+            if (event.type === 'turn.started') {
+              const diagnosticTarget = globalThis as typeof globalThis & { __providerDiagnostics?: unknown }
+              diagnosticTarget.__providerDiagnostics = event.providerDiagnostics ?? null
+            } else if (event.type === 'text.delta') {
               text += event.delta
               handlers.onText(event.delta)
             } else if (event.type === 'tool.started') {

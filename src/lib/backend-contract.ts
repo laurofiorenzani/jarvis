@@ -64,6 +64,14 @@ export type MemoryPreferenceResponse = {
   autoCaptureEnabled: boolean
 }
 
+export type ProviderPreferencesResponse = {
+  version: typeof CLOUD_API_VERSION
+  currentPolicyVersion: string
+  zdrPoolEnabled: boolean
+  standardPoolEnabled: boolean
+  acceptedAt: string | null
+}
+
 
 export type SemanticMemoryCandidate = {
   id: string
@@ -140,12 +148,20 @@ export type CancelTurnRequest = {
  * a user, conversation and turn on the server; the client must still verify
  * that IDs match the active view before rendering.
  */
+export type ProviderRouteDiagnostics = {
+  provider: string
+  model: string
+  routedVia?: string
+  fallbackAttempts: number
+}
+
 export type CloudAssistantEvent =
   | {
       version: typeof CLOUD_API_VERSION
       type: 'turn.started'
       conversationId: string
       turnId: string
+      providerDiagnostics?: ProviderRouteDiagnostics
     }
   | {
       version: typeof CLOUD_API_VERSION
@@ -269,8 +285,31 @@ export function parseCloudAssistantEvent(input: unknown): CloudAssistantEvent | 
   }
 
   switch (input.type) {
-    case 'turn.started':
-      return { ...base, type: 'turn.started' }
+    case 'turn.started': {
+      if (input.providerDiagnostics === undefined) return { ...base, type: 'turn.started' }
+      if (!isRecord(input.providerDiagnostics)) return null
+      const diagnostics = input.providerDiagnostics
+      const safeLabel = (value: unknown, max: number): value is string =>
+        typeof value === 'string' && value.length > 0 && value.length <= max &&
+        /^[@A-Za-z0-9][A-Za-z0-9._:@/-]*$/.test(value) &&
+        !/bearer|sk-|AIza/i.test(value)
+      if (!safeLabel(diagnostics.provider, 80) ||
+          !safeLabel(diagnostics.model, 120) ||
+          (diagnostics.routedVia !== undefined && !safeLabel(diagnostics.routedVia, 120)) ||
+          !Number.isInteger(diagnostics.fallbackAttempts) ||
+          (diagnostics.fallbackAttempts as number) < 0 ||
+          (diagnostics.fallbackAttempts as number) > 20) return null
+      return {
+        ...base,
+        type: 'turn.started',
+        providerDiagnostics: {
+          provider: diagnostics.provider,
+          model: diagnostics.model,
+          ...(diagnostics.routedVia !== undefined ? { routedVia: diagnostics.routedVia } : {}),
+          fallbackAttempts: diagnostics.fallbackAttempts as number,
+        },
+      }
+    }
     case 'turn.completed':
       if (!isRecord(input.assistantMessage) ||
           !isNonEmptyString(input.assistantMessage.id) ||
