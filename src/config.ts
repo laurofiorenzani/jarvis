@@ -259,9 +259,8 @@ export const MCP_SERVERS: McpServer[] = [
 export const activeServers = () => MCP_SERVERS.filter((s) => s.enabled && s.url)
 
 /**
- * The persona for the browser-direct path only. The bridge carries its own,
- * fuller version in bridge/server.mjs — that's the one that gets used by
- * default, and the one worth editing.
+ * Legacy persona for the removed browser-direct provider path. The active
+ * bridge persona lives in bridge/server.mjs; cloud policy lives server-side.
  */
 export const SYSTEM_PROMPT = `You are JARVIS, Tony Stark's assistant. You are speaking out loud.
 
