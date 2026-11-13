@@ -57,6 +57,9 @@ alter table public.jarvis_cfo_balance_snapshots
 
 alter table public.jarvis_cfo_accounts
   add column currency_registry_version text not null;
+alter table public.jarvis_cfo_accounts
+  add constraint jarvis_cfo_accounts_currency_registry_check
+  check (public.jarvis_cfo_amount_matches_currency_exponent(0, currency, current_date, currency_registry_version));
 
 alter table public.jarvis_cfo_currency_registry enable row level security;
 revoke all on table public.jarvis_cfo_currency_registry from public, anon, authenticated, service_role;
