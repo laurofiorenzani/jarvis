@@ -966,3 +966,15 @@ The available Supabase connector cannot inspect or set Edge Function secrets. Do
 4. Extend Family CFO deterministic calculations (cash flow, transfer pairing, duplicate import fingerprints) using synthetic fixtures only; schema/RLS migration remains gated.
 5. Continue iOS native app preparation; no Xcode build/signing or physical-device validation has been completed in this environment.
 
+
+
+## 2026-11-13 — canonical CI green and CFO deterministic analytics
+
+- Exact canonical PR #12 head `0d0e188eec2b0f3b9791cd4beecdd34dc4cc052b`: CI #894 completed successfully; Observer Validation #105 completed successfully.
+- Continued CFO work on the canonical integration branch with synthetic-only deterministic helpers:
+  - Conservative internal-transfer matching requires posted + confirmed records, same owner/currency, different accounts, exact opposite amount, within three calendar days, and a unique one-to-one candidate. Ambiguous matches are not excluded.
+  - Cash-flow calculation includes confirmed posted transactions in an explicit date range, excludes only matched internal transfers, uses integer minor units, and rejects mixed currencies.
+  - Stable conservative transaction fingerprint normalizes Unicode, whitespace and case while retaining account/date/currency/amount.
+- Added regression tests for transfer pairing, rejection of pending/mismatched transfers, transfer-excluded cash flow, and fingerprint normalization.
+- These latest CFO changes are committed to this branch and require fresh exact-head CI; do not call them validated until CI passes.
+- No schema migration, bank connection, real financial data, external transfer, production deployment, billing or secrets change.
