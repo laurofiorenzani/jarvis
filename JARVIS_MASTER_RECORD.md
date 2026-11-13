@@ -1840,3 +1840,35 @@ G. User action: none immediately. Mac/Xcode and physical iPhone will eventually 
 H. Next: implement CFO schema compatibility in an isolated branch; inspect production/Preview handler route branches and compare auth; review PR #23 fallback-before-dispatch behavior and provider policy evidence.
 I. GitHub: `laurofiorenzani/jarvis`; canonical `work/jarvis-canonical-integration`; PR #31 `work/observer-ci-refresh-20261113`; no merge or deployment.
 J. Next conversation: Continue from this checkpoint. PR #31 exact-head CI #1014 and Observer #172 both SUCCESS; PR remains Draft/non-mergeable. Supabase prod v32 lacks Preview's /provider-preferences route; route parity review required. PR #22 numeric(20,2) conflicts with PR #29 currency exponent registry; no live CFO migration. PR #23 provider pools remain disabled pending per-provider EEA/free-quota/retention/no-overage evidence. Vercel Hobby daily deployment cap reached; do not upgrade/bypass. Continue multitask under €0 recurring cost.
+
+
+## 2026-11-13 — provider-consent integration refresh and live route-parity review
+
+### PR #23 branch integration
+- Rebased the provider-consent code onto current canonical commit `2512258b08ca684fd48206fee274524f8a6f1919` using a two-parent merge commit, preserving the canonical `JARVIS_MASTER_RECORD.md` rather than replacing it with the older PR branch copy.
+- The branch now compares as 3 commits ahead / 0 behind `work/jarvis-canonical-integration`; PR #23 remains OPEN and non-draft. Mergeability is currently true. No merge to main and no production deployment.
+- Updated the FreeLLMAPI standard-pool parser: source review found that helper `isAllowedStandardProvider` was unit-tested but not applied by `configuredProviders`, allowing a standard-pool entry without an explicit gateway. The parser now requires `gateway === 'freellmapi'` for every standard-pool entry. Direct providers cannot enter that pool. Commit `11ac229874b334bf4203daa8314844fdfa037f4c`.
+- Existing model-router test already asserts that only the FreeLLMAPI gateway is accepted by the standard-provider helper. The new parser guard now uses that same tested helper. Exact-head CI remains pending; prior CI #982 was on old head `2e9f3de2ddc0cdf46464e3f385aff97e5e54fbc3` and does not validate the new commit.
+
+### Live Supabase read-only route audit
+- Supabase project `undmhmdwhxvjgvezvucy` is ACTIVE_HEALTHY in `eu-west-3`; database Postgres 17.11.0.018. Production `jarvis-api` is ACTIVE v32; `jarvis-preview-api` is ACTIVE v23. Both have gateway `verify_jwt=false`, but both source handlers validate the bearer token with `auth.getUser` before authenticated routes.
+- Corrected an earlier route-inventory note: production v32 contains both GET and POST `/semantic-memory/candidates`; it does not contain GET/PUT `/provider-preferences`. Preview v23 contains both candidate methods and the provider-preferences GET/PUT routes.
+- Production v32 still contains the Google AI Studio `generativelanguage.googleapis.com` speech path and its automatic-memory path does not check per-account `zdr_pool_enabled`/policy version. Preview v23 uses Cloudflare Whisper and requires the account's separately accepted ZDR pool/policy for automatic memory capture. This is a material production/Preview policy gap; do not describe production as having Preview's provider-consent gate.
+- The PR #23 source adds the account-scoped provider preferences, separate default-ZDR and standard-FreeLLMAPI pools, fail-closed consent, bounded provider diagnostics, Cloudflare speech handling and tests. This remains a proposed code change only; the deployed production function was not modified. Preview function was read only.
+- Live security advisors: INFO `public.jarvis_rate_limits` has RLS enabled without policies; verify service-role-only grants before changing it. WARN leaked-password protection is disabled; do not change Auth settings without explicit owner approval. Performance advisor reports 18 unused indexes; retain until workload evidence supports removal.
+
+### Validation and safety
+- No production function, migration, secret, Auth setting, account, memory row or provider preference was changed. No secret values were read. No live inference request was initiated in this review.
+- No SQL/CI result is claimed for current PR #23 head. No Vercel deployment is claimed; its status is still pending. No paid upgrade or quota bypass.
+
+### Handoff
+A. State: PR #23 provider-consent code is now based on current canonical ancestry and has an additional standard-pool enforcement fix; exact-head CI still pending. Live production/Preview provider-policy mismatch documented.
+B. Completed: branch ancestry refresh (3 ahead/0 behind); FreeLLMAPI-only standard pool guard; live read-only audit of production v32 and Preview v23; corrected candidate route inventory; updated PR description.
+C. In progress: exact-head CI for PR #23 and PR #32; provider fallback-chain proof; route-by-route production parity plan.
+D. Evidence: repo `laurofiorenzani/jarvis`; PR #23 https://github.com/laurofiorenzani/jarvis/pull/23; current head `11ac229874b334bf4203daa8314844fdfa037f4c`; merge integration commit `df3bb9d57f089e86a0d5ea9ff91d33c5bd64e6fb`; Supabase production v32 / Preview v23; live migrations through `20261113125437`.
+E. Decisions: do not deploy Preview's provider route to production until full CI, provider policy and user-consent review; standard pool must be FreeLLMAPI-only; keep all provider pools off by default.
+F. Pending: CFO exact-head CI/SQL; provider route exact-head CI and fallback verification; production/Preview parity design; native iOS E2E; persistent action approval lifecycle.
+G. User action: none immediately. Provider policy acceptance must be explicit per account before enabling pools.
+H. Next: inspect PR #23 CI; review full provider router fallback-before-dispatch and free quota/no-overage/EEA/retention evidence; keep production unchanged; continue independent CFO validation.
+I. GitHub: `laurofiorenzani/jarvis`; PR #23 open/non-draft; branch `work/provider-consent-app-integration`; no merge/deploy.
+J. Next conversation: Continue from this entry. PR #23 now contains current canonical ancestry plus provider-consent integration; latest commit `11ac229...` enforces FreeLLMAPI-only standard pool. Exact-head CI not yet confirmed. Production Supabase v32 still lacks provider-preferences routes and Preview's per-account ZDR auto-memory gate; Preview v23 has them. No production changes, no inference request in this review, no secrets read. PR #32 CFO work is in its separate Draft branch and requires exact-head CI/SQL validation. Keep €0 recurring-cost rule.
