@@ -44,7 +44,19 @@ function corsHeaders(origin: string | null): HeadersInit {
       return false
     }
   })()
-  if (!origin || (!allowedOrigins.has(origin) && !isLocalDevelopmentOrigin)) return { Vary: 'Origin' }
+  // Vercel generates a fresh immutable hostname for each Preview deployment.
+  // Allow only this project's deployment host pattern, never arbitrary *.vercel.app.
+  const isJarvisPreviewOrigin = (() => {
+    if (!origin) return false
+    try {
+      const parsed = new URL(origin)
+      return parsed.protocol === 'https:' &&
+        /^jarvis-[a-z0-9-]+-lauro-fiorenzani\\.vercel\\.app$/i.test(parsed.hostname)
+    } catch {
+      return false
+    }
+  })()
+  if (!origin || (!allowedOrigins.has(origin) && !isLocalDevelopmentOrigin && !isJarvisPreviewOrigin)) return { Vary: 'Origin' }
   return {
     'Access-Control-Allow-Origin': origin,
     'Access-Control-Allow-Headers': 'apikey, authorization, content-type, x-jarvis-api-version',
