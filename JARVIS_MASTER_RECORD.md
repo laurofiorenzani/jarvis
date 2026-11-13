@@ -1929,3 +1929,35 @@ J. Next conversation: Resume from this ledger. PR #32 prior head CI #1019 passed
 - Validation status: source-level verification only. No local Supabase CLI/database is available in this connector session, and GitHub Actions run details were not returned by the connected workflow-runs endpoint. GitHub combined status for this new commit currently reports only Vercel pending. Do not claim SQL/CI success until exact-head CI and SQL tests complete.
 - Safety: no production migration, deployment, registry seed, financial data, account access or provider activation. No paid upgrade or deployment-limit bypass.
 - Next: confirm exact-head GitHub Actions CI for commit `125aa9e881c833ec086c3fb7ee3813d169b7a36e`; verify SQL tests and two-user RLS isolation; then review any new security-advisor findings. Keep PR #32 Draft until human review.
+
+
+## 2026-11-13 — Family CFO exact-decimal and SQL test corrections
+
+### Source review and changes
+- Continued PR #32 on isolated branch `work/cfo-currency-exponent-schema-20261113`; no merge or production operation.
+- Reviewed the currency exponent validator against current Supabase database-function guidance. Changed it to `SECURITY INVOKER`, pinned `search_path = ''`, schema-qualified the registry relation and `pg_catalog.trunc`, and retained EXECUTE only for `service_role`. This avoids an exposed-schema SECURITY DEFINER function and mutable lookup path.
+- Re-read the final migration from GitHub: blob `7c3dc5e8da12a207d607c61eaea868f3e11ef742`; source confirms SECURITY INVOKER, empty search_path, qualified relation/function, and no SECURITY DEFINER.
+- Reviewed the table CHECK constraints for finite numeric amounts. The test expected SQLSTATE 22003 for Infinity values, but the declared CHECK constraint rejects them with check_violation (23514). Corrected all four Infinity assertions to expect 23514. Re-read test file: plan=31 and exactly 31 pgTAP assertions; no 22003 expectations remain. Blob `78861cff0a06032c601718823c3b17ada9a8aecc`.
+- Updated PR #32 description to document unconstrained exact PostgreSQL numeric storage, invoker/search_path hardening, corrected SQLSTATE expectations and the still-pending exact-head validation. PR remains Draft/open.
+
+### Validation status — not yet executed
+- Source-level checks passed: migration/test files re-fetched from GitHub and structural invariants verified; PR description updated.
+- No local Supabase CLI/database runtime is available through this connector session, so `supabase db reset` and `supabase test db` have NOT been run here.
+- GitHub Actions exact-head CI has NOT yet been confirmed. Previous CI #1022 failed during optional Inbucket startup before SQL tests; its migration application completed, but it is not a pass. The CI workflow now excludes both Inbucket and Mailpit.
+- Do not claim the SQLSTATE correction or currency migration is runtime-tested until the exact-head workflow runs and all SQL/two-user isolation assertions pass.
+
+### Release and safety
+- PR #32 remains Draft; no merge, live migration, registry seed, bank connection, personal financial data, production deployment or money movement.
+- Currency registry remains empty in production. EUR/JPY/KWD rows are synthetic test fixtures only. No provider activation or paid service.
+
+### Handoff
+A. State: PR #32 source hardened; exact-decimal currency schema remains unvalidated at runtime pending exact-head CI.
+B. Completed: invoker-only validator, empty search_path and schema-qualified lookup; corrected four Infinity SQLSTATE assertions; verified 31/31 assertion declarations; updated PR description and master record.
+C. In progress: exact-head GitHub Actions, local/isolated SQL migration validation, two-user RLS checks, route parity review, provider fallback attestation.
+D. Evidence: repository `laurofiorenzani/jarvis`; PR #32 https://github.com/laurofiorenzani/jarvis/pull/32; branch `work/cfo-currency-exponent-schema-20261113`; latest code commit `0bdad03d7b055013a58992b15c101a1eafdbff8a`; migration blob `7c3dc5e8da12a207d607c61eaea868f3e11ef742`; isolation test blob `78861cff0a06032c601718823c3b17ada9a8aecc`.
+E. Decisions: no production registry seed until pinned official SIX/ISO snapshot is reviewed; no production migration; keep Draft; no paid deployment/quota bypass.
+F. Pending: CFO—exact-head CI and SQL run; Cloud—review and implement route parity only with tests; Multi-AI—prove downstream route, privacy, EEA and no-cost chain before inference; iOS—native target/device acceptance; action approvals—persistent one-time state machine.
+G. User action: none immediately. Physical iPhone and Mac/Xcode remain later acceptance dependencies.
+H. Next: query exact-head CI/status for `0bdad03...`; if absent, investigate GitHub Actions trigger/permissions rather than treating Vercel pending as CI; inspect full job logs on any failure. Continue safe source-only route/provider work in parallel.
+I. GitHub: `laurofiorenzani/jarvis`; PR #32 Draft; branch above; no merge/deploy.
+J. Next conversation: Resume from this entry. PR #32 has exact PostgreSQL numeric (unconstrained) and currency exponent validation, invoker-only service-role function with empty search_path, and corrected Infinity SQLSTATE expectations (23514). Source checks only; no runtime SQL or exact-head CI confirmation yet. Do not merge or touch production. Continue parallel work under €0 recurring cost.
