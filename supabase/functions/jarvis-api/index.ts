@@ -75,7 +75,7 @@ function isRecord(value: unknown): value is Json {
 }
 
 function classifyFreeLlmTask(text: string): FreeLlmApiTaskType {
-  if (/(?:\\b(?:code|coding|program|programming|script|function|typescript|javascript|python|sql|debug|stack trace|compile|commit|pull request|repository|git|npm|api)\\b|c[oó]digo|programa[cç][aã]o|depurar|reposit[oó]rio)/i.test(text)) return 'code'
+  if (/(?:\b(?:code|coding|program|programming|script|function|typescript|javascript|python|sql|debug|stack trace|compile|commit|pull request|repository|git|npm|api)\b|c[oó]digo|programa[cç][aã]o|depurar|reposit[oó]rio)/i.test(text)) return 'code'
   if (text.length < 500) return 'chat'
   return 'auto'
 }
@@ -926,11 +926,14 @@ Deno.serve(async (request) => {
       }
       upstream = routed.response
     } catch (cause) {
+      await db.from('jarvis_turns').update({ status: 'failed', error_code: 'service_unavailable' })
+        .eq('id', turnId).eq('user_id', userId).eq('status', 'running')
+      if (cause instanceof Error && cause.message === 'provider_consent_required') {
+        return error('forbidden', 'Enable an AI provider pool for this account in Cloud Access.', 403, false, cors)
+      }
       console.warn('[jarvis] model provider unavailable', {
         reason: cause instanceof Error ? cause.message : 'unknown',
       })
-      await db.from('jarvis_turns').update({ status: 'failed', error_code: 'service_unavailable' })
-        .eq('id', turnId).eq('user_id', userId).eq('status', 'running')
       return error('service_unavailable', 'Model provider could not be reached.', 503, true, cors)
     }
     if (!upstream.ok || !upstream.body) {
