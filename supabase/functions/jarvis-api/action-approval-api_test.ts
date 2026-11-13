@@ -51,6 +51,7 @@ Deno.test('creates a server-bound approval and persists only the argument digest
   assertEquals(envelope.policyVersion, ACTION_APPROVAL_POLICY_VERSION)
   assertEquals(envelope.expiresAt, '2026-11-13T12:05:00.000Z')
   assertEquals(envelope.argumentDigest, await digestApprovalArguments(validInput.arguments))
+  assertEquals('arguments' in envelope, false)
   assertEquals(rpc.calls.length, 1)
   assertEquals(rpc.calls[0].name, 'jarvis_create_action_approval')
   assertEquals(rpc.calls[0].params.p_user_id, '00000000-0000-4000-8000-000000000041')
