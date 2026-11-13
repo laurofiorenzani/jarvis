@@ -43,8 +43,9 @@ Add these secrets in the Supabase project's Edge Function secrets:
 
 - `CLOUDFLARE_ACCOUNT_ID` — the Cloudflare account ID (32 hexadecimal characters).
 - `CLOUDFLARE_API_TOKEN` — the scoped Workers AI token.
+- `JARVIS_FREE_PROVIDER_BILLING_ATTESTATION` — set to `2026-11-13-v1` only after the account owner independently verifies Workers Free (not Workers Paid), confirms that quota exhaustion fails closed, and reviews all provider overage/payment settings. Without this exact value, the Edge Function returns no configured providers and refuses cloud inference/STT.
 
-The same credentials serve the chat model router and Whisper STT. **Do not add these secrets yet.** First confirm Workers Free, accept the cross-border processing terms, and implement the per-account provider notice/acceptance gate. Each account must accept separately. The Supabase connector available to this session cannot inspect or set Edge Function secrets; the account owner must perform this step in the Supabase Dashboard after those gates are complete.
+The same credentials serve the chat model router and Whisper STT. **Do not add these secrets yet.** First confirm Workers Free, confirm no paid subscription or automatic top-up, accept the cross-border processing terms, and implement the per-account provider notice/acceptance gate. The billing attestation is a separate operator-level gate; it is not a substitute for either user's per-account consent. Each account must accept separately. The Supabase connector available to this session cannot inspect or set Edge Function secrets; the account owner must perform this step in the Supabase Dashboard after those gates are complete.
 
 ## Model router configuration
 
