@@ -87,7 +87,7 @@ jobs:
           version: v2.stable
 
       - name: Start isolated local Supabase database
-        run: supabase start --exclude inbucket
+        run: supabase start --exclude mailpit
 
       - name: Apply migrations to isolated local database
         run: supabase db reset
