@@ -103,18 +103,26 @@ test('reads only official BMW CarData GET endpoints with a daily budget', async 
   await client.getVehicleMappings('access-token')
   await client.getBasicVehicleData('WBY71HH090CW09664', 'access-token')
   await client.getTelematicData('WBY71HH090CW09664', 'container-a', 'access-token')
+  await client.getChargingHistory(
+    'WBY71HH090CW09664',
+    '2026-11-01T00:00:00.000Z',
+    '2026-11-13T00:00:00.000Z',
+    'access-token',
+    'next-page',
+  )
 
-  assert.equal(requests.length, 3)
+  assert.equal(requests.length, 4)
   assert.equal(requests[0].url, `${BMW_CARDATA_API_BASE_URL}/customers/vehicles/mappings`)
   assert.equal(requests[1].url, `${BMW_CARDATA_API_BASE_URL}/customers/vehicles/WBY71HH090CW09664/basicData`)
   assert.equal(requests[2].url, `${BMW_CARDATA_API_BASE_URL}/customers/vehicles/WBY71HH090CW09664/telematicData?containerId=container-a`)
+  assert.equal(requests[3].url, `${BMW_CARDATA_API_BASE_URL}/customers/vehicles/WBY71HH090CW09664/chargingHistory?from=2026-11-01T00%3A00%3A00.000Z&to=2026-11-13T00%3A00%3A00.000Z&nextToken=next-page`)
   for (const request of requests) {
     assert.equal(request.init?.method, 'GET')
     const headers = new Headers(request.init?.headers)
     assert.equal(headers.get('authorization'), 'Bearer access-token')
     assert.equal(headers.get('x-version'), 'v1')
   }
-  assert.equal(budgetCalls.length, 3)
+  assert.equal(budgetCalls.length, 4)
   assert.ok(budgetCalls.every((call) => call.ownerId === 'owner-a' && call.date === '2026-11-13'))
   assert.ok(budgetCalls.every((call) => call.limit === BMW_CARDATA_DAILY_REQUEST_LIMIT))
 })
