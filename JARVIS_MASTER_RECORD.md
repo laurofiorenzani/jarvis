@@ -1137,8 +1137,8 @@ The available Supabase connector cannot inspect or set Edge Function secrets. Do
 
 ### STT quota guard
 - PR #16 was based on the previous canonical SHA and had a one-commit documentation-only gap. Its three-file change was reviewed and selectively re-applied on a clean branch based on canonical head `c82bc100fbea773eab5bdc654ec7078da6685408`.
-- PR #17: `work/stt-cloudflare-quota-canonical`, head `250f750c60ae3f891301e9e6805154cf01d17b76`; exact diff is only `index.ts`, `speech-transcript.ts`, and `speech-transcript_test.ts`. PR #17 exact-head CI #926 completed SUCCESS, including isolated Supabase migrations, SQL isolation, authenticated two-user API integration and production/Preview CORS. Vercel Preview was SUCCESS. PR #17 was squash-merged into canonical development as `2e5474b4324d6057032985fb663f1c9906560629`; no main/Production merge or deployment occurred. Observer Validation was not triggered because observer files/workflow paths were unchanged; the latest observer validation on the canonical lineage remains #137.
-- Original PR #16 remains open but is now superseded by merged PR #17; close it as redundant after confirming no unique commits remain.
+- PR #17: `work/stt-cloudflare-quota-canonical`, head `250f750c60ae3f891301e9e6805154cf01d17b76`; exact diff is only `index.ts`, `speech-transcript.ts`, and `speech-transcript_test.ts`. PR #17 exact-head CI #926 completed SUCCESS, including isolated Supabase migrations, SQL isolation, authenticated two-user API integration and production/Preview CORS. Vercel Preview was SUCCESS. PR #17 was squash-merged into canonical development as `2e5474b4324d6057032985fb663f1c9906560629`; no main/Production merge or deployment occurred. Observer Validation was not triggered because observer files/workflow paths were unchanged; Observer Validation #139 passed on the canonical development merge commit; observer source was unchanged in PR #17.
+- Original PR #16 was closed as superseded after its only three-file change passed exact-head CI #926 in PR #17 and was merged into canonical development.
 
 ### Provider-preferences migration provenance
 - Live Supabase migration history contains `20261113125425_jarvis_provider_preferences` and `20261113125437_provider_preferences_rls_initplan`.
@@ -1166,10 +1166,43 @@ The available Supabase connector cannot inspect or set Edge Function secrets. Do
 
 ### Native iOS and FreeLLMAPI runtime
 - Recursive tree inspection of the canonical application branch found no `ios/`, `.xcodeproj`, `.xcworkspace`, Swift source, or Capacitor scaffold. The package remains React/Vite; native iOS, Keychain plugin, signing and TestFlight are not implemented.
-- PR #13 currently remains OPEN/Draft and diverged (69 commits ahead / 42 behind canonical at last compare). Its private Node 22 proxy package and tests are source code only. The host, FreeLLMAPI service, gateway token, unified key, provider credentials and private tunnel are not deployed/configured; no inference has been sent. Oracle VM state remains unverified and no Oracle connector is available.
+- PR #13 currently remains OPEN/Draft and diverged (69 commits ahead / 43 behind canonical at last compare). Its private Node 22 proxy package and tests are source code only. The host, FreeLLMAPI service, gateway token, unified key, provider credentials and private tunnel are not deployed/configured; no inference has been sent. Oracle VM state remains unverified and no Oracle connector is available.
 - No bulk rebase/merge of PR #13 is safe. Continue feature-by-feature, excluding its duplicate migration version.
 
 ### Safety and release controls
 - No Production Edge Function, Vercel alias, account, auth setting, secret, provider preference, memory, billing plan, or user data was changed.
 - Keep provider pools disabled until each account holder independently accepts the complete provider/data-transfer notice. Do not infer that Supabase Paris region or Cloudflare ZDR means all processing remains in the EEA.
 - Keep all changes on isolated PR branches; no production promotion or paid upgrade.
+
+
+## 2026-11-13 — provider migration provenance merged; FreeLLMAPI proxy hardening in validation
+
+### Provider-preferences migration source
+- PR #18 was merged into `work/jarvis-canonical-integration` as `428d42b52e2c917969ced3a11ba2eca7987cc4c0` after exact-head CI #929 completed SUCCESS, including local Supabase migration reset, SQL isolation, authenticated two-user API tests and CORS smoke tests.
+- The merge adds only the source file for the already-applied `20261113125437_provider_preferences_rls_initplan` migration and updates the master ledger. No migration was executed against the live Supabase project and no production deployment occurred.
+
+### FreeLLMAPI private proxy — PR #19
+- PR #19 selectively ports the Node 22 private proxy onto the canonical lineage. It requires `FREELLMAPI_ALLOWED_MODELS` and accepts only explicit named `auto:<profile>` model routes; generic `auto`, `fusion`, missing/malformed models and unlisted profiles are rejected before upstream FreeLLMAPI is contacted.
+- The deployment package includes Dockerfile, Compose overlay, environment template, setup documentation and synthetic tests. The sample route is `auto:jarvis-approved`; its FreeLLMAPI fallback profile must contain only individually verified eligible/free providers. The proxy allowlist is not proof of downstream provider eligibility.
+- CI #931 found one test assertion mismatch: the proxy correctly records `POST /v1/chat/completions`, while the test expected only the path. The assertion was corrected; no runtime code change was needed. The branch is rebased onto the latest canonical head and exact-head CI must pass before merge.
+- Vercel Preview remains rate-limited by the Hobby 100-deployments/day limit. No paid upgrade; GitHub CI is the source validation for this backend-only package.
+
+### Provider-consent and FreeLLMAPI acceptance gaps
+- PR #13's current consent copy documents Supabase's Paris primary region and Cloudflare Workers AI ZDR/no-training commitments, but does not explicitly state that Workers AI is global inference infrastructure and that no EU/EEA-only inference-processing guarantee has been verified. A review comment was added requesting this explicit disclosure.
+- Cloudflare's official Workers AI data-usage documentation describes stateless content handling, no-training and operational metadata exceptions, but does not establish EU-only inference processing: https://developers.cloudflare.com/workers-ai/platform/data-usage/ . The platform describes Workers AI as global inference infrastructure: https://developers.cloudflare.com/workers-ai/platform/ .
+- FreeLLMAPI's Edge Function adapter can validate the gateway hostname but cannot see the downstream provider selected by named fallback profiles. A review comment requires an audited named profile containing only individually vetted free providers, with country eligibility, personal-use terms, quota/reset, privacy/retention/training, region, no-payment-method and no-paid-fallback evidence. Keep both account pools disabled.
+- Current CloudAccess consent UI on the canonical branch still does not contain provider-pool controls; the feature exists only on the divergent PR #13 branch pending selective integration.
+
+### Canonical provider-preferences code status — correction to prior chat handoff
+- Exact read-back of current `work/jarvis-canonical-integration` after PR #18 confirms that `ProviderPreferencesResponse` is NOT present in `src/lib/backend-contract.ts`; `getProviderPreferences`/`setProviderPreferences` are NOT present in `src/lib/cloud-api.ts`; provider-pool controls are NOT present in `src/ui/CloudAccess.tsx`; `/provider-preferences` routes and the standard pool are NOT present in canonical `index.ts`/`model-router.ts`.
+- Therefore the earlier chat handoff statement that the TypeScript contract was already in canonical is stale/incorrect against the current repository head. The live table and applied migrations exist, but the application-level provider preferences integration remains a selective-port task from PR #13. Do not claim it is integrated until a clean PR adds the type, client methods, UI, backend routes, standard/ZDR routing, tests and two-user isolation checks.
+
+### Current canonical and release state
+- Canonical development head includes PR #17's STT daily-quota classifier and PR #18's migration source provenance. PR #17 CI #926 and canonical CI #928 passed; Observer Validation #139 passed on the PR #17 merge commit.
+- Production `jarvis-api` v32 remains unchanged; Preview `jarvis-preview-api` v23 remains unchanged. No provider secrets were read, no inference was sent, no provider pool enabled, no account/auth/session/memory data changed, and no production deployment or billing change occurred.
+- Native iOS/Swift/Xcode/Capacitor project remains absent from the canonical tree. PWA is not the native iOS deliverable.
+
+
+### PR #19 canonical rebase — 2026-11-13
+- Rebased the complete proxy package and master-ledger update directly onto canonical merge commit `428d42b52e2c917969ced3a11ba2eca7987cc4c0`; compare confirms 1 commit ahead / 0 behind. The deployment package includes the Dockerfile, Compose overlay, environment template, proxy, README and tests.
+- The first CI #931 ran against the pre-rebase head and exposed the route-metadata test assertion mismatch; the assertion is corrected. Exact-head CI for the rebased branch is required before merge.
