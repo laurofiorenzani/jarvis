@@ -27,6 +27,7 @@ Personal-use CarData must not be confused with the BMW third-party service-provi
 - Read-only telematics data for a customer-configured container
 - Read-only charging history for a bounded ISO-8601 time window with pagination
 - Mandatory injected daily-request-budget interface; fails closed before network access if the budget denies a request
+- Server-side budget adapter using JARVIS's existing atomic `jarvis_consume_rate_limit` RPC, capped at 50 requests per rolling 24-hour window
 
 No tokens, VINs or customer data are embedded in source. The client never logs credentials and has no command/mutation methods.
 
@@ -35,7 +36,7 @@ No tokens, VINs or customer data are embedded in source. The client never logs c
 Before connecting the vehicle:
 1. Owner creates a BMW CarData client ID in the official customer portal.
 2. Owner authorizes the device-code flow and explicitly grants only `openid`, `authenticate_user` and `cardata:api:read` initially.
-3. Implement a persistent, atomic Supabase budget RPC keyed by JARVIS user + UTC day. It must stop at 50 REST calls/day across all app instances; the injected budget interface currently has only a test implementation.
+3. Wire `bmw-cardata-budget.ts` into the authenticated BMW API route. It adapts the existing atomic per-user `jarvis_consume_rate_limit` RPC to a strict 50-request rolling 24-hour window. No BMW API route instantiates it yet.
 4. Review and apply the Vault token migration only after CI/review; the migration and service-role helper are in source but not deployed. Do not store refresh tokens in ordinary plaintext tables, logs, browser storage or source control.
 5. Add authenticated OAuth device-consent, disconnect/revocation and token deletion routes. The server-side Vault helper is ready but no user route or token exists.
 6. Validate the available telematics keys for the actual iX1 in the BMW catalogue; do not assume every vehicle exposes the same data.
@@ -63,4 +64,4 @@ Remote actions remain unavailable unless BMW publishes a supported official comm
 
 ## Validation
 
-Unit tests use mocked HTTP responses and in-memory budgets/RPC clients; the SQL test uses only a synthetic refresh token in the isolated CI Vault. No BMW account, real client ID, VIN, token, vehicle data or external network request is used by tests. Production activation is blocked until persistent daily budget, migration review/deployment, authenticated consent routes and explicit owner authorization exist.
+Unit tests use mocked HTTP responses and fake budget/RPC clients; the SQL test uses only a synthetic refresh token in the isolated CI Vault. No BMW account, real client ID, VIN, token, vehicle data or external network request is used by tests. Production activation is blocked until persistent daily budget, migration review/deployment, authenticated consent routes and explicit owner authorization exist.

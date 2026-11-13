@@ -77,6 +77,9 @@ jobs:
       - name: Test BMW CarData Vault token store
         run: deno test supabase/functions/jarvis-api/bmw-cardata-token-store_test.ts
 
+      - name: Test BMW CarData daily rate budget
+        run: deno test supabase/functions/jarvis-api/bmw-cardata-budget_test.ts
+
       - name: Type-check Supabase Edge Function
         run: deno check supabase/functions/jarvis-api/index.ts
 
