@@ -250,6 +250,12 @@ export function freeLlmApiTaskHeaders(taskType: FreeLlmApiTaskType = 'auto'): Re
   return { 'X-FreeLLM-Task-Type': taskType }
 }
 
+export function classifyFreeLlmTask(text: string): FreeLlmApiTaskType {
+  if (/(?:\b(?:code|coding|program|programming|script|function|typescript|javascript|python|sql|debug|stack trace|compile|commit|pull request|repository|git|npm|api)\b|c[oó]digo|programa[cç][aã]o|depurar|reposit[oó]rio)/i.test(text)) return 'code'
+  if (text.length < 500) return 'chat'
+  return 'auto'
+}
+
 export async function startFreeModelStream(
   messages: ChatMessage[],
   signal: AbortSignal,
