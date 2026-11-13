@@ -4,7 +4,7 @@ import { z } from 'zod'
 // it does not connect to banks, persist records, or move money.
 
 export const CfoCurrencySchema = z.string().regex(/^[A-Z]{3}$/)
-export const CfoDecimalAmountSchema = z.string().regex(/^-?(?:0|[1-9]\d*)(?:\.\d{1,2})?$/, 'Use a decimal string with at most two fractional digits')
+export const CfoDecimalAmountSchema = z.string().regex(/^-?(?:0|[1-9]\d*)(?:\.\d{1,4})?$/, 'Use an exact decimal string with at most four fractional digits')
 
 export const CfoConfidenceSchema = z.enum(['verified', 'user_confirmed', 'estimated', 'unknown'])
 export const CfoRecordStatusSchema = z.enum(['pending_review', 'confirmed', 'rejected', 'superseded'])
@@ -175,7 +175,7 @@ export function transactionFingerprint(tx: CfoTransaction): string {
 /** Confirmed posted cash flow, excluding only uniquely matched internal transfers. */
 export function calculateCashFlow(
   transactions: readonly CfoTransaction[],
-  period: { start: string; end: string },
+  period: { start: string; end: string; currency?: string },
 ): { currency: string; inflows: string; outflows: string; net: string; includedCount: number; excludedTransferCount: number } {
   if (!IsoDateSchema.safeParse(period.start).success ||
       !IsoDateSchema.safeParse(period.end).success ||
@@ -191,7 +191,13 @@ export function calculateCashFlow(
   )
   const currencies = new Set(eligible.map((tx) => tx.money.currency))
   if (currencies.size > 1) throw new TypeError('Cash flow requires a single currency; calculate currencies separately')
-  const currency = eligible[0]?.money.currency ?? transactions[0]?.money.currency ?? 'EUR'
+  const currency = eligible[0]?.money.currency ?? period.currency
+  if (!currency || !CfoCurrencySchema.safeParse(currency).success) {
+    throw new TypeError('An explicit currency is required when the period has no eligible transactions')
+  }
+  if (eligible.some((tx) => tx.money.currency !== currency)) {
+    throw new TypeError('Cash flow requires a single currency; calculate currencies separately')
+  }
   const inflows = eligible.filter((tx) => decimalToScaledUnits(tx.money.amount) > 0n)
   const outflows = eligible.filter((tx) => decimalToScaledUnits(tx.money.amount) < 0n)
   const sum = (items: readonly CfoTransaction[]) => items.reduce(
