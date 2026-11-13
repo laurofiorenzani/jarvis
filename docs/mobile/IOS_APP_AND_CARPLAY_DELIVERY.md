@@ -2,7 +2,7 @@
 
 ## Product requirement
 
-The preferred iPhone deliverable is a standalone, installable iOS application with a JARVIS home-screen icon, native app lifecycle, secure device credentials, and direct cloud connectivity. However, a responsive cloud-hosted web app/PWA is an approved and release-capable fallback if native iOS delivery is blocked, delayed, or impractical. The web app must be installable where supported, work in Safari on both iPhones and in desktop browsers, and use the same cloud backend with strict per-user data isolation. Native packaging must never block delivery of a working Jarvis.
+The iPhone deliverable is a standalone, installable, signed iOS application with a JARVIS app icon, native app lifecycle, secure device credentials, and direct cloud connectivity. The responsive web app remains an additional client and a temporary development/test fallback only; it is not the final iPhone deliverable and must not be treated as a substitute for the native app. Both clients use the same cloud backend with strict per-user data isolation. Native packaging must not block parallel web/backend progress.
 
 The CarPlay experience is a separate, minimal native companion interface. It is not the full holographic iPhone HUD mirrored onto the vehicle display.
 
@@ -31,7 +31,7 @@ Apple's CarPlay framework is limited to supported app categories and approved te
 
 ## Delivery phases
 
-1. **Web release gate:** responsive web app works on desktop and both iPhones, with authenticated synthetic end-to-end chat, voice fallback, user data isolation, and rate limits verified.
+1. **Web/client baseline:** keep the responsive browser client working on desktop and iPhone Safari as a development and companion surface; verify authentication, user isolation and rate limits. This is not the native iPhone release gate.
 2. **Cloud core gate:** one authenticated, synthetic end-to-end chat succeeds using a server-side provider; user data isolation and rate limits are verified.
 3. **Capacitor foundation:** add Capacitor 8 core/CLI/iOS, config, generated native iOS project, app identifiers, icons/splash, build/sync scripts and a macOS simulator build.
 4. **Native iPhone adapters:** Keychain, push-to-talk audio capture/playback, audio session handling, lifecycle/reconnect, deep links, safe areas, permissions and privacy manifest.
@@ -42,7 +42,7 @@ Apple's CarPlay framework is limited to supported app categories and approved te
 ## Current status and limitations
 
 - Cloud API and cloud client adapters exist; authenticated live inference is not yet verified.
-- The responsive web HUD is the guaranteed cross-device delivery path and may be the first production release. Native iOS is an enhancement, not a prerequisite.
+- The responsive web HUD is an additional browser client and temporary test fallback. It is not an approved final replacement for the installable iOS app; native iOS delivery remains a required product milestone.
 - No Capacitor dependency, Capacitor config, native iOS project, Keychain adapter, native voice adapter, signed IPA, or TestFlight build exists yet.
 - No CarPlay entitlement has been requested or granted, and no CarPlay implementation exists.
 - The current development environment can edit repository files through GitHub but does not provide macOS/Xcode. Do not claim an iOS project was built or a native app tested until a macOS/Xcode build and physical-device test are recorded.
