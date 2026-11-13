@@ -128,3 +128,12 @@ Unknown, stale, ambiguous, paid, or geographically ineligible entries are disabl
 - GitHub CI #853 was cancelled when subsequent commits superseded its head. A full exact-head CI run for the current branch head is still required before Preview deployment.
 - Oracle Cloud is not exposed through an available connected account tool in this session. The previously mentioned VM and its runtime state remain unverified; no host has been provisioned.
 - No production functions, production data, accounts, billing plans, secrets, branches or repositories were changed or deleted.
+
+
+## Official FreeLLMAPI catalog and API surfaces — 2026-11-13
+
+- The official FreeLLMAPI README currently advertises 87 providers, 736 model families and 1,313 free endpoints. The free self-hosted install receives the monthly signed catalog snapshot; new entries can lag the live feed by up to 30 days. The same README lists the live catalog as a Premium feature at $19/year. JARVIS will use the free monthly snapshot only; no Premium key or subscription is enabled.
+- FreeLLMAPI's router enforces per-key RPM/RPD/TPM/TPD quotas, cooldowns and up to 20 fallback attempts. It supports named fallback profiles, automatic task routing and a multi-model Fusion mode. The JARVIS adapter accepts auto, auto:fast, auto:smart, auto:reliable, fusion and named auto profiles, and sends the task hint header.
+- The upstream OpenAI-compatible surfaces include chat completions, Responses, completions, models, embeddings, image generation, video generation, audio speech and audio transcription. JARVIS currently integrates chat completions only. Voice transcription/speech, vision, images/video and embeddings are separate follow-up integrations and are not claimed as active.
+- FreeLLMAPI exposes X-Routed-Via, X-Fallback-Attempts and X-Fallback-Trail response headers. The next observability step is to surface the actual served model and fallback count in JARVIS diagnostics without exposing prompts, provider keys or raw upstream error text.
+- Provider keys are encrypted at rest in the gateway's SQLite database, and clients use one unified bearer key. This does not make the gateway multi-tenant: the official architecture explicitly says it is single-user/local-first and must not be exposed directly to the public internet. JARVIS therefore places a private authenticated ingress/proxy in front of it and keeps per-account authorization in Supabase.
