@@ -553,3 +553,17 @@ The older `docs/PROJECT_DECISIONS.md`, `docs/architecture/IMPLEMENTATION_STATUS_
 ### Repository retirement decision
 - The private `jarvis-personal-cloud` repository is not the canonical application repository. Its role is research only; its useful security requirements have now been consolidated in this master ledger.
 - Do not delete it until the final check confirms no open PR, deployment, automation or unique test is still needed. Once that check passes, retire it rather than continuing parallel development there.
+
+
+## 23. Latest verification and mobile-test handoff — 2026-11-13
+
+- Final current candidate before this ledger update: `060ba2343a99a011d679165d8ea7857dd152dc58`.
+- Full CI #807: **SUCCESS** on that exact SHA — https://github.com/laurofiorenzani/jarvis/actions/runs/43380176138. This includes build/typecheck, all Node tests, lint, Deno tests/checks, isolated Supabase migrations and two-user isolation tests, and deployed production/preview CORS smoke checks.
+- Observer Validation #56: **SUCCESS** on the same SHA — https://github.com/laurofiorenzani/jarvis/actions/runs/43380176125.
+- Vercel Preview for the exact SHA is **READY**: `https://jarvis-git-work-jarvis-canonical-integration-lauro-fiorenzani.vercel.app`. No production alias or production deployment was changed.
+- Supabase read-only inspection confirms two existing Auth users. Exactly one account currently has `context_enabled=true` and `auto_capture_enabled=true`; the other is false/false. The semantic facts table contains zero facts. Auth metadata has no display name, so do not guess which account owns the opt-in. Do not seed or approve project facts into either account until the account owner is confirmed in an authenticated session. The app already has a pending-candidate review surface with explicit approve/reject; automatic capture must remain pending until the user approves each candidate.
+- The three outdated decision/status/setup documents were removed from the candidate tree after their durable decisions were copied into this master record. The README links to this file. Technical architecture/runbook documents remain supporting specifications, not competing progress ledgers.
+- No production Supabase users, passwords, auth settings, secrets, database rows, or production Edge Functions were modified during this consolidation pass.
+- PR #12 remains OPEN/DRAFT and stacked on `work/intelligent-memory-foundation`. The final candidate has not been merged to `main`; the current production UI is untouched.
+- No branch or repository has been deleted. All work-bearing branches and the private memory workbench are preserved until their unique contributions and release dependencies are fully closed. The connected GitHub actions available in this session do not expose branch-ref or repository deletion, so cleanup must be performed through an authorized GitHub interface after final integration, not simulated by deleting source files.
+- The one required external validation before the next release gate is a real iPhone Safari test of the stable Preview: existing-account login, Portuguese and English microphone transcription, and spoken response. This cannot be truthfully certified by CI or a Vercel READY state.
