@@ -1,10 +1,4 @@
 services:
-  # Merge this overlay with FreeLLMAPI's official docker-compose.yml.
-  # The dashboard stays bound to host loopback; only the allowlisted proxy is tunneled.
-  freellmapi:
-    environment:
-      HOST_BIND: "0.0.0.0"
-
   jarvis-freellmapi-proxy:
     build:
       context: ./jarvis-gateway
@@ -18,7 +12,8 @@ services:
     expose:
       - "3002"
     depends_on:
-      - freellmapi
+      freellmapi:
+        condition: service_healthy
 
   # Quick Tunnel is free and requires no custom domain. Its URL can change
   # after a restart; use a named tunnel/domain for a permanent hostname.
