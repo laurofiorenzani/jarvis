@@ -1289,3 +1289,14 @@ Canonical development head before this ledger update: `f217feccdaceddfc12a72437f
 3. Prepare a safe canonicalized PR for the Preview observer change without overwriting canonical ledger or unrelated files.
 4. Continue with app MVP work only after checking the current canonical tree and preserving the amber UI and existing-account auth path.
 5. Keep this master record as the sole project ledger; update it again after the next verified state transition.
+
+## 2026-11-13 — follow-up CI state refresh
+
+- PR #27 exact-head CI #961 has now completed successfully on `20e2dcc83f4d58f91c3a7afd9d863e6e7b699df8`. The confidence gate remains a pure calculation change and does not touch financial records.
+- PR #26 advanced during the review to head `a6376822161b145dc7918771209c0b4b5b071c00`; it now also rejects malformed protocol versions and revalidates the persisted approval TTL (positive and no more than ten minutes), with tests for rejected decisions and invalid envelopes. Compare against the updated canonical head `23cb46722ff7c2a348cfea97dc0ab4dcf2387a06`: four commits ahead, one behind (the ledger-only canonical update). Its latest CI #969 was cancelled before a job was created; exact-head CI is still required. Do not assume the earlier #965 attempt validates this later head.
+- PR #23 exact-head CI #966 is still in progress; at the last check it had reached the isolated local Supabase setup stage. No pass is claimed yet.
+- PR #22 exact-head CI #959 remains successful on `7e8561656ec9994ddfc15d628d22d69db888f415`; its one-commit branch is aligned with the canonical base. Migration remains unapplied to production.
+- PR #25 exact-head CI #955 and Observer Validation #144 remain successful, but its branch is still divergent from canonical and must not be merged as-is.
+- Canonical development branch now points to `23cb46722ff7c2a348cfea97dc0ab4dcf2387a06` after the project-ledger reconciliation commit. No production deploy or live database change was performed.
+
+Next: allow PR #23 CI #966 to finish; obtain a fresh exact-head CI run for PR #26 after its branch stabilizes; keep all merges behind review and retain the €0/no-production-mutation gates.
