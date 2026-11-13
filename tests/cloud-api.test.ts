@@ -622,3 +622,11 @@ test('cloud client reads and updates account-scoped provider preferences', async
   assert.equal(JSON.parse(String(captured?.init?.body)).version, 1)
   assert.equal(new Headers(captured?.init?.headers).get('Authorization'), 'Bearer provider-preference-token')
 })
+
+
+test('provider consent errors explain the next step in Brazilian Portuguese', () => {
+  assert.equal(
+    portugueseApiMessage('Enable an AI provider pool for this account in Cloud Access.', 'forbidden'),
+    'Ative um pool de provedores de IA nas configurações do JARVIS para esta conta.',
+  )
+})
