@@ -80,6 +80,9 @@ jobs:
       - name: Test speech transcript extraction and empty-response handling
         run: deno test supabase/functions/jarvis-api/speech-transcript_test.ts
 
+      - name: Public health CORS regression tests
+        run: deno test supabase/functions/jarvis-api/cors_test.ts
+
       - name: Set up Supabase CLI
         id: setup_supabase_cli
         uses: supabase/setup-cli@v3

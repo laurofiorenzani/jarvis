@@ -78,6 +78,27 @@ async function getMemoryPreferences(user) {
   return result.payload
 }
 
+async function getProviderPreferences(user) {
+  const result = await request(`${api}/provider-preferences`, { token: user.token })
+  assert.equal(result.response.status, 200, `get provider preferences: ${JSON.stringify(result.payload)}`)
+  return result.payload
+}
+
+async function setProviderPreferences(user, zdrPoolEnabled, standardPoolEnabled) {
+  const result = await request(`${api}/provider-preferences`, {
+    method: 'PUT',
+    token: user.token,
+    body: {
+      version: 1,
+      policyVersion: '2026-11-13-v2',
+      zdrPoolEnabled,
+      standardPoolEnabled,
+    },
+  })
+  assert.equal(result.response.status, 200, `set provider preferences: ${JSON.stringify(result.payload)}`)
+  return result.payload
+}
+
 async function insertFact(userId, fields) {
   const result = await request(`${rest}/jarvis_memory_facts`, {
     method: 'POST',
@@ -114,6 +135,31 @@ try {
   const userB = await createUser('b')
   await setPreference(userA.id, true)
   await setPreference(userB.id, false)
+
+  const unauthenticatedProviders = await fetch(`${api}/provider-preferences`, { headers: { apikey: anonKey } })
+  assert.equal(unauthenticatedProviders.status, 401, 'provider preference routes must require authentication')
+
+  const initialProviderPreferencesA = await getProviderPreferences(userA)
+  const initialProviderPreferencesB = await getProviderPreferences(userB)
+  assert.equal(initialProviderPreferencesA.zdrPoolEnabled, false, 'ZDR pool must default off for a new account')
+  assert.equal(initialProviderPreferencesA.standardPoolEnabled, false, 'standard pool must default off for a new account')
+  assert.equal(initialProviderPreferencesB.zdrPoolEnabled, false, 'second account ZDR pool must default off')
+  assert.equal(initialProviderPreferencesB.standardPoolEnabled, false, 'second account standard pool must default off')
+
+  const enabledStandardA = await setProviderPreferences(userA, false, true)
+  assert.equal(enabledStandardA.standardPoolEnabled, true, 'user A can enable their own standard provider pool')
+  const stillDisabledB = await getProviderPreferences(userB)
+  assert.equal(stillDisabledB.standardPoolEnabled, false, 'user A provider consent must not enable user B')
+
+  const enabledZdrA = await setProviderPreferences(userA, true, true)
+  assert.equal(enabledZdrA.zdrPoolEnabled, true)
+  assert.equal(enabledZdrA.standardPoolEnabled, true)
+  const disabledBothA = await setProviderPreferences(userA, false, false)
+  assert.equal(disabledBothA.zdrPoolEnabled, false, 'user A can revoke both provider pools')
+  assert.equal(disabledBothA.standardPoolEnabled, false, 'revocation disables the standard pool')
+  const afterRevocationB = await getProviderPreferences(userB)
+  assert.equal(afterRevocationB.zdrPoolEnabled, false, 'user A revocation must not alter user B')
+  assert.equal(afterRevocationB.standardPoolEnabled, false, 'user B remains independently opted out')
 
   const initialPreferencesA = await getMemoryPreferences(userA)
   const initialPreferencesB = await getMemoryPreferences(userB)
