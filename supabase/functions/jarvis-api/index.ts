@@ -2,7 +2,7 @@ import { createClient } from '@supabase/supabase-js'
 import { getPublicHealthPreflightHeaders } from './cors.ts'
 import { getApiRoutePathCandidates } from './route-path.ts'
 import { extractSpeechTranscript, isCloudflareDailyQuotaExhausted } from './speech-transcript.ts'
-import { classifyFreeLlmTask, getFreeProviderStatus, startFreeModelStream } from './model-router.ts'
+import { classifyFreeLlmTask, getFreeProviderStatus, startFreeModelStream, type ProviderRouteDiagnostics } from './model-router.ts'
 import { isSemanticMemoryId, isSafeAutoMemorySource, mergeSemanticMemoryPreferences, normalizeSemanticMemoryQuery, parseAutoMemoryCandidates, parseSemanticMemoryCandidate, parseSemanticMemoryDecision, parseSemanticMemorySearch } from './semantic-memory.ts'
 
 const VERSION = 1
@@ -890,6 +890,7 @@ Deno.serve(async (request) => {
 
     const upstreamAbort = new AbortController()
     let upstream: Response
+    let providerDiagnostics: ProviderRouteDiagnostics | null = null
     try {
       const messages = [
         {
@@ -919,6 +920,7 @@ Deno.serve(async (request) => {
       } else {
         throw new Error('provider_consent_required')
       }
+      providerDiagnostics = routed.diagnostics
       upstream = routed.response
     } catch (cause) {
       await db.from('jarvis_turns').update({ status: 'failed', error_code: 'service_unavailable' })
@@ -946,7 +948,7 @@ Deno.serve(async (request) => {
         let assistantMessageId: string | null = null
         let cancelled = false
         const emit = (event: Json) => controller.enqueue(encoder.encode(`data: ${JSON.stringify(event)}\n\n`))
-        emit({ version: VERSION, type: 'turn.started', conversationId, turnId })
+        emit({ version: VERSION, type: 'turn.started', conversationId, turnId, ...(providerDiagnostics ? { providerDiagnostics } : {}) })
         const reader = upstream.body!.getReader()
         try {
           while (true) {

@@ -1,5 +1,6 @@
 import {
   assertConsistentProviderPrivacy,
+  buildProviderRouteDiagnostics,
   assertZdrProviderConfig,
   assertEeaProviderEligibility,
   assertProviderPrivacyMode,
@@ -206,5 +207,33 @@ Deno.test('standard provider pool accepts only the FreeLLMAPI gateway', () => {
     if (isAllowedStandardProvider(gateway)) {
       throw new Error('non-FreeLLMAPI provider was accepted in the standard pool: ' + String(gateway))
     }
+  }
+})
+
+
+Deno.test('provider route diagnostics expose only bounded safe labels and fallback counts', () => {
+  const response = new Response(null, { headers: {
+    'x-routed-via': 'openrouter/llama-3.1',
+    'x-fallback-attempts': '2',
+  } })
+  const diagnostics = buildProviderRouteDiagnostics(
+    { name: 'FreeLLMAPI Gateway', model: 'auto:jarvis-approved' },
+    response,
+  )
+  if (diagnostics.provider !== 'FreeLLMAPI-Gateway' ||
+      diagnostics.model !== 'auto:jarvis-approved' ||
+      diagnostics.routedVia !== 'openrouter/llama-3.1' ||
+      diagnostics.fallbackAttempts !== 2) {
+    throw new Error('safe provider diagnostics were not normalized correctly')
+  }
+  const unsafe = buildProviderRouteDiagnostics(
+    { name: 'sk-should-not-appear', model: 'auto:jarvis-approved' },
+    new Response(null, { headers: {
+      'x-routed-via': 'Bearer test-secret',
+      'x-fallback-attempts': '99',
+    } }),
+  )
+  if (unsafe.provider !== 'unknown' || unsafe.routedVia !== undefined || unsafe.fallbackAttempts !== 20) {
+    throw new Error('unsafe provider diagnostics were not rejected/bounded')
   }
 })

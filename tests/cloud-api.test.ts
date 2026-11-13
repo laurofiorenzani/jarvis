@@ -79,6 +79,29 @@ test('cloud event parser accepts a valid text delta and rejects malformed frames
   assert.equal(parseCloudAssistantEvent({ ...valid, type: 'unknown.event' }), null)
 })
 
+test('cloud event parser accepts only bounded provider routing diagnostics', () => {
+  const base = { version: 1, type: 'turn.started', conversationId: 'c-1', turnId: 't-1' }
+  const valid = {
+    ...base,
+    providerDiagnostics: {
+      provider: 'FreeLLMAPI-Gateway',
+      model: 'auto:jarvis-approved',
+      routedVia: 'openrouter/llama-3.1',
+      fallbackAttempts: 2,
+    },
+  }
+  assert.deepEqual(parseCloudAssistantEvent(valid), valid)
+  assert.equal(parseCloudAssistantEvent({
+    ...base, providerDiagnostics: { ...valid.providerDiagnostics, fallbackAttempts: 21 },
+  }), null)
+  assert.equal(parseCloudAssistantEvent({
+    ...base, providerDiagnostics: { ...valid.providerDiagnostics, routedVia: 'Bearer test-secret' },
+  }), null)
+  assert.equal(parseCloudAssistantEvent({
+    ...base, providerDiagnostics: { ...valid.providerDiagnostics, provider: 'x'.repeat(81) },
+  }), null)
+})
+
 test('cloud event parser validates tool outcomes and memory approval challenges', () => {
   const base = { version: 1, conversationId: 'c-1', turnId: 't-1' }
   assert.equal(parseCloudAssistantEvent({

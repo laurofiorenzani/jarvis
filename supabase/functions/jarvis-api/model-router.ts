@@ -246,6 +246,40 @@ export function toChatCompletionsUrl(baseUrl: string): string {
 export type ModelProviderPool = 'default' | 'standard'
 export type FreeLlmApiTaskType = 'auto' | 'chat' | 'code'
 
+export type ProviderRouteDiagnostics = {
+  provider: string
+  model: string
+  routedVia?: string
+  fallbackAttempts: number
+}
+
+function safeRouteLabel(value: string | null | undefined, maxLength: number): string | undefined {
+  if (!value) return undefined
+  const raw = value.trim()
+  if (!raw || raw.length > maxLength || /[\u0000-\u001f\u007f]/.test(raw) ||
+      /bearer|sk-|AIza/i.test(raw)) return undefined
+  const normalized = raw.replace(/\s+/g, '-')
+  if (!/^[@A-Za-z0-9][A-Za-z0-9._:@/-]*$/.test(normalized)) return undefined
+  return normalized
+}
+
+export function buildProviderRouteDiagnostics(
+  provider: { name: string; model: string },
+  upstream: Response,
+): ProviderRouteDiagnostics {
+  const rawAttempts = upstream.headers.get('x-fallback-attempts') ?? '0'
+  const parsedAttempts = /^\d{1,2}$/.test(rawAttempts) ? Number(rawAttempts) : 0
+  const diagnostics: ProviderRouteDiagnostics = {
+    provider: safeRouteLabel(provider.name, 80) ?? 'unknown',
+    model: safeRouteLabel(provider.model, 120) ?? 'unknown',
+    fallbackAttempts: Math.min(parsedAttempts, 20),
+  }
+  const routedVia = safeRouteLabel(upstream.headers.get('x-routed-via'), 120)
+  if (routedVia) diagnostics.routedVia = routedVia
+  return diagnostics
+}
+
+
 export function isFreeLlmApiModel(model: string): boolean {
   return /^auto:[a-z0-9][a-z0-9_-]{0,39}$/i.test(model.trim())
 }
@@ -264,7 +298,7 @@ export async function startFreeModelStream(
   messages: ChatMessage[],
   signal: AbortSignal,
   options: { pool?: ModelProviderPool; taskType?: FreeLlmApiTaskType } = {},
-): Promise<{ response: Response; provider: string }> {
+): Promise<{ response: Response; provider: string; diagnostics: ProviderRouteDiagnostics }> {
   const secretName = options.pool === 'standard'
     ? 'JARVIS_MODEL_PROVIDERS_STANDARD'
     : 'JARVIS_MODEL_PROVIDERS'
@@ -430,6 +464,7 @@ export async function startFreeModelStream(
     })
     return {
       provider: provider.name,
+      diagnostics: buildProviderRouteDiagnostics(provider, upstream),
       response: new Response(normalized, {
         status: 200,
         headers: { 'Content-Type': 'text/event-stream; charset=utf-8', 'Cache-Control': 'no-cache' },

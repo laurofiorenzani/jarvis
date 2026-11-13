@@ -34,6 +34,13 @@ type VoiceDiag = {
   idleMs: number
 }
 
+type ProviderDiag = {
+  provider: string
+  model: string
+  routedVia?: string
+  fallbackAttempts: number
+}
+
 type TtsDiag = {
   engine: string
   spoken: number
@@ -84,6 +91,7 @@ export function Diagnostics() {
   const w = window as unknown as Record<string, unknown>
   const v = (w.__voice ?? {}) as Partial<VoiceDiag>
   const t = (w.__tts ?? {}) as Partial<TtsDiag>
+  const p = (w.__providerDiagnostics ?? null) as Partial<ProviderDiag> | null
 
   // The two verdicts worth stating outright, rather than making you infer them
   // from the numbers underneath.
@@ -137,6 +145,12 @@ export function Diagnostics() {
       <Row k="last drop" v={v.dropped || '—'} bad={Boolean(v.dropped)} />
       <Row k="last transcript" v={v.heard || '—'} bad={!v.heard} />
       <Row k="last error" v={v.lastError || '—'} bad={Boolean(v.lastError)} />
+
+      <div className="diag-sec">MODEL ROUTING</div>
+      <Row k="configured provider" v={p?.provider || '—'} />
+      <Row k="configured model" v={p?.model || '—'} />
+      <Row k="routed via" v={p?.routedVia || '—'} />
+      <Row k="fallback attempts" v={p ? String(p.fallbackAttempts ?? 0) : '—'} />
 
       <div className="diag-sec">SPEAKING · press T to test</div>
       <Row k="engine" v={String(t.engine ?? 'system')} />
