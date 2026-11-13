@@ -67,6 +67,7 @@ export function CloudAccess({ onConnected, onDisconnected, onResumeConversation,
   const [memoryContextEnabled, setMemoryContextEnabled] = useState(false)
   const [memoryAutoCaptureEnabled, setMemoryAutoCaptureEnabled] = useState(false)
   const [providerStatus, setProviderStatus] = useState('MODEL STATUS NOT CHECKED')
+  const [cloudBrainReady, setCloudBrainReady] = useState(false)
   const [memoryContent, setMemoryContent] = useState('')
   const [memoryCategory, setMemoryCategory] = useState<MemoryCategory>('preference')
   const [memoryBusy, setMemoryBusy] = useState(false)
@@ -103,19 +104,28 @@ export function CloudAccess({ onConnected, onDisconnected, onResumeConversation,
       setMemoryCandidates([])
       setMemoryReviewAvailable(false)
     }
+    let cloudProviderReady = false
+    let cloudSpeechReady = false
     try {
       const providers = await runtime.api.getProviderStatus()
       if (!isCurrentRuntime(runtime, generation)) return
-      setProviderStatus(providers.configured
-        ? 'FREE-QUOTA CONFIG DECLARED · ' + providers.providers.map((item) => item.model).join(', ')
-        : 'NO FREE-ONLY MODEL PROVIDER CONFIGURED')
+      cloudProviderReady = providers.configured && providers.providers.length > 0 &&
+        providers.providers.every((item) => item.providerType === 'cloudflare-workers-ai' && item.privacyMode === 'zdr')
+      cloudSpeechReady = cloudProviderReady && providers.speechProvider === 'cloudflare-whisper'
+      setCloudBrainReady(cloudProviderReady)
+      setProviderStatus(cloudProviderReady
+        ? 'CLOUDFLARE WORKERS AI · ZDR · ' + providers.providers.map((item) => item.model).join(', ') +
+          (cloudSpeechReady ? ' · WHISPER STT READY' : ' · WHISPER STT NOT CONFIGURED')
+        : 'UNAPPROVED CLOUD PROVIDER · CHAT AND CLOUD STT DISABLED')
     } catch {
       if (!isCurrentRuntime(runtime, generation)) return
-      setProviderStatus('MODEL PROVIDER CONFIGURATION INVALID OR UNAVAILABLE')
+      setCloudBrainReady(false)
+      setProviderStatus('MODEL PROVIDER CONFIGURATION INVALID OR UNAVAILABLE · CHAT/STT DISABLED')
     }
     if (!isCurrentRuntime(runtime, generation)) return
-    selectCloudBrain(runtime.brain)
-    onSpeechApiReady?.(runtime.api.transcribeAudio)
+    if (cloudProviderReady) selectCloudBrain(runtime.brain)
+    else selectConfiguredBrain()
+    onSpeechApiReady?.(cloudSpeechReady ? runtime.api.transcribeAudio : null)
     // Cloud TTS stays disabled until an approved provider supports both PT-BR and EN-GB.
     // The device-native speech engine remains the active output path.
     onTtsApiReady?.(null)
@@ -149,6 +159,7 @@ export function CloudAccess({ onConnected, onDisconnected, onResumeConversation,
       onSpeechApiReady?.(null)
       onTtsApiReady?.(null)
       setConnected(false)
+      setCloudBrainReady(false)
       setCanRestoreTabSession(false)
       setMessage(error instanceof Error ? error.message : 'Cloud session could not be restored.')
     } finally {
@@ -212,6 +223,7 @@ export function CloudAccess({ onConnected, onDisconnected, onResumeConversation,
       await runtime.auth.signOut().catch(() => {})
       runtimeRef.current = null
       setConnected(false)
+      setCloudBrainReady(false)
       setMessage(error instanceof Error ? error.message : 'Cloud sign-in failed.')
     } finally {
       setBusy(false)
@@ -502,6 +514,7 @@ export function CloudAccess({ onConnected, onDisconnected, onResumeConversation,
     onSpeechApiReady?.(null)
     onTtsApiReady?.(null)
     setConnected(false)
+      setCloudBrainReady(false)
     setCanRestoreTabSession(false)
     setMemories([])
     setMemoryCandidates([])
@@ -541,7 +554,7 @@ export function CloudAccess({ onConnected, onDisconnected, onResumeConversation,
       <button type="button" onClick={() => setExpanded((value) => !value)}
         style={{ width: '100%', border: 0, background: 'transparent', color: 'inherit',
           textAlign: 'left', cursor: 'pointer', font: 'inherit', padding: 0 }}>
-        {connected ? '● CLOUD BRAIN ACTIVE' : '＋ CONNECT CLOUD BRAIN'}
+        {connected ? (cloudBrainReady ? '● CLOUD BRAIN ACTIVE' : '● CLOUD ACCOUNT CONNECTED') : '＋ CONNECT CLOUD BRAIN'}
         <span style={{ float: 'right' }}>{expanded ? '−' : '+'}</span>
       </button>
       {expanded && (

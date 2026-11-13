@@ -143,12 +143,24 @@ function configuredProviders(): Provider[] {
 /** Safe provider diagnostics; never returns secret values or environment variable names. */
 export function getFreeProviderStatus(): {
   configured: boolean
-  providers: { name: string; model: string }[]
+  providers: { name: string; model: string; providerType: string; privacyMode: 'zdr' | 'standard' }[]
+  speechProvider: 'cloudflare-whisper' | 'unconfigured'
 } {
   const providers = configuredProviders()
+  const accountId = Deno.env.get('CLOUDFLARE_ACCOUNT_ID')?.trim()
+  const apiToken = Deno.env.get('CLOUDFLARE_API_TOKEN')?.trim()
+  const speechProvider = /^[a-f0-9]{32}$/i.test(accountId ?? '') && apiToken
+    ? 'cloudflare-whisper'
+    : 'unconfigured'
   return {
     configured: providers.length > 0,
-    providers: providers.map(({ name, model }) => ({ name, model })),
+    providers: providers.map(({ name, model, baseUrl, privacyMode }) => ({
+      name,
+      model,
+      providerType: new URL(baseUrl).hostname === 'api.cloudflare.com' ? 'cloudflare-workers-ai' : 'other',
+      privacyMode: privacyMode ?? 'standard',
+    })),
+    speechProvider,
   }
 }
 

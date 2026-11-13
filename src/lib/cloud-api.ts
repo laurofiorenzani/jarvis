@@ -220,7 +220,12 @@ export function createCloudApiClient(options: CloudApiOptions) {
         `/v1/conversations/${encodeURIComponent(requireText(conversationId, 'conversation ID'))}`,
         { method: 'DELETE' },
       ),
-    getProviderStatus: () => request<{ version: typeof CLOUD_API_VERSION; configured: boolean; providers: { name: string; model: string }[] }>('/v1/provider-status'),
+    getProviderStatus: () => request<{
+      version: typeof CLOUD_API_VERSION
+      configured: boolean
+      providers: { name: string; model: string; providerType?: string; privacyMode?: 'zdr' | 'standard' }[]
+      speechProvider?: 'cloudflare-whisper' | 'unconfigured'
+    }>('/v1/provider-status'),
     getMemoryPreference: () => request<MemoryPreferenceResponse>('/v1/memory-preferences'),
     setMemoryPreferences: (patch: Partial<Pick<MemoryPreferenceResponse, 'contextEnabled' | 'autoCaptureEnabled'>>) =>
       request<MemoryPreferenceResponse>('/v1/memory-preferences', {
