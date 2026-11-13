@@ -51,7 +51,7 @@ function corsHeaders(origin: string | null): HeadersInit {
     try {
       const parsed = new URL(origin)
       return parsed.protocol === 'https:' &&
-        /^jarvis-[a-z0-9-]+-lauro-fiorenzani\\.vercel\\.app$/i.test(parsed.hostname)
+        /^jarvis-[a-z0-9-]+-lauro-fiorenzani\.vercel\.app$/i.test(parsed.hostname)
     } catch {
       return false
     }
