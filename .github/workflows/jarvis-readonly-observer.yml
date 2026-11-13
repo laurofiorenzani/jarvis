@@ -10,6 +10,7 @@ on:
 permissions:
   contents: read
   actions: read
+  statuses: read
 
 concurrency:
   group: jarvis-readonly-observer-${{ github.ref }}
@@ -144,6 +145,60 @@ jobs:
               runNumber: Number.isInteger(run?.run_number) ? run.run_number : undefined,
               observedAt: new Date().toISOString(),
             }));
+          } finally {
+            clearTimeout(timer);
+          }
+          NODE
+
+      - name: Observe latest Vercel deployment status
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_API_URL: ${{ github.api_url }}
+          GH_REPOSITORY: ${{ github.repository }}
+        run: |
+          node --input-type=module <<'NODE'
+          const api = process.env.GH_API_URL;
+          const repository = process.env.GH_REPOSITORY;
+          const headers = {
+            accept: 'application/vnd.github+json',
+            authorization: `Bearer ${process.env.GH_TOKEN}`,
+            'x-github-api-version': '2022-11-28',
+          };
+          const controller = new AbortController();
+          const timer = setTimeout(() => controller.abort(), 10000);
+          try {
+            const branchUrl = `${api}/repos/${repository}/branches/${encodeURIComponent('work/jarvis-canonical-integration')}`;
+            const branchResponse = await fetch(branchUrl, {
+              headers, signal: controller.signal, redirect: 'error',
+            });
+            if (!branchResponse.ok) throw new Error(`GitHub canonical branch request failed: HTTP ${branchResponse.status}`);
+            const branchPayload = await branchResponse.json();
+            const sha = branchPayload.commit?.sha;
+            if (typeof sha !== 'string' || !/^[a-f0-9]{40}$/i.test(sha)) {
+              throw new Error('GitHub canonical branch response did not contain a valid commit SHA.');
+            }
+
+            const statusUrl = `${api}/repos/${repository}/commits/${sha}/status`;
+            const statusResponse = await fetch(statusUrl, {
+              headers, signal: controller.signal, redirect: 'error',
+            });
+            if (!statusResponse.ok) throw new Error(`GitHub commit status request failed: HTTP ${statusResponse.status}`);
+            const payload = await statusResponse.json();
+            const statuses = Array.isArray(payload.statuses) ? payload.statuses : [];
+            const vercel = statuses
+              .filter((item) => item?.context === 'Vercel')
+              .sort((left, right) => Date.parse(right.updated_at || '') - Date.parse(left.updated_at || ''))[0];
+            const status = vercel?.state === 'success' ? 'healthy'
+              : vercel?.state === 'pending' ? 'running'
+                : vercel?.state === 'failure' || vercel?.state === 'error' ? 'failed'
+                  : 'unknown';
+            console.log(JSON.stringify({
+              signal: 'latest_vercel_deployment',
+              source: 'deployment',
+              status,
+              observedAt: new Date().toISOString(),
+            }));
+            if (status === 'failed' || status === 'unknown') process.exitCode = 1;
           } finally {
             clearTimeout(timer);
           }
