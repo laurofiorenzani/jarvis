@@ -403,3 +403,18 @@ The current work has not yet produced one official `main`, and it has not comple
 7. Close PRs and delete branches only after their unique commits/tests/docs are either migrated or explicitly marked superseded. Retire `jarvis-personal-cloud` last, after its unique work is preserved in this one master record.
 
 **Current truth:** one candidate integration branch, one central ledger, a successful full CI run and a ready preview now exist. The project is not yet consolidated onto `main`; no branch or repository has been deleted, and no production promotion has occurred.
+
+
+## 18. Mobile recording review and cloud-status correction — 2026-11-13
+
+### iPhone screen recording (2026-11-12, 30.5 seconds)
+- The recording opens the Vercel-hosted JARVIS PWA in iPhone Safari.
+- It shows a staged boot sequence: initial circular initialization screen, system-1 startup progress, a JARVIS emblem, then the amber/orange orbital HUD.
+- The HUD renders and animates continuously for the remainder of the recording. At the end, the iOS Control Center is opened and a J.A.R.V.I.S. control tile is visible.
+- This is useful evidence that the hosted page loads and the visual HUD animates on the iPhone. It does **not** prove sign-in, cloud conversation, microphone capture, TTS playback, background audio, push notifications, or native-app/Keychain behavior; none of those interactions is demonstrated in this clip.
+- Follow-up device test should focus on actual login with the existing account, one Portuguese voice turn, one English voice turn, spoken response playback, app background/foreground, and sign-out/account isolation. Do not ask the user to create another account.
+
+### Cloud connection-status correction
+- Updated `src/lib/brain.ts`: a signed-in cloud session no longer reports a live connected brain or a live SYSTEMS rail service label. The cloud API is stateless HTTPS; authentication proves identity only. Persistent live connectivity remains reportable only for the local bridge socket.
+- Updated `tests/brain-cloud-selection.test.ts` to assert the cloud connection indicator remains false/empty both while an authenticated cloud brain is selected and after sign-out.
+- These changes are on `work/jarvis-canonical-integration`; a fresh full CI run must pass on the new head before the correction is considered validated.
