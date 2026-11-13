@@ -877,3 +877,36 @@ The available Supabase connector cannot inspect or set Edge Function secrets. Do
 6. Surface FreeLLMAPI's X-Routed-Via and X-Fallback-Attempts metadata in JARVIS diagnostics; then expand audio/vision/media integrations separately.
 
 **Current truth:** provider router, per-account consent controls and isolation tests are implemented and CI-green on code head 637dbe5. The cloud gateway is not yet live because the shared-database migration, private persistent host and server-side secrets are not configured. No production deployment has been made.
+
+
+## 2026-11-13 — Private FreeLLMAPI proxy and exact-head validation
+
+### Private proxy package implemented
+
+- Added `ops/freellmapi-gateway/proxy.mjs`, Dockerfile, Compose overlay, `.env.jarvis.example`, deployment README and `test/freellmapi-gateway-proxy.test.mjs`.
+- The proxy exposes only `GET /v1/models` and `POST /v1/chat/completions`; dashboard/admin/MCP and all other routes return 404. It validates a separate 256-bit JARVIS bearer token, replaces it with the private FreeLLMAPI unified API key, forwards the task hint, streams responses and forwards safe routed-via/fallback headers.
+- Limits: 2 MiB request body and 120 requests/minute per proxy instance. Logs contain method/route/status/duration/served-model/fallback-count only; never prompts, request bodies or credentials.
+- The official FreeLLMAPI compose file publishes port 3001 to `127.0.0.1` by default. The deployment overlay leaves that host binding untouched; the proxy connects over the private Docker network. Optional Cloudflare Quick Tunnel exposes only the proxy. Its temporary hostname may change after a restart.
+- Detailed deployment instructions are in `ops/freellmapi-gateway/README.md`. The existing Oracle VM is still unverified; the connected tools do not expose OCI account/instance/SSH management.
+
+### Exact-head CI result
+
+- Current code head `495549ade7c5777fca0f0dd5b0b5c38ec6f0eac7` passed GitHub Actions CI #871 (run ID `43409447032`): https://github.com/laurofiorenzani/jarvis/actions/runs/43409447032
+- Successful checks: dependency audit, TypeScript/Vite production build, all Node tests including the new proxy tests, lint, provider privacy tests, semantic-memory/auto-capture tests, Supabase Edge Function typecheck, speech transcript tests, isolated local Supabase startup, all migrations applied, SQL account-isolation tests, authenticated two-user API integration (including provider preference isolation), teardown, production API/CORS smoke and canonical Preview CORS smoke.
+- PR #13 remains OPEN/DRAFT on `work/jarvis-freellmapi-cloud-gateway`; no merge or production deployment.
+
+### Connected infrastructure and blockers unchanged
+
+- Vercel branch-scoped Preview variables are configured. The last READY Preview is older and predates those variables. New deployment attempts hit the free API deployment cap (100/day, retry after 24h); no paid upgrade.
+- Supabase Preview remains `jarvis-preview-api` v21 and Production remains `jarvis-api` v32. The additive `jarvis_provider_preferences` migration is not applied to the live database. Preview and Production share the same Postgres project; explicit approval is required before applying this shared-schema change.
+- Cloudflare account inventory shows zero Workers scripts; billing plan remains unverified. No Worker or Tunnel was created.
+- No Oracle Cloud connector is available; VM state, public IP and SSH access are unverified. No FreeLLMAPI host, unified key, provider keys or JARVIS gateway token are configured.
+- No provider inference, personal prompt, account change, production function change, billing change or secret update has occurred.
+
+### Next action gates
+
+1. Obtain explicit owner approval to apply the additive RLS-protected `jarvis_provider_preferences` table to the shared Supabase database.
+2. After approval, apply the migration, deploy the exact Edge Function bundle to Preview only, and verify provider preference isolation against the two existing accounts. Keep Production `jarvis-api` v32 unchanged.
+3. Wait for Vercel quota reset and create the configured Preview from the current branch.
+4. Connect the existing Oracle VM or provide a secure one-time deployment path; install FreeLLMAPI and the private proxy using the deployment package. Do not send SSH private keys or provider keys in chat.
+5. Configure server-side secrets and run synthetic inference plus controlled quota/fallback tests before enabling the standard pool.
