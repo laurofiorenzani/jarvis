@@ -490,3 +490,36 @@ Decision: do not cherry-pick those three commits. The candidate contains the int
 7. Retarget the complete candidate to `main` only after the unique branch review and device/release gates pass; then remove redundant PRs/branches and finally retire `jarvis-personal-cloud` after its unique research is preserved.
 
 **Current state:** CI and observer are green on the candidate, and its preview is READY. The project is not yet merged to `main`; production remains unchanged. This master record is the only authoritative progress/decision ledger.
+
+
+## 21. Single-ledger consolidation of old decision/status documents — 2026-11-13
+
+The older `docs/PROJECT_DECISIONS.md`, `docs/architecture/IMPLEMENTATION_STATUS_2026-11-10.md`, and `docs/LOGIN_AND_PWA_SETUP.md` were reviewed. Their durable decisions and still-relevant evidence are consolidated here; they are stale snapshots and are being retired from the candidate so there is one authoritative decision/progress file.
+
+### Product and architecture decisions carried forward
+- JARVIS is the only assistant and user-facing control surface. No Apple Shortcuts, Siri Shortcuts, automations that require the user to switch apps, or manual shortcut workflows are part of the product architecture.
+- Cloud-first operation: ordinary chat, memory, voice and supported integrations must work without the Windows PC or a local bridge. The local bridge remains optional developer/desktop capability only.
+- The current amber holographic interface is the sole intended interface. The previous interface must not be restored.
+- The iPhone deliverable is a standalone native iOS app with its own icon and lifecycle. This supersedes the older 10-Nov decision that approved PWA as a release fallback. The web preview/PWA is useful for development and browser testing only; it is not the final mobile deliverable.
+- Native iOS permissions and Apple policy constrain what can be accessed. JARVIS must use supported APIs, notification permissions, user-granted access and vendor integrations; do not promise unrestricted reading/control of every app or arbitrary CarPlay mirroring.
+- Start with a continuous assistant conversation and reliable multilingual voice (Portuguese/English plus language-aware handling); then progressively add capabilities through the same JARVIS conversation.
+- Use the existing Supabase Edge Function provider router with server-side secrets and approved free-tier HTTPS providers for the zero-cost two-user prototype. FreeLLMAPI's current dashboard/local prototype is single-user and loopback-oriented; do not expose it as a public multi-user service. Keep it local-only unless a free, persistent, private hosting and multi-user security design is proven.
+- No paid services, credits, upgrades, billing changes, paid hosts or new vendor subscriptions without explicit cost review and approval. Never expose provider/vendor credentials in browser bundles, Git, ChatGPT, logs or this ledger.
+- Personal/project memory stores explicit approved decisions/facts with provenance and timestamps; it must not indiscriminately ingest every conversation or secrets. Retrieval and auto-capture are separate per-user opt-ins, default off. Each account remains isolated.
+- Durable project continuity requires the versioned master ledger plus user-owned cloud project memory. Do not claim runtime recall until records are seeded and a fresh conversation successfully retrieves them.
+
+### Auth, memory and provider implementation evidence
+- Current candidate CloudAccess supports existing-account password sign-in, session restoration, sign-out, resend confirmation, invite/recovery password setup and no public account-creation action. The two existing Supabase accounts must be preserved; do not recreate them.
+- Browser tab-session restore is tab-scoped `sessionStorage`, not secure cross-device/native persistence. The native token adapter is not yet wired to a real iOS Keychain plugin.
+- Auth redirect handling accepts the exact production and stable integration-preview origins and rejects arbitrary Vercel preview/lookalike origins. Supabase Auth dashboard redirect allowlist must still be verified to contain those exact URLs; no dashboard setting was changed in this audit.
+- Provider status is configuration metadata, not proof of a live model request. The next real authenticated inference must be tested; provider diagnostics must distinguish 404 model/endpoint, 401/403 auth/access, 429 quota/rate limit, upstream 5xx and other request errors. Never mislabel all failures as quota exhaustion; logs must redact keys and never log prompts or raw credentials.
+- OpenRouter ZDR/privacy notes from the old decision ledger are preserved as a security constraint: verify account-level ZDR-only/Safety Retention settings and data-region requirements before private family content is sent. A request-level ZDR flag alone is not sufficient proof of strict zero retention. The documented OpenRouter Free route is quota-limited and not EU-only; do not send data that requires EU-only processing. Do not add paid credits.
+- Cloud semantic-memory retrieval injects only a bounded set of approved, non-expired, user-scoped facts when that user's context preference is enabled. Current live counts remain two Auth users, 13 conversations, 42 messages, one preference row and zero saved memory facts.
+- The `jarvis_rate_limits` table is server-only: no anon/authenticated grants or client policies; do not add client access. Leaked-password protection was reported disabled by the Supabase security advisor; enabling it requires a deliberate Auth-setting review and has not been changed.
+- The old local encrypted memory runtime (AES-256-GCM, injected OS-vault key provider, atomic key creation, encrypted backups, metadata-only audit, one-shot approvals) is valuable security research, but it is disabled/local-only and not a multi-user cloud database. Reuse its cryptographic/key-lifecycle/audit invariants only after a cloud-compatible key-management design and tests exist.
+
+### Retired duplicate files
+- `docs/PROJECT_DECISIONS.md`: superseded by this section and the master record.
+- `docs/architecture/IMPLEMENTATION_STATUS_2026-11-10.md`: dated implementation snapshot; its auth/voice/provider status is stale relative to the current candidate.
+- `docs/LOGIN_AND_PWA_SETUP.md`: old instructions incorrectly say no accounts exist and encourage account creation/PWA installation; no longer appropriate for the current two-account/native-app decision.
+- Architecture specifications and vendor/mobile design documents remain as supporting technical references, not competing progress/decision ledgers. README continues to point to this master record as the single source of truth.
