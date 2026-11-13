@@ -64,7 +64,7 @@ test('triage deduplicates, prioritizes and never auto-approves remediation', () 
   const proposals = triageObservations([healthy, warning, critical, duplicate])
   assert.equal(proposals.length, 2)
   assert.equal(proposals[0].severity, 'critical')
-  assert.equal(proposals[0].evidence[0], 'api_unavailable at 2026-11-12T12:03:00.000Z')
+  assert.equal(proposals[0].evidence[0], 'api_unavailable at 2026-11-12T12:03:00Z')
   assert.equal(proposals.every((proposal) => proposal.requiresHumanApproval), true)
 })
 
