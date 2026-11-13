@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { CloudApiError, createCloudApiClient } from '../src/lib/cloud-api.ts'
+import { CloudApiError, createCloudApiClient, portugueseApiMessage } from '../src/lib/cloud-api.ts'
 
 test('cloud client sends bearer auth and version without storing credentials', async () => {
   let captured: RequestInit | undefined
@@ -580,4 +580,13 @@ test('speech client honours provider Retry-After on transcription throttling', a
       error.retryable &&
       error.retryAfterMs === 60_000,
   )
+})
+
+
+test('cloud API user-facing errors use Brazilian Portuguese', () => {
+  assert.equal(portugueseApiMessage('x', 'rate_limited'), 'O JARVIS recebeu muitas solicitações em pouco tempo. Aguarde um instante e tente novamente.')
+  assert.equal(portugueseApiMessage('x', 'quota_exhausted'), 'A cota gratuita diária de IA foi atingida. Ela é renovada à meia-noite UTC.')
+  assert.equal(portugueseApiMessage('x', 'unauthenticated'), 'Sua sessão expirou. Entre novamente.')
+  assert.equal(portugueseApiMessage('x', 'forbidden'), 'Você não tem permissão para esta operação.')
+  assert.equal(portugueseApiMessage('x', 'invalid_request'), 'Não consegui processar esta mensagem. Verifique o conteúdo e tente novamente.')
 })
