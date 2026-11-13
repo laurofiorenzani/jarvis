@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js'
 import { getApiRoutePathCandidates } from './route-path.ts'
+import { extractSpeechTranscript, countSpeechCandidates } from './speech-transcript.ts'
 import { getFreeProviderStatus, startFreeModelStream } from './model-router.ts'
 import { isSemanticMemoryId, isSafeAutoMemorySource, mergeSemanticMemoryPreferences, normalizeSemanticMemoryQuery, parseAutoMemoryCandidates, parseSemanticMemoryCandidate, parseSemanticMemoryDecision, parseSemanticMemorySearch } from './semantic-memory.ts'
 
@@ -334,10 +335,15 @@ Deno.serve(async (request) => {
       return error('service_unavailable', 'Speech transcription failed. Please try again.', 503, true, cors)
     }
     const payload = await upstream.json().catch(() => null)
-    const transcript = payload && typeof payload === 'object'
-      ? (payload as { candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }> }).candidates?.[0]?.content?.parts?.map((part) => part.text || '').join('').trim()
-      : ''
-    if (typeof transcript !== 'string') return error('service_unavailable', 'Speech transcription returned no text.', 503, true, cors)
+    const transcript = extractSpeechTranscript(payload)
+    if (!transcript) {
+      console.warn('[jarvis] speech provider returned an empty transcript', {
+        audioBytes: audio.byteLength,
+        mimeType,
+        candidateCount: countSpeechCandidates(payload),
+      })
+      return error('service_unavailable', 'Speech transcription returned no text. Please try again.', 503, true, cors)
+    }
     return response({ version: VERSION, text: transcript }, 200, cors)
   }
 
