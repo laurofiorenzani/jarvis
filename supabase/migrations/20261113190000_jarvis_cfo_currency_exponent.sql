@@ -42,14 +42,14 @@ revoke all on function public.jarvis_cfo_amount_matches_currency_exponent(numeri
 grant execute on function public.jarvis_cfo_amount_matches_currency_exponent(numeric, varchar, date, text) to service_role;
 
 alter table public.jarvis_cfo_transactions
-  alter column amount type numeric(30,9),
+  alter column amount type numeric,
   add column currency_registry_version text not null;
 alter table public.jarvis_cfo_transactions
   add constraint jarvis_cfo_transactions_currency_exponent_check
   check (public.jarvis_cfo_amount_matches_currency_exponent(amount, currency, effective_at, currency_registry_version));
 
 alter table public.jarvis_cfo_balance_snapshots
-  alter column amount type numeric(30,9),
+  alter column amount type numeric,
   add column currency_registry_version text not null;
 alter table public.jarvis_cfo_balance_snapshots
   add constraint jarvis_cfo_snapshots_currency_exponent_check
