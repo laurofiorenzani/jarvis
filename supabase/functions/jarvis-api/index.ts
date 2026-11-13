@@ -61,6 +61,7 @@ function corsHeaders(origin: string | null): HeadersInit {
   if (!origin || (!allowedOrigins.has(origin) && !isLocalDevelopmentOrigin && !isJarvisPreviewOrigin)) return { Vary: 'Origin' }
   return {
     'Access-Control-Allow-Origin': origin,
+    // Supabase regional invocations require x-region to survive browser preflight.
     'Access-Control-Allow-Headers': 'apikey, authorization, content-type, x-jarvis-api-version, x-region',
     'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
     'Access-Control-Max-Age': '86400',
