@@ -1485,3 +1485,42 @@ This checkpoint is an evidence-based status update, not a declaration that JARVI
 - Observer Validation run `43472284650` completed SUCCESS on exact checkpoint commit `5d6b4edfeee838f57a7bf75298b8d650b46e8f50`.
 - Full CI run `43472284595` for the same commit remains IN_PROGRESS. At last observation, typecheck/build/tests/lint, provider privacy, semantic-memory policy, Edge Function type-check and speech tests had passed; isolated Supabase teardown was running. No failure was reported, but do not mark the run green until it completes.
 - A subsequent documentation-only master-ledger commit `643d4ba580ffbae3409d2035c1ec43cc841db25b` was created after the Vercel Preview build. The READY deployment therefore corresponds to `5d6b4ed...`, not this later docs-only commit; no source code changed between them.
+
+
+## 2026-11-13 — autonomous parallel continuation handoff (17:xx UTC)
+
+### Canonical branch and exact-head validation
+- Canonical development branch: `work/jarvis-canonical-integration`, source HEAD at start of this checkpoint: `a969f3c1119b6ebd42aaef9058e94fec6bb521d3`.
+- Full CI run #1002 (`43472746549`) completed SUCCESS on that exact SHA. This includes typecheck/build, app tests, lint, provider privacy tests, semantic-memory policy tests, Edge Function type-check, speech tests, isolated local Supabase startup/migrations, SQL isolation tests, two-user semantic-memory API integration and deployed cloud/Preview CORS smoke tests.
+- Observer Validation #162 (`43472746764`) completed SUCCESS on the same exact SHA.
+- The previous CI #1000/#1001 cancellations are superseded by the successful #1002 exact-head run; no failure was reported for #1002.
+- Independent exact-head CI also remains SUCCESS for PR #23 provider consent (`2e9f3de2ddc0cdf46464e3f385aff97e5e54fbc3`, run `43464685923`), PR #22 Family CFO schema (`c3d3edc2ed91f88994cb93bb6acc7843f09992c0`, run `43464989072`), and PR #26 action-approval primitives (`59e454969cf3f2875b18ee50dfea48b98c9e3425`, run `43464555830`). These are branch-level CI passes, not approval to merge or deploy.
+- Observer branch `work/self-evolution-readonly-observer` is at `2249853a157f5e6b1782ce202c6c70998604d864`; its Observer Validation run `43452601059` and CI run `43452600850` completed SUCCESS. This is an earlier isolated branch head, not current canonical integration.
+
+### PR review and merge boundaries
+- PR #25 remains DRAFT at exact head `725e1bbdf7ef8a68b34f9f3c7a7c6b960bd47a5b`. Latest passing CI and Observer Validation found for that branch are on older head `431cb78a31e439f94a048754b3a8d9ae5195c730`; do not transfer those passes to current head. Keep draft until exact-head validation is obtained.
+- PR #12 is the canonical integration candidate and is still open. No PR was merged in this checkpoint.
+- PR #22 CFO, #23 provider consent, #26 action approval and #27 transfer pairing remain separate changes. Do not bulk merge or apply migrations.
+- PR #28 remains a secure-storage adapter and tests only. The package/native project is not installed; no Xcode build, signing, IPA/TestFlight or physical-device verification is evidenced. Vercel Hobby deployment limit was reached (>100 deployments/day); no upgrade or workaround is allowed.
+
+### Financial schema review
+- PR #22 adds owner-scoped accounts, transactions and balance snapshots, authenticated SELECT-only RLS, service-role DML and synthetic two-user isolation tests. Its exact-head CI passes.
+- Important unresolved contract: migration currently uses `numeric(20,2)` while accepting any three-letter currency code. Do not merge/apply until the product contract chooses and documents currency-specific minor-unit precision or a restricted supported-currency allowlist, and addresses original-vs-settlement currency for FX. No live migration was applied; synthetic-only/read-only boundary remains.
+
+### Multi-AI and privacy review
+- PR #23 exact-head CI passes. FreeLLMAPI is accepted only through the separate standard provider pool, HTTPS, server-side key reference and named `auto:<profile>` route; both account pools remain default-off pending per-account consent and verified zero-billing/downstream provider manifest.
+- Gateway response headers such as `X-Routed-Via` and fallback trail are post-inference diagnostics, not preventive privacy controls. Do not send personal content through the gateway until the exact active downstream chain has been independently attested before inference and no paid/overage path is possible.
+- No inference request, secret read/write, provider activation or billing change occurred.
+
+### Live platform state — read-only
+- Supabase project remains ACTIVE_HEALTHY; production `jarvis-api` ACTIVE v32 and `jarvis-preview-api` ACTIVE v23. Applied migrations still end at `20261113125437_provider_preferences_rls_initplan`; no CFO migration exists in live history.
+- Security advisor continues to report `public.jarvis_rate_limits` RLS-without-policy as INFO (consistent with service-role-only design pending source confirmation) and leaked-password protection disabled as WARN. No auth setting changed.
+- Latest Vercel canonical Preview deployment remains READY on older commit `5d6b4edfeee838f57a7bf75298b8d650b46e8f50`, alias `https://jarvis-git-work-jarvis-canonical-integration-lauro-fiorenzani.vercel.app`. It is not a deployment of current canonical SHA `a969f3c...`. Do not claim current-head browser smoke-test or deploy.
+- Cloudflare account still has no deployed Worker runtime per the last inventory. No resources, secrets, billing or inference were changed.
+
+### Work performed and next parallel actions
+- Reconciled current canonical CI/Observer outcomes, exact-head branch CI evidence, PR #25 current head, Supabase functions/migration/security state and latest Vercel deployment inventory.
+- No code, production data, schema, auth, secrets, provider settings, billing, production deployment or branch refs were changed.
+- Next: (1) resolve CFO currency minor-unit contract and FX representation; (2) get exact-head CI and Observer Validation for PR #25 without altering its source; (3) review PR #23 consent UI against account-specific provider activation and pre-inference downstream-chain attestation; (4) review PR #26/27 for server-side atomic persistence and pair confirmation; (5) continue native iOS feasibility only with a verified free macOS/Xcode path; (6) preserve PR #12 as integration candidate and production unchanged until release gates pass.
+
+This handoff records completed validations and remaining blockers; it does not declare JARVIS production-ready or any unshipped capability complete.
