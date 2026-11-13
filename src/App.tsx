@@ -163,7 +163,7 @@ export default function App() {
     let filled = false
 
     try {
-      const { text } = await ask(said, history.current, {
+      await ask(said, history.current, {
         onText: (delta) => {
           if (stale()) return
           if (!started) {
