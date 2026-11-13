@@ -1122,6 +1122,7 @@ The available Supabase connector cannot inspect or set Edge Function secrets. Do
 - Live Edge Function inventory: `jarvis-api` ACTIVE v32 (Production) and `jarvis-preview-api` ACTIVE v23 (Preview). The provider-preferences migrations `20261113125425` and `20261113125437` are present in the migration history.
 - Public schema currently contains 11 JARVIS tables, all with RLS enabled. The provider-preferences table is empty; no provider consent was switched on. The memory tables remain in place; no second memory store was created.
 - Vercel deployment `jarvis-i9i2a5urt-lauro-fiorenzani.vercel.app` is READY and is tied to exact commit `34757f1346ba2ad3bee0a503a2c8eb2cd6476247` on `work/jarvis-freellmapi-cloud-gateway`. This is a Preview deployment, not a Production release.
+- The documentation-only continuity commit `6c0fdfce733991b2ca18d20ba90fb72c5019abc3` also reached Vercel Preview READY at `https://jarvis-j8sq6s2rd-lauro-fiorenzani.vercel.app`. It does not change application code or Supabase functions. GitHub Actions still reports no workflow run for this exact documentation commit.
 - GitHub Actions lookup for exact commit `34757f1346ba2ad3bee0a503a2c8eb2cd6476247` returned no workflow runs. Do not reuse historical CI #871 as validation for this exact commit.
 
 ### Voice/provider implementation review
