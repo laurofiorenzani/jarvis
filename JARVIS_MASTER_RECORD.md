@@ -910,3 +910,28 @@ The available Supabase connector cannot inspect or set Edge Function secrets. Do
 3. Wait for Vercel quota reset and create the configured Preview from the current branch.
 4. Connect the existing Oracle VM or provide a secure one-time deployment path; install FreeLLMAPI and the private proxy using the deployment package. Do not send SSH private keys or provider keys in chat.
 5. Configure server-side secrets and run synthetic inference plus controlled quota/fallback tests before enabling the standard pool.
+
+
+## 2026-11-13 — connected-platform verification from ChatGPT session (12:30 UTC)
+
+### Verified live state (read-only inspection)
+
+- Canonical application repository confirmed: `laurofiorenzani/jarvis`. Private `jarvis-personal-cloud` remains a planning/workbench repository; it is not the executable application repo and must not be deleted.
+- Current FreeLLMAPI gateway branch head is `d499419a1586586429b7265b953496868b5edb9e`. PR #13 remains open/draft. PR #12 remains open and is the broader amber/cloud-auth integration line. No PR was merged or modified during this inspection.
+- Vercel project `jarvis` is readable. A READY Preview deployment exists at `jarvis-7g68mgue9-lauro-fiorenzani.vercel.app`, built from ancestor commit `9265f7c44de2630b48fdda5cee18f614a141e04b`. GitHub compare confirms this deployment commit is an ancestor of current gateway branch head `d499419` (six commits behind); it is not exact-head validation. Branch-scoped Preview variables for `work/jarvis-freellmapi-cloud-gateway` are present and target Preview only. No values are recorded here.
+- Supabase project `undmhmdwhxvjgvezvucy` is `ACTIVE_HEALTHY`, region `eu-west-3`. Production `jarvis-api` is v32; Preview `jarvis-preview-api` is v21. Live migration inventory ends at `20261112182639_jarvis_memory_auto_capture_opt_in`; `20261113110000_jarvis_provider_preferences` is not applied.
+- Live public-schema inventory: 13 conversations, 42 messages, 33 turns, 87 rate-limit rows, 0 approved personal-memory rows, 1 memory-preference row, and 0 rows in the semantic-memory summaries/topics/facts/topic-links tables. All listed tables have RLS enabled. These counts are a point-in-time snapshot, not a product readiness claim.
+- The provider-preferences migration in PR #13 is additive and RLS-protected, but Preview and Production share the same Postgres database. Do not apply it without explicit owner approval; deploying Preview code alone cannot isolate the schema change.
+- Supabase security advisor reports leaked-password protection disabled (WARN). It also reports RLS enabled/no policy for `jarvis_rate_limits`; direct table grants were checked and only `postgres` and `service_role` have privileges, with no `anon` or `authenticated` grant. This appears consistent with service-role-only rate-limit access; do not add a permissive policy. Password-protection configuration remains a separate Auth security decision and was not changed.
+- Supabase performance advisor reports 18 unused indexes. Given low current row counts and new semantic-memory tables, do not remove indexes based on this snapshot.
+- Cloudflare account is authenticated and account inventory returns one account. Workers Scripts inventory is empty (zero scripts). No Worker was created.
+- No provider inference, personal prompt, secret readback, account change, production function deployment, migration, billing change, or external action was performed in this inspection.
+
+### Updated immediate next actions
+
+1. Obtain explicit owner approval before applying the additive provider-preferences migration to the shared Supabase database.
+2. After approval, deploy the exact validated Edge Function to Preview only and test provider preference read/write and two-account isolation. Keep production `jarvis-api` v32 unchanged.
+3. Create a fresh Vercel Preview from the current gateway branch head when deployment quota allows; do not treat the ancestor Preview as exact-head verification.
+4. Verify or provision the existing persistent Oracle VM through an authorised OCI/SSH route; current connected tools do not expose OCI management, and Cloudflare has zero Worker scripts.
+5. Configure the private FreeLLMAPI host/proxy and server-side secrets only after host verification; run synthetic inference and controlled quota/fallback tests before enabling any provider pool.
+6. Address the Supabase leaked-password-protection warning through a separately approved Auth security change; do not change it silently.
