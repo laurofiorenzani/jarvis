@@ -326,6 +326,7 @@ select is(
   'expired approved action transitions to expired'
 );
 
+reset role;
 set local role authenticated;
 select set_config('request.jwt.claim.sub', '00000000-0000-4000-8000-000000000031', true);
 select is(
