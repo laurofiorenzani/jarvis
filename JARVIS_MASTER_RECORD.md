@@ -1882,3 +1882,30 @@ G. User action: none now. Mac/Xcode and physical iPhone will eventually be requi
 H. Next: inspect PR #32 CI once available; fix any SQL/test failures on the isolated branch; continue source-level route diff and provider fallback review.
 I. GitHub: `laurofiorenzani/jarvis`; canonical `work/jarvis-canonical-integration`; PR #31 Observer validated; PR #32 CFO currency exponent Draft.
 J. Next conversation: Continue from this checkpoint. PR #31 exact-head CI #1014 + Observer #172 SUCCESS. PR #32 adds currency exponent registry and synthetic tests, head `ef658432986da1cd561b25dc5618288ed98b0d61`; exact-head CI not yet confirmed. Prod Supabase v32 lacks Preview's GET/PUT /provider-preferences and POST /semantic-memory/candidates; both handler sources validate bearer auth before authenticated handlers. CFO registry empty until official SIX list review; no live migration. Provider pools off; Vercel free cap respected. Continue multitask under €0 recurring cost.
+
+
+## 2026-11-13 — CFO precision correction and exact-head validation checkpoint
+
+### Family CFO / PR #32
+- Exact-head CI run #1019 (`43479276756`) completed SUCCESS on the previous PR head `fc7bc197c7ad052ed648cbf5e5039c323aac1918`. All 28 job steps succeeded, including typecheck/build, Node tests, lint, provider privacy, semantic-memory tests, Edge Function typecheck, isolated Supabase migrations, SQL isolation regression, authenticated two-user API test, and Production/Preview CORS smoke tests. This does not validate the subsequent precision correction.
+- Source review found a correctness gap: `NUMERIC(30,9)` coerces/rounds input to nine fractional places before the CHECK constraint can inspect it. A value such as EUR 1.2300000001 could therefore be rounded to 1.230000000 and incorrectly pass a 2-digit exponent check.
+- Corrected the isolated PR #32 migration to use unconstrained PostgreSQL `numeric` for transaction and balance amounts, preserving the supplied decimal scale until the currency exponent constraint runs. Added two regression assertions for excess precision beyond 9 places and a high-precision decimal input. Currency validation still compares the original exact numeric value against `trunc(amount, minor_unit)`.
+- Correction commits: migration `70c84723cc46db0e787c58d8b42e64184cb5804a`; test `c45b97b1ff3ead9ba57136e8e516d8c5bfc6db7b`. Current PR #32 head is `c45b97b1ff3ead9ba57136e8e516d8c5bfc6db7b`; GitHub reports mergeable=true and Draft=true. No exact-head CI run was visible at checkpoint; must rerun and validate before review.
+- The nine prior exponent assertions plus two new high-precision regressions are now 11 planned assertions. EUR/JPY/KWD fixtures remain synthetic; production registry remains empty. No live migration or financial data.
+- Keep PR #32 Draft. Do not merge or deploy based on prior-head CI.
+
+### Supabase / security recheck
+- Live migrations still end at `20261113125437_provider_preferences_rls_initplan`; no CFO schema is live.
+- Security advisor findings unchanged: INFO `public.jarvis_rate_limits` has RLS enabled with no policies (verify service-role-only access in source); WARN leaked-password protection disabled (remediation link: https://supabase.com/docs/guides/auth/password-security#password-strength-and-leaked-password-protection). No production auth/security settings changed.
+
+### Handoff
+A. State: PR #31 Observer remains validated from its exact head; PR #32 has a corrected exact-decimal implementation proposal and needs new exact-head CI.
+B. Completed: PR #32 previous head CI #1019 fully green (28/28 steps); source-level numeric-coercion flaw found and corrected in isolated branch; two high-precision regression assertions added.
+C. In progress: validate corrected PR #32 head; route-by-route production/Preview parity; FreeLLMAPI downstream pre-dispatch attestation; persistent atomic action approval design; native iOS project/device path.
+D. Evidence: repo `laurofiorenzani/jarvis`; PR #32 branch `work/cfo-currency-exponent-schema-20261113`; current head `c45b97b1ff3ead9ba57136e8e516d8c5bfc6db7b`; prior CI run #1019 `43479276756` SUCCESS on previous head only; live Supabase production v32 / Preview v23; migrations through `20261113125437`.
+E. Decisions: keep PR #32 Draft; exact decimal scale must remain uncoerced until exponent validation; no production seed, migration, provider activation, paid tier or deployment churn.
+F. Pending: CFO—exact-head CI and review of account currency effective-date semantics; Cloud—route parity patch after auth/RLS/CORS contract; Multi-AI—attested provider chain before inference; Actions—persistent one-time approval lifecycle; iOS—Mac/Xcode and device validation.
+G. User action: none immediately; Mac/Xcode and physical iPhone will be required for native acceptance.
+H. Next: query CI for head `c45b97b1...`; inspect failure logs if any; only then continue CFO review. Continue safe parallel source-level work without touching production.
+I. GitHub: `laurofiorenzani/jarvis`; PR #32 https://github.com/laurofiorenzani/jarvis/pull/32; branch above; no merge/deploy.
+J. Next conversation: Resume from this ledger. PR #32 prior head CI #1019 passed, but a post-CI correctness fix changed amount columns from NUMERIC(30,9) to unconstrained numeric and added two tests because typmod rounding could bypass the exponent validator. Current head c45b97b1ff3ead9ba57136e8e516d8c5bfc6db7b needs new exact-head CI. Keep Draft; no live migration. PR #31 Observer CI #1014 + Observer #172 validated. Continue multitask under €0 recurring cost.
