@@ -17,7 +17,7 @@ import * as hands from './lib/hands'
 import { listenForClap } from './lib/clap'
 import * as camera from './lib/camera'
 import * as kokoro from './lib/kokoro'
-import { BACKEND, TTS_ENGINE } from './config'
+import { TTS_ENGINE } from './config'
 import { forTool, attention } from './lib/fillers'
 import {
   ask,
