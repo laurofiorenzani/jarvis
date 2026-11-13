@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js'
 import { getPublicHealthPreflightHeaders } from './cors.ts'
+import { isApprovedZdrSpeechRoute } from './provider-consent.ts'
 import { getApiRoutePathCandidates } from './route-path.ts'
 import { extractSpeechTranscript, isCloudflareDailyQuotaExhausted } from './speech-transcript.ts'
 import { classifyFreeLlmTask, getFreeProviderStatus, startFreeModelStream, type ProviderRouteDiagnostics } from './model-router.ts'
@@ -290,6 +291,20 @@ Deno.serve(async (request) => {
   }
 
   if (request.method === 'POST' && matchesPath('/stt')) {
+    // Enforce speech consent at the trusted server boundary, not only in the UI.
+    const { data: speechPreference, error: speechPreferenceError } = await db.from('jarvis_provider_preferences')
+      .select('zdr_pool_enabled,policy_version')
+      .eq('user_id', userId).maybeSingle()
+    if (speechPreferenceError) return error('service_unavailable', 'Speech consent could not be checked.', 503, true, cors)
+    let speechProviderStatus
+    try {
+      speechProviderStatus = getFreeProviderStatus()
+    } catch {
+      return error('service_unavailable', 'Speech provider configuration is invalid.', 503, false, cors)
+    }
+    if (!isApprovedZdrSpeechRoute(speechPreference, speechProviderStatus, FREE_PROVIDER_POLICY_VERSION)) {
+      return error('forbidden', 'Enable the approved ZDR provider pool for this account before using cloud speech.', 403, false, cors)
+    }
     const allowed = await consumeLimit('speech_transcription_minute', 30, 60)
     if (allowed === null) return error('service_unavailable', 'Speech rate limiter is unavailable.', 503, true, cors)
     if (!allowed) return error('rate_limited', 'Too many speech segments. Please pause briefly.', 429, true, cors)
