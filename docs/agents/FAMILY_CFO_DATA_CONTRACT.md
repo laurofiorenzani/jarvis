@@ -1,6 +1,6 @@
 # JARVIS Family CFO — data and capability contract
 
-Status: design contract only; no Family CFO tables, bank connectors, financial imports, balances, or money-moving tools are implemented by this document.
+Status: the domain contract remains design-only. An initial owner-scoped, read-only database schema is proposed in PR #21; it is not merged or applied to live Supabase. No bank connectors, financial imports, live balances, or money-moving tools are implemented.
 
 ## 1. Purpose and non-goals
 
@@ -159,3 +159,11 @@ Do not create these tables until the schema, indexes, RLS policies, retention/de
 The first TypeScript domain layer is now implemented in `src/lib/family-cfo.ts`, with regression coverage in `tests/family-cfo.test.ts`. The full CI run #892 passed on code-equivalent commit `fdbebbd58f229bdd7164ad5e99325178dc46ee5a`, including the new CFO tests, TypeScript build, lint, migration application, SQL isolation tests, and authenticated two-user semantic-memory integration. The following documentation/workflow-only commit updates the Supabase CLI setup action to the current `setup-cli@v3` with the v2 stable CLI line; that workflow adjustment still requires an exact-head CI run.
 
 No CFO database migrations, real bank data, financial imports, or external account connections have been created. All CFO fixtures remain synthetic.
+
+
+### Security and numeric hardening — 2026-11-13
+
+- Revoke all table privileges from PUBLIC, anon and authenticated, then grant authenticated SELECT only. Grant service_role only SELECT/INSERT/UPDATE/DELETE for future server-side APIs.
+- All transaction and balance amounts must be finite numeric values; reject NaN, positive infinity and negative infinity.
+- Synthetic SQL tests include two-user RLS isolation, cross-owner foreign-key rejection, authenticated and anon write/read denial, invalid currency/confidence, and non-finite money rejection.
+- The migration remains a proposal and is not applied to the live Supabase project.
