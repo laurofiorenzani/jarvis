@@ -121,9 +121,13 @@ Deno.serve(async (request) => {
 
   const url = new URL(request.url)
   const rawPath = url.pathname.replace(/\/$/, '') || '/'
-  const functionMarker = '/jarvis-api'
-  const markerIndex = rawPath.lastIndexOf(functionMarker)
-  const suffixPath = markerIndex >= 0 ? rawPath.slice(markerIndex + functionMarker.length) || '/' : rawPath
+  // Supabase mounts the same handler under both jarvis-api and
+  // jarvis-preview-api. Strip the actual function mount generically; hardcoding
+  // the production slug makes every preview route fall through to auth/404.
+  const functionMount = rawPath.match(/\/functions\/v1\/[a-z0-9-]+(?=\/|$)/i)
+  const suffixPath = functionMount
+    ? rawPath.slice(functionMount.index! + functionMount[0].length) || '/'
+    : rawPath
   const stripVersion = (value: string) => value.replace(/^\/v1(?=\/|$)/, '').replace(/\/$/, '') || '/'
   const pathCandidates = [...new Set([rawPath, suffixPath, stripVersion(rawPath), stripVersion(suffixPath)])]
   const path = stripVersion(suffixPath)
