@@ -676,3 +676,27 @@ The older `docs/PROJECT_DECISIONS.md`, `docs/architecture/IMPLEMENTATION_STATUS_
 - The current cloud model router requires server-side JARVIS_MODEL_PROVIDERS configuration plus the referenced provider secret. The existing Google AI Studio key in the Windows FreeLLMAPI installation is not automatically available to Supabase. The available Supabase connector cannot inspect or create Edge Function secrets; actual cloud model inference therefore remains unverified and may require an owner-only Dashboard secret/configuration step. Do not claim the brain is live based only on successful build or STT.
 - The Vercel Preview is a responsive web/PWA surface for iPhone and desktop; it is not a native iOS binary. Capacitor/Xcode project, Keychain integration, signed build and TestFlight remain unimplemented. Physical iPhone PT/EN STT, model turn and TTS validation remains outstanding.
 - Free-tier hosting is not an unlimited or permanent always-on guarantee. Do not enable paid billing or paid fallback. The full self-evolution engine remains post-V1.
+
+
+## 2026-11-13 — cloud voice/provider configuration audit
+
+### Live verification
+- Canonical integration branch compared with `main`: 539 commits ahead and 3 behind, with merge base `9ae5ec846b6b20a17b2d264e699d6234c4284b23`. The three main-only changes remain known CloudAccess/cloud-speech regressions; no bulk merge or fast-forward is safe.
+- Latest recorded canonical documentation head before this audit: `2a6b39c917204d2f7ff1351d1400196e0472dbb7`. CI run #825 (`43393953499`) and Observer Validation #74 (`43393953674`) both passed. The exact-head Vercel deployment is READY at `https://jarvis-rbnwvqxvm-lauro-fiorenzani.vercel.app`; it is a Preview, not production.
+- Supabase project remains ACTIVE_HEALTHY. `jarvis-preview-api` is ACTIVE v19; production `jarvis-api` remains ACTIVE v32. No production function, auth account, data, secret, billing or domain was changed.
+- The last authenticated `GET /v1/provider-status` in logs was HTTP 200 at 07:01:49 Dublin on 13 Nov. This proves the endpoint responded, not whether a provider was configured or whether model inference succeeded. Later provider-status traffic at 08:26–08:35 consisted only of CORS preflight OPTIONS requests.
+- STT logs show repeated upstream Gemini HTTP 429 responses from 10:50–10:58 on 12 Nov, followed by HTTP 200 STT responses at 07:02 on 13 Nov. No corresponding `/v1/turns` or `/v1/tts` requests followed those 07:02 STT requests. The 429 is consistent with throttling/quota limitation but does not reveal which Google quota caused it. Do not claim current PT/EN voice E2E success.
+
+### Configuration mismatch found and corrected in documentation
+- Cloud STT and fallback TTS both read the Supabase Edge Function secret `GOOGLE_AI_STUDIO_API_KEY`.
+- The model router reads `JARVIS_MODEL_PROVIDERS`; each provider's `apiKeyEnv` selects the secret used for that provider. The prior Google AI Studio guide used the separate name `GEMINI_API_KEY`, unnecessarily requiring a duplicate key.
+- Updated `docs/cloud/GOOGLE_AI_STUDIO_PROVIDER.md` to use `GOOGLE_AI_STUDIO_API_KEY` for the model router too, and clarified that this one secret can serve chat, STT and fallback TTS. Updated `.env.example` to describe the current cloud voice path accurately. These are documentation-only changes; no secret was read, created or changed.
+- Cloud TTS is wired as a fallback after the browser's native speech engine fails; native browser speech remains the default. The cloud TTS endpoint is not proof of successful speech playback on a physical iPhone.
+- Google AI Studio Free-tier data-use terms remain a consent gate: free-tier content may be used to improve Google's products. Do not route private prompts, personal records, voice transcripts or approved memories through that tier until the owner has reviewed and explicitly accepted the current terms. Do not enable paid billing or paid fallback.
+
+### Remaining blockers and next gates
+1. Owner-only Supabase secret access is still required to inspect or set `GOOGLE_AI_STUDIO_API_KEY` and `JARVIS_MODEL_PROVIDERS`; the available Supabase connector exposes no Edge Function secret-management action. Never request the key in chat.
+2. After privacy/terms acceptance, confirm `GET /provider-status` reports a configured provider, then run one synthetic non-personal inference. A status response alone is not model inference proof.
+3. Review the Google AI Studio quotas for the STT model after the logged 429s. Keep retry/cooldown behavior; do not create rapid retry loops.
+4. Fresh iPhone E2E is still required: existing-account sign-in, non-empty PT-BR and EN-GB transcripts, a cloud model turn, and audible speech. Automated CI does not replace this test.
+5. Persistent cloud action approvals/tool execution, vendor integrations, native Capacitor iOS app and full self-evolution remain unimplemented; their architecture/specifications are not shipped capabilities.
