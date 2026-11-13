@@ -1,23 +1,15 @@
 /**
  * Select the local inference backend without ever sending a FreeLLMAPI key
- * to a non-loopback host. Claude Code remains the default and unchanged.
+ * to a non-loopback host. FreeLLMAPI is the only permitted model gateway;
+ * paid Claude/Anthropic account or API fallback is deliberately disabled.
  */
 const LOOPBACK_HOSTS = new Set(['localhost', '127.0.0.1', '[::1]'])
 
 export function resolveBridgeProvider(env = process.env) {
-  const provider = (env.JARVIS_PROVIDER ?? 'claude').trim().toLowerCase()
-
-  if (provider === 'claude') {
-    return {
-      provider,
-      model: env.JARVIS_MODEL?.trim() || 'claude-opus-5',
-      effort: env.JARVIS_EFFORT?.trim() || 'high',
-      sdkEnv: undefined,
-    }
-  }
+  const provider = (env.JARVIS_PROVIDER ?? 'freellmapi').trim().toLowerCase()
 
   if (provider !== 'freellmapi') {
-    throw new Error('JARVIS_PROVIDER must be either "claude" or "freellmapi".')
+    throw new Error('JARVIS_PROVIDER must be "freellmapi"; paid direct providers are disabled.')
   }
 
   const rawBaseUrl = env.FREELLMAPI_BASE_URL?.trim() || 'http://127.0.0.1:3001'
