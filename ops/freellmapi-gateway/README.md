@@ -4,7 +4,7 @@ This package exposes only the OpenAI-compatible chat endpoint needed by JARVIS. 
 
 ## Security model
 
-- FreeLLMAPI stays on the private Docker network. Its dashboard port should remain bound to VM loopback only.
+- FreeLLMAPI stays on the private Docker network. The official compose file publishes port 3001 on 127.0.0.1 by default; keep that default. Do not set HOST_BIND=0.0.0.0, which would expose the dashboard/API on the VM's public interfaces. The proxy reaches the service over the internal Compose network.
 - The proxy validates a separate 256-bit JARVIS bearer token, then replaces it with the FreeLLMAPI unified API key before forwarding upstream.
 - Only `GET /v1/models` and `POST /v1/chat/completions` are exposed.
 - The proxy forwards the FreeLLMAPI task hint and safe routing/fallback response headers. It never logs request bodies, prompts, provider keys or bearer tokens.
@@ -16,7 +16,7 @@ This package exposes only the OpenAI-compatible chat endpoint needed by JARVIS. 
 
 1. Use the existing Always Free VM if it is still active. Install Docker and FreeLLMAPI using the official instructions at https://github.com/tashfeenahmed/freellmapi. The official installer is documented in that repository; review it before running any remote install script.
 2. Complete the private FreeLLMAPI dashboard setup on the VM. Add only provider keys whose free-tier caps and terms you have verified. Copy the unified API key from the dashboard.
-3. Copy this directory to `~/freellmapi/jarvis-gateway` and copy `docker-compose.jarvis.yml` to `~/freellmapi/docker-compose.jarvis.yml`.
+3. Keep the official FreeLLMAPI compose setting HOST_BIND=127.0.0.1 (the default). Copy this directory to `~/freellmapi/jarvis-gateway` and copy `docker-compose.jarvis.yml` to `~/freellmapi/docker-compose.jarvis.yml`. The proxy connects to the container over the private Compose network; no LAN/public binding is needed.
 4. Create `~/freellmapi/.env.jarvis` from `.env.jarvis.example`. Set the unified FreeLLMAPI key and generate a separate gateway token with `openssl rand -hex 32`. Run `chmod 600 .env.jarvis`.
 5. From `~/freellmapi`, merge the official compose file with this overlay:
 
