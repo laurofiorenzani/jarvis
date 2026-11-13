@@ -70,14 +70,14 @@ select throws_ok(
   $cfo$insert into public.jarvis_cfo_transactions
     (owner_user_id, account_id, transaction_at, description, amount, currency, currency_registry_version, status, confidence, source_type, source_name, observed_at, effective_at)
     values ('00000000-0000-4000-8000-000000000011', '10000000-0000-4000-8000-000000000011', '2026-11-13', 'Positive infinity', 'Infinity'::numeric, 'EUR', 'synthetic-test-v1', 'posted', 'verified', 'manual', 'synthetic-test', now(), '2026-11-13')$cfo$,
-  '22003', null,
+  '23514', null,
   'transaction rejects positive infinity amounts'
 );
 select throws_ok(
   $cfo$insert into public.jarvis_cfo_transactions
     (owner_user_id, account_id, transaction_at, description, amount, currency, currency_registry_version, status, confidence, source_type, source_name, observed_at, effective_at)
     values ('00000000-0000-4000-8000-000000000011', '10000000-0000-4000-8000-000000000011', '2026-11-13', 'Negative infinity', '-Infinity'::numeric, 'EUR', 'synthetic-test-v1', 'posted', 'verified', 'manual', 'synthetic-test', now(), '2026-11-13')$cfo$,
-  '22003', null,
+  '23514', null,
   'transaction rejects negative infinity amounts'
 );
 select throws_ok(
@@ -91,7 +91,7 @@ select throws_ok(
   $cfo$insert into public.jarvis_cfo_balance_snapshots
     (owner_user_id, account_id, observed_at, amount, currency, currency_registry_version, confidence, source_type, source_name, effective_at)
     values ('00000000-0000-4000-8000-000000000011', '10000000-0000-4000-8000-000000000011', now(), 'Infinity'::numeric, 'EUR', 'synthetic-test-v1', 'verified', 'manual', 'synthetic-test', '2026-11-13')$cfo$,
-  '22003', null,
+  '23514', null,
   'balance snapshot rejects positive infinity amounts'
 );
 select throws_ok(
@@ -121,7 +121,7 @@ select throws_ok(
   $cfo$insert into public.jarvis_cfo_balance_snapshots
     (owner_user_id, account_id, observed_at, amount, currency, currency_registry_version, confidence, source_type, source_name, effective_at)
     values ('00000000-0000-4000-8000-000000000011', '10000000-0000-4000-8000-000000000011', now(), '-Infinity'::numeric, 'EUR', 'synthetic-test-v1', 'verified', 'manual', 'synthetic-test', '2026-11-13')$cfo$,
-  '22003', null,
+  '23514', null,
   'balance snapshot rejects negative infinity amounts'
 );
 select ok(
