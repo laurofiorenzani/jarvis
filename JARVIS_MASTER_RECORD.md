@@ -617,3 +617,35 @@ The older `docs/PROJECT_DECISIONS.md`, `docs/architecture/IMPLEMENTATION_STATUS_
 - CI #819 and Observer #68 are running for the exact commit. Vercel Preview is building at time of record: `https://jarvis-8nsnptv74-lauro-fiorenzani.vercel.app`. Do not request another iPhone test until Preview is READY and CI verifies the local semantic-memory integration.
 - PR #12 is being moved from Draft to Ready for Review at the user's explicit request. It remains stacked on `work/intelligent-memory-foundation`; it is not yet a production release or merged to `main`.
 - Remaining gates: verify actual non-empty PT/EN STT transcript, conversation turn response, and TTS playback on iPhone; then run full release checks and consolidate stack safely. No production account, auth config, secrets, or data changed.
+
+
+## 2026-11-13 — V1-first priority and parallel audit
+
+### Product priority reaffirmed by owner
+- The immediate delivery is a usable JARVIS app on the phone and desktop, cloud-first and available without keeping the owner's computer running. Do not delay this first release while completing the later self-evolution engine.
+- JARVIS is an executive personal assistant / Chief of Staff, not merely a chat UI: it should have a distinct, context-aware and naturally variable personality; proactively prepare concise operational briefings; coordinate authorized email and messaging drafts; track follow-ups and commitments; and support a Family-CFO workflow for budgets, mortgage planning, reserves and investment research.
+- The assistant should propose and execute bounded routine tasks only under narrowly pre-authorized scopes. External communications and consequential, financial, security, destructive or irreversible actions pause for exact, explicit approval inside JARVIS. A generic autonomy request is not blanket approval.
+- The full self-improvement/development agent remains a later phase. Preserve the observer/branch/test/review architecture, but do not make autonomous code changes a prerequisite for V1.
+- Existing account separation, amber HUD, no-Shortcuts rule, cloud-first operation, free/approved provider constraints and no production mutation without approval remain unchanged.
+
+### Parallel repository audit — verified findings
+- Current PR #12 head before this audit: `dead059e050114a362e23cece100a16cec527022`; PR #12 is OPEN and Ready for Review, stacked on `work/intelligent-memory-foundation`. It is not merged to `main`.
+- PR #7 remains the amber UI baseline at `ae4e9d3f775929b0fb3e1b34048fb66fe21aaa7c`, OPEN/DRAFT. PR #8 and #9 remain separate voice/cloud-status layers; PR #4 and #1 remain cloud/memory stack dependencies. Do not treat the PR list as one integrated release.
+- GitHub compare of the PR #7 amber head against the PR #12 candidate reports `diverged`, 535 commits ahead and 212 behind. This is a hard prohibition on blind merge/fast-forward. Reconcile by feature and exact file/test evidence.
+- PR #12 exact-head CI run `43386058676` failed only at the final `supabase stop --no-backup` teardown step. The preceding typecheck/build, unit tests, lint, provider privacy tests, semantic-memory policy tests, Edge Function type-check, local migrations, SQL isolation tests (12 assertions) and authenticated semantic-memory integration tests for two isolated users all passed. The Observer Validation run `43386058876` passed. This is not a functional-test failure, but the CI result was red and must be corrected transparently.
+- Fixed the CI teardown step so a failed cleanup of ephemeral local Supabase containers emits a warning rather than invalidating completed validation. The hosted GitHub runner is ephemeral and reclaims remaining containers. Change committed as `208500d4310ae5bfc2f887c74b6025acce5c1c4c` on `work/jarvis-canonical-integration`. A fresh exact-head CI run is required; do not mark the pipeline green until GitHub reports success.
+- Tree inspection confirms the current canonical integration candidate contains no Capacitor dependency/configuration or generated iOS project. Native iOS packaging, Keychain plugin wiring, signed build and TestFlight remain unimplemented. The responsive web app is the available phone/desktop test surface; physical iPhone Safari validation is still required.
+- Product/integration documents describe the intended executive assistant, approvals and vendor integrations, but they are specifications, not proof of shipped functionality. No server-side vendor integration registry, verified BMW/Blink/Dreame control, WhatsApp access, or Family-CFO execution was proven in this audit.
+- No branches, repositories, production deployments, production functions, user accounts, auth settings, secrets or production data were deleted or modified in this audit.
+
+### Next parallel work queues
+1. **Release/CI:** validate the new exact-head CI and observer runs; inspect any remaining failing step logs; keep the PR unmerged until the integration base and release gates are reconciled.
+2. **iPhone runtime:** use only the newest READY preview; verify existing-account login, authenticated conversation creation, non-empty pt-BR/en-GB STT, model turn and TTS. Do not ask for repeated device testing until CI and Preview smoke checks pass.
+3. **Canonical integration:** produce a file/feature-level reconciliation of amber UI, auth, voice, cloud API, memory and status branches. No bulk merge.
+4. **Executive assistant core:** map briefing/task orchestration, variable persona, action registry, approval queue and audit trail to concrete implemented code and tests; mark specifications separately from shipped features.
+5. **Mobile delivery:** determine the shortest viable sequence from responsive web release to Capacitor/iOS without blocking the first usable phone release; native build still requires macOS/Xcode and physical-device validation.
+6. **Cloud/provider:** verify the actual deployed FreeLLMAPI/Gemini route, provider secrets server-side, cloud runtime independence from Windows, and free-tier limits before any availability/cost promise.
+7. **Memory and dual-account isolation:** continue exact-head RLS/API tests and validate both existing identities without modifying account data or enabling spouse memory by default.
+8. **Integrations:** capability and permission audit for email, messaging, BMW, Blink, Dreame, lights and Maps; implement only through authorized direct adapters and report unsupported scopes honestly.
+9. **Safety and operations:** approval lifecycle, cancellation, audit events, rate limits, backup/recovery, observability and rollback gates.
+10. **Later self-evolution:** read-only observer and guarded isolated PR workflow after V1; no self-approval, merge or production deploy.
