@@ -1,6 +1,6 @@
 # JARVIS Family CFO — data and capability contract
 
-Status: design contract only; no Family CFO tables, bank connectors, financial imports, balances, or money-moving tools are implemented by this document.
+Status: the domain contract remains the approved design. A minimal owner-scoped, read-only persistence proposal is pending in PR #21 (accounts, transactions, dated balance snapshots); it is not merged or applied to live Supabase. No bank connectors, financial imports, live balances, or money-moving tools are implemented.
 
 ## 1. Purpose and non-goals
 
@@ -159,3 +159,15 @@ Do not create these tables until the schema, indexes, RLS policies, retention/de
 The first TypeScript domain layer is now implemented in `src/lib/family-cfo.ts`, with regression coverage in `tests/family-cfo.test.ts`. The full CI run #892 passed on code-equivalent commit `fdbebbd58f229bdd7164ad5e99325178dc46ee5a`, including the new CFO tests, TypeScript build, lint, migration application, SQL isolation tests, and authenticated two-user semantic-memory integration. The following documentation/workflow-only commit updates the Supabase CLI setup action to the current `setup-cli@v3` with the v2 stable CLI line; that workflow adjustment still requires an exact-head CI run.
 
 No CFO database migrations, real bank data, financial imports, or external account connections have been created. All CFO fixtures remain synthetic.
+
+
+## Minimal persistence proposal — PR #21 (2026-11-13)
+
+The first proposed database layer contains only:
+- owner-scoped financial account metadata;
+- source-backed transactions with review/provenance metadata;
+- dated balance snapshots.
+
+Authenticated clients have SELECT-only access to their own rows. All direct client writes are denied. No household sharing is implicit; no bank connector, import, budget engine, mortgage/pension/investment calculations, or money movement is included. The migration is pending review and exact-head CI; it has not been applied to the live Supabase project.
+
+Financial amount columns use finite `NUMERIC(20,2)`: NaN, positive infinity, and negative infinity are rejected. The SQL regression suite uses synthetic fixtures for two-user isolation, cross-owner references, malformed values and denied client writes.

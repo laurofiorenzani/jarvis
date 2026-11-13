@@ -1225,3 +1225,11 @@ The available Supabase connector cannot inspect or set Edge Function secrets. Do
 - Native iOS project remains absent from canonical repository; Capacitor packaging/build, Keychain plugin wiring, physical-device test, CarPlay entitlement, and TestFlight are not complete.
 - Provider-preferences application contract/client/UI/routes remain absent from canonical branch even though the Supabase table and migration exist. PR #13's cohesive feature set still requires selective integration; exclude its duplicate `20261113110000` migration and do not enable either provider pool.
 
+
+
+### Family CFO persistence proposal — rebased and hardened — 2026-11-13
+- PR #21 is the single active Family CFO schema proposal, based directly on the latest canonical development head `a88a1bc3967d6026ba53e2385289cacffd37da07`. Superseded PR #20 is closed; no duplicate proposal is kept open.
+- Proposed schema contains only owner-scoped accounts, transactions and dated balance snapshots. Authenticated users can SELECT only their own records; client INSERT/UPDATE/DELETE is revoked. Future server writes must derive ownership from a verified JWT. Composite account/owner foreign keys prevent cross-account ownership references. No household sharing is added.
+- A read-only PostgreSQL probe proved `numeric <> 'NaN'` alone permits positive and negative Infinity. Both transaction and balance amount columns now require `amount > '-Infinity' AND amount < 'Infinity'`, rejecting NaN and infinities.
+- Synthetic SQL test plan is 23 assertions, including cross-owner account/snapshot references, two-user RLS visibility, invalid currency/confidence, positive/negative infinity and NaN rejection, and denied direct client INSERT/UPDATE/DELETE.
+- PR #21 is still Draft and pending exact-head CI. The first schema proposal is not merged and no CFO migration has been applied to live Supabase. No real financial data, bank connector, import, balance, household sharing, payment, transfer or trading action was touched.
