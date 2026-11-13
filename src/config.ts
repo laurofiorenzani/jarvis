@@ -40,20 +40,10 @@ function choice<T extends string>(
   return fallback
 }
 
-/** Same, for the on/off options. Accepts true/false and 1/0. */
-function flag(name: string, raw: unknown, fallback: boolean): boolean {
-  const value = str(raw)?.toLowerCase()
-  if (value === undefined) return fallback
-  if (value === 'true' || value === '1') return true
-  if (value === 'false' || value === '0') return false
-  console.warn(`[jarvis] ${name}="${value}" is not true or false — using ${fallback}.`)
-  return fallback
-}
-
 /**
  * Which brain to use. Cloud is the production default; the local bridge is an
- * explicit developer/local-tools option. Direct browser-to-provider mode is
- * retained only for isolated local demos and must never be used in production.
+ * explicit developer/local-tools option. Browser-direct provider mode is disabled
+ * by the €0 cost/security policy.
  *
  *   'cloud'  — require an authenticated Supabase CloudBrain. No local server or
  *              provider secret is needed in the browser bundle.
@@ -203,7 +193,7 @@ export const MCP_SERVERS: McpServer[] = [
   {
     name: 'zapier',
     label: 'Zapier',
-    url: undefined ?? '',
+    url: '',
     enabled: false,
   },
 
@@ -211,7 +201,7 @@ export const MCP_SERVERS: McpServer[] = [
   {
     name: 'pipedream',
     label: 'Pipedream',
-    url: undefined ?? '',
+    url: '',
     enabled: false,
   },
 
@@ -260,12 +250,9 @@ export const MCP_SERVERS: McpServer[] = [
   {
     name: 'home',
     label: 'Home',
-    url: undefined ?? '',
+    url: '',
     token: undefined,
-    enabled: Boolean(
-      undefined &&
-        undefined,
-    ),
+    enabled: false,
   },
 ]
 
