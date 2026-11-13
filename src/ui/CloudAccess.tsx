@@ -587,7 +587,7 @@ export function CloudAccess({ onConnected, onDisconnected, onResumeConversation,
     try {
       const result = await runtime.api.decideActionApproval(approval, decision)
       if (!isCurrentRuntime(runtime, generation)) return
-      if (result.result.valid !== true || result.result.decision !== decision) {
+      if (result.result.valid !== true || result.result.status !== decision) {
         throw new Error('This approval expired or no longer matches the original request.')
       }
       setActionApprovals((items) => items.filter((item) => item.request_id !== approval.request_id))
@@ -596,7 +596,7 @@ export function CloudAccess({ onConnected, onDisconnected, onResumeConversation,
         : 'ACTION REQUEST REJECTED')
     } catch (error) {
       if (isCurrentRuntime(runtime, generation)) setMessage(error instanceof Error ? error.message : 'Action approval could not be saved.')
-      await refreshActionApprovals()
+      // Keep the item visible after a failed decision; the owner can refresh explicitly.
     } finally {
       if (runtimeGeneration.current === generation) setActionApprovalBusy(false)
     }
