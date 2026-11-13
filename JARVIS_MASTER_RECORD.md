@@ -343,3 +343,63 @@ All branch counts are a snapshot from GitHub compare, not a deletion authorizati
 
 ### Explicit status correction
 The current work has not yet produced one official `main`, and it has not completed repository/branch cleanup. The canonical repository and candidate integration line are identified, but the consolidation is still in progress. This record is the single project ledger; do not create competing continuity files.
+
+
+## 17. Deep audit results — 2026-11-13 06:25 Europe/Dublin
+
+### Exact candidate validation
+- Candidate head before this ledger update: `457324f6c26ef498abbcfd29fb8b114455b93888`.
+- Full CI run #800 passed on that exact head: typecheck, production build, tests, lint, provider-privacy tests, semantic-memory/auto-capture policy tests, Supabase Edge Function typecheck, local Supabase startup, all migrations applied to an isolated database, SQL account-isolation regression tests, authenticated two-user semantic-memory API test, production API/CORS smoke test and candidate-preview CORS smoke test.
+- Observer Validation run #49 also passed on the same head, including observer privacy/triage tests, build and lint.
+- Vercel deployment for the exact head is **READY**: `https://jarvis-git-work-jarvis-canonical-integration-lauro-fiorenzani.vercel.app`. This supersedes the earlier Vercel rate-limit failure seen on an older attempt. Do not claim the iPhone E2E has passed; it has not been run by the user.
+- PR #12 remains OPEN and DRAFT. Its base is `work/intelligent-memory-foundation`, not `main`. Do not retarget or merge until the stack and mainline divergence are reconciled.
+
+### Regression and PR-stack provenance
+- `main` is 3 commits ahead and 513 commits behind the candidate integration branch (132 changed files in the main-to-candidate comparison). The three unique main commits include the removal of the CloudAccess UI from main's preview and a revert that kept cloud speech off main. This is the concrete source of the login/voice regression seen on the older preview.
+- Open PR dependency stack:
+  - PR #1: `work/memory-integration-ready` -> `main` (cloud-first foundation and guarded memory).
+  - PR #4: `work/intelligent-memory-foundation` -> `work/memory-integration-ready` (semantic memory).
+  - PR #12: `work/jarvis-canonical-integration` -> `work/intelligent-memory-foundation` (current amber HUD/auth/voice integration).
+  - Separate UI/voice stack: PR #7 `work/jarvis-amber-production-track` -> `main`; PR #8 `work/jarvis-voice-locale` -> #7 branch; PR #9 `work/jarvis-cloud-status-accuracy` -> #8 branch.
+- PR #12 currently contains the amber interface, CloudAccess sign-in/recovery, cloud STT/TTS integration, account-switch clearing/guards, semantic-memory UI/API, observer, migrations and central ledger. Existing accounts are used; signup entry is intentionally hidden to avoid duplicate accounts.
+- PR #7 contains separate local-bridge approval primitives (`bridge/action-approval.mjs`, `bridge/action-risk.mjs`, `bridge/pending-approvals.mjs`) and tests that are **not present** in the current PR #12 candidate. The cloud approval lifecycle document is present, but actual cloud-side per-action approval execution/UI is not complete. Do not mark external actions as implemented.
+- The PR #8 cloud voice changes are represented by a different implementation in the candidate; compare behavior and tests before closing PR #8. Do not delete the voice branch based only on matching filenames.
+
+### Authentication and voice code review
+- Candidate `src/App.tsx` mounts `CloudAccess`; without a restorable tab session the access panel initializes expanded. The sign-in and recovery flows are present for existing accounts.
+- Browser token storage is volatile by default. An optional same-tab `sessionStorage` restore exists. The native secure-token adapter is present but is not yet wired to a real Capacitor/iOS Keychain plugin. Persistent native sign-in is therefore still a mobile deliverable.
+- Cloud STT sends captured audio to the authenticated API with an instruction to detect language automatically and preserve Portuguese/English switching. Cloud TTS is instructed to speak Brazilian Portuguese or neutral British English according to the text. The browser SpeechRecognition fallback uses one configured locale (pt-BR by default); do not confuse that fallback with cloud auto-detection.
+- These code paths passed automated CI but have not passed physical iPhone microphone, speaker, background/foreground, account-switch or session-persistence tests.
+
+### Live Supabase state (read-only inspection)
+- Project `Jarvis` is `ACTIVE_HEALTHY` in `eu-west-3`.
+- Production `jarvis-api` is active at version 32; `jarvis-preview-api` is active at version 11.
+- Eleven migrations are recorded in the live project.
+- Aggregate counts: 2 Auth accounts, 13 conversations, 42 messages, 1 memory-preference row and 0 memory-fact rows. One account has retrieval and pending-only auto-capture enabled; the other remains default-off. No accounts or rows were changed by this audit.
+- Security advisor: informational RLS-enabled/no-policy finding for `jarvis_rate_limits` (review whether this server-only table should remain inaccessible to clients); warning that leaked-password protection is disabled. No Auth settings were changed.
+- Performance advisor reports 18 unused indexes. Do not drop them during consolidation; usage history is currently too small to justify destructive tuning.
+
+### Cloudflare, Oracle and FreeLLMAPI
+- Connected Cloudflare account is accessible, but live inventory currently shows **zero** Cloudflare Tunnels, Workers scripts, D1 databases and zones. The Cloudflare prototype in the private repository is documentation/code only; its runbook explicitly says no Worker or D1 resource has been provisioned.
+- Oracle Cloud state cannot be inspected through the currently connected tools. Do not claim the VM exists, is running, or hosts FreeLLMAPI until its instance state is verified through Oracle access or the user.
+- The FreeLLMAPI branch prototype is loopback-only and intended for a local bridge. The cloud/iPhone model router is a separate HTTPS provider interface. To use FreeLLMAPI as the cloud brain, it needs a deliberate secure cloud-hosting design (e.g. the Oracle VM plus authenticated HTTPS ingress) and a provider adapter; simply copying the local key or exposing port 3001 is prohibited.
+- The private `jarvis-personal-cloud/work/intelligent-memory-next` branch is 276 commits ahead of its main and contains 49 changed files, including a separate Cloudflare Worker/D1 memory prototype. Its AES-256-GCM envelope and key-provider contracts are useful security research, but its own review states that no real OS vault/secret-manager adapter, production key rotation/recovery, or upstream runtime integration exists. Do not deploy that store or delete its repository until its unique security findings/tests have been preserved and reconciled with the chosen Supabase memory architecture.
+
+### Remaining product gaps — must stay visible
+1. Native iOS app (Capacitor build, real Keychain storage, audio lifecycle, push notifications and background behavior) is not delivered; PWA is not the final mobile product.
+2. Cloud-side approval records, exact-argument approval UI, notification/deep-link flow and execution audit are not yet implemented end-to-end.
+3. Observer is read-only. It can detect/report bounded system health; it does not yet autonomously write code, run a controlled repair branch, test it, or prepare a human-reviewed release.
+4. FreeLLMAPI is not yet integrated as the cloud/iPhone model gateway; Oracle VM status and secure ingress are unverified.
+5. External adapters (WhatsApp, email, calls, BMW, maps, Blink, Dreame) remain capability-by-capability integrations. iOS restrictions and vendor APIs must be respected; no unrestricted access to every app is possible.
+6. Persistent native sign-in and physical iPhone voice/account-isolation E2E remain release gates.
+
+### Next execution sequence
+1. Update PR #12's description with CI #800, Observer #49 and the READY deployment; retain Draft status.
+2. Finish a file/commit-level migration matrix for PR #1/#4/#7/#8/#9, the FreeLLMAPI branch and the private memory workbench. Mark each item as migrate, superseded, documentation-only, or retire; preserve unique tests before closure.
+3. Build a cloud-native approval service/UI rather than transplanting local-bridge approval primitives into the cloud client.
+4. Implement the iOS shell and Keychain adapter, then ask for one bounded physical-device test only after a verified preview/native build is ready.
+5. Design the Oracle-hosted FreeLLMAPI ingress only after verifying the actual VM and account resources. Keep Cloudflare optional until there is a real tunnel/domain need.
+6. Promote to `main` only after the complete migration matrix, full CI on the final head, iPhone E2E, database/RLS review and release review pass.
+7. Close PRs and delete branches only after their unique commits/tests/docs are either migrated or explicitly marked superseded. Retire `jarvis-personal-cloud` last, after its unique work is preserved in this one master record.
+
+**Current truth:** one candidate integration branch, one central ledger, a successful full CI run and a ready preview now exist. The project is not yet consolidated onto `main`; no branch or repository has been deleted, and no production promotion has occurred.
