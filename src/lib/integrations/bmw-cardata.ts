@@ -218,4 +218,29 @@ export class BMWCarDataClient {
       accessToken,
     )
   }
+
+  /** Read charging sessions for a bounded ISO-8601 time window. */
+  getChargingHistory<T = unknown>(
+    vin: string,
+    from: string,
+    to: string,
+    accessToken: string,
+    nextToken?: string,
+  ): Promise<T> {
+    if (!vin.trim()) throw new TypeError('BMW VIN is required.')
+    const fromTime = Date.parse(from)
+    const toTime = Date.parse(to)
+    if (!Number.isFinite(fromTime) || !Number.isFinite(toTime) || fromTime >= toTime) {
+      throw new TypeError('BMW charging history requires a valid increasing date-time range.')
+    }
+    const query = new URLSearchParams({
+      from: new Date(fromTime).toISOString(),
+      to: new Date(toTime).toISOString(),
+    })
+    if (nextToken) query.set('nextToken', nextToken)
+    return this.get<T>(
+      `/customers/vehicles/${encodeURIComponent(vin)}/chargingHistory?${query.toString()}`,
+      accessToken,
+    )
+  }
 }
