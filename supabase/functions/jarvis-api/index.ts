@@ -214,6 +214,13 @@ Deno.serve(async (request) => {
     // A separate per-user rate limit keeps this optional second model call bounded.
     const allowed = await consumeLimit('semantic_memory_auto_capture_hour', 5, 3600)
     if (allowed !== true || !isSafeAutoMemorySource(userText + '\n' + assistantText)) return
+    // Automatic extraction contains private conversation text and therefore
+    // uses only the separately accepted strict-ZDR pool, never FreeLLMAPI.
+    const { data: providerPreference, error: providerPreferenceError } = await db.from('jarvis_provider_preferences')
+      .select('zdr_pool_enabled,policy_version').eq('user_id', userId).maybeSingle()
+    if (providerPreferenceError ||
+        providerPreference?.zdr_pool_enabled !== true ||
+        providerPreference?.policy_version !== FREE_PROVIDER_POLICY_VERSION) return
     try {
       const routed = await startFreeModelStream([
         {
