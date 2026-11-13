@@ -1370,3 +1370,27 @@ Latest verified CI at this checkpoint: PR #27 #961 success; PR #22 #959 success;
 8. Continue native iOS only with a verified zero-recurring build/signing path; no App Store/paid developer subscription is authorized.
 
 No new PRs were merged, no live migrations were run, and no production deployment occurred in this handoff.
+
+
+## 2026-11-13 — final verification after canonical ledger update
+
+### Canonical validation
+- Canonical development commit `6a49b18309dd5a07465875877248d15f365b395f` is documentation-only (master-record reconciliation).
+- GitHub Actions CI #995 completed SUCCESS on this canonical commit, including build/typecheck, unit tests, lint, Deno, isolated Supabase migration reset, SQL isolation, authenticated two-user integration and Production/Preview CORS smoke tests.
+- Observer Validation #157 completed SUCCESS on the same canonical documentation update.
+- No production Edge Function, schema, data, auth, provider secret, billing setting or Vercel production alias was changed.
+
+### Vercel read-only deployment inventory
+- Connected Vercel team is on the Hobby plan; project `jarvis` is linked to `laurofiorenzani/jarvis`, Vite framework, Node.js `26.x`. No password or SSO protection is configured at project level.
+- Production deployment `dpl_A2N9bTRehxSzDzb3wC9zY5vT9r1Q` is READY from legacy `main` commit `9ae5ec846b6b20a17b2d264e699d6234c4284b23`; aliases include `jarvis-lauro-fiorenzani.vercel.app` and `jarvis-git-main-lauro-fiorenzani.vercel.app`. The production URL returned the Vite app shell successfully.
+- Latest canonical-branch Preview deployment is READY at older commit `b18af5a36938a5ae3521d277075957527f16c9c6`, not current canonical `6a49b183...`; its preview URL returned the app shell successfully.
+- The most recent general Preview deployment was from an older PR #27 head `7bb5...`. Direct SHA lookups for the current PR #22, #23, #25, #26 and #27 heads returned no Vercel deployment. Therefore none of the current PR heads has a verified Vercel Preview deployment.
+- The canonical commit's Vercel check did not deploy because the Hobby 100-deployments/day limit was reached. No deployment was forced, no paid upgrade was attempted, and no quota bypass was used. Keep the existing Production alias unchanged until a reviewed release and free deployment capacity are available.
+
+### PR branch alignment
+- PRs #22, #23, #25, #26 and #27 were last based on canonical commit `86d171b3...`; canonical has since advanced to `6a49b183...` with a documentation-only master-record commit. All require a selective rebase/read-back before merge. Do not overwrite the canonical ledger while rebasing; preserve current source and tests and re-run exact-head CI after rebasing.
+- PR #23 exact-head CI #982 passed; PR #26 exact-head CI #979 passed; PR #27 exact-head CI #987 passed; PR #22 exact-head CI #984 passed. PRs #23/#26/#27 are Ready for Review, not merged. PR #22 remains Draft pending currency minor-unit decision.
+- PR #25 current head `431cb78a...` includes the production JSON health check, canonical-push CI query scope, workflow path filters and static read-only contract test. Its latest CI #993 and Observer Validation #155 were cancelled before completion; earlier #977/#149 pass on the prior head does not validate the current head. Keep Draft.
+- No Vercel Preview exists for the current PR heads, so GitHub CI is the authoritative code validation for now; it does not replace browser/device E2E.
+
+No PR #22–#27 was merged. No new deployment, live migration, provider activation or paid service was created.
