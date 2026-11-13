@@ -137,3 +137,15 @@ Unknown, stale, ambiguous, paid, or geographically ineligible entries are disabl
 - The upstream OpenAI-compatible surfaces include chat completions, Responses, completions, models, embeddings, image generation, video generation, audio speech and audio transcription. JARVIS currently integrates chat completions only. Voice transcription/speech, vision, images/video and embeddings are separate follow-up integrations and are not claimed as active.
 - FreeLLMAPI exposes X-Routed-Via, X-Fallback-Attempts and X-Fallback-Trail response headers. The next observability step is to surface the actual served model and fallback count in JARVIS diagnostics without exposing prompts, provider keys or raw upstream error text.
 - Provider keys are encrypted at rest in the gateway's SQLite database, and clients use one unified bearer key. This does not make the gateway multi-tenant: the official architecture explicitly says it is single-user/local-first and must not be exposed directly to the public internet. JARVIS therefore places a private authenticated ingress/proxy in front of it and keeps per-account authorization in Supabase.
+
+
+## Private VM proxy package — 2026-11-13
+
+- Added `ops/freellmapi-gateway/` with a Node 22 reverse proxy, Dockerfile, Compose overlay, environment template and deployment guide. It exposes only `GET /v1/models` and `POST /v1/chat/completions`; dashboard/admin/MCP routes remain blocked.
+- The proxy validates a separate 256-bit JARVIS token and replaces it with the FreeLLMAPI unified API key. The unified key stays on the VM; only the JARVIS gateway token is configured as a Supabase Edge Function secret.
+- The official FreeLLMAPI compose file binds host port 3001 to `127.0.0.1` by default. Keep that setting. The proxy connects over the private Docker network; do not set `HOST_BIND=0.0.0.0`.
+- An optional Cloudflare Quick Tunnel exposes only the authenticated proxy, not the FreeLLMAPI dashboard. Its random `trycloudflare.com` hostname can change after restart; a named tunnel/domain is required for a permanent hostname.
+- Proxy tests cover route allowlisting, token validation, upstream-key replacement, SSE streaming and body-size limits. GitHub CI #871 passed on exact code head `495549ade7c5777fca0f0dd5b0b5c38ec6f0eac7`, including build/typecheck, all tests, lint, provider privacy, semantic-memory, Deno typecheck, local Supabase migrations, SQL isolation, two-user API integration and production/preview CORS smoke tests.
+- Deployment has not occurred: no VM is connected, no provider credentials have been configured, and no inference request or personal prompt has been sent.
+
+The detailed VM procedure and server-side secret shape are in `ops/freellmapi-gateway/README.md`.
