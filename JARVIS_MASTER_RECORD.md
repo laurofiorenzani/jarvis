@@ -1000,3 +1000,11 @@ The available Supabase connector cannot inspect or set Edge Function secrets. Do
 - Read-only platform check: Supabase project `Jarvis` remains ACTIVE_HEALTHY in `eu-west-3`; Production `jarvis-api` v32 and Preview `jarvis-preview-api` v23 remain unchanged. Migrations list includes provider preferences migrations `20261113125425` and `20261113125437`.
 - Vercel currently reports a READY Preview for commit `668125a078db63edd7f21b1150476593728187bd`; this predates the latest CFO edge-case and CI workflow changes. It is not evidence that those newest changes are deployed.
 - No production deployment, provider activation, credentials/secrets change, billing change, authentication change, real bank import, or financial transaction occurred.
+
+
+## 2026-11-13 — CFO regression fixture correction
+
+- CI #901 ran on head `aea617ddf6bd7d009353ff04c875856841786663`. Build/typecheck passed; unit tests failed at the new cross-period CFO assertion. Observer Validation #112 passed.
+- The implementation was behaving correctly: the synthetic outside-period transfer leg was dated 19 days after the in-period leg, outside the intentionally conservative three-calendar-day transfer-matching window. The test therefore correctly did not classify it as an internal transfer.
+- Corrected both synthetic outside-period dates to 2026-12-01, one day after the 2026-11-30 reporting-period end, so the fixture tests the intended boundary while satisfying the matching rule. Test-only commit `9db9f6b05d04baa9f9b05961762129bd2f7ebbd2`.
+- No production data, real transactions, schema, bank integrations or provider settings were involved. Fresh exact-head CI is required.
