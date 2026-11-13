@@ -1325,3 +1325,50 @@ Latest verified CI at this checkpoint: PR #27 #961 success; PR #22 #959 success;
 
 ### PR #25 exact-head refresh — 2026-11-13
 - Rebased read-only Observer preview-health extension onto canonical ledger commit 86d171b3e869bee138795342963995adaa302b93. It adds public Preview API health monitoring and canonical-branch Observer validation. CI #955 and Observer Validation #144 passed before rebase; exact-head checks must pass again. No production resources changed.
+
+
+## 2026-11-13 — multi-front continuation checkpoint
+
+### Canonical branch and PR integrity
+- Canonical development remains `work/jarvis-canonical-integration`; latest observed head is `6a49b18309dd5a07465875877248d15f365b395f`. The commit after `86d171b3e869bee138795342963995adaa302b93` is documentation-only. Do not treat `main` as the current app integration branch or merge the divergent histories wholesale.
+- PRs #22, #23, #25, #26 and #27 were based on the earlier canonical head `86d171b3e869bee138795342963995adaa302b93`; they are now one documentation commit behind. Their ledger edits overlap the canonical master record. Do not force-push or bulk-update branches; inspect and reconcile the ledger before any merge.
+- PR #28 (`work/ios-secure-storage-v8`) was created from the latest canonical head `6a49b18309dd5a07465875877248d15f365b395f`; it is a separate iOS adapter change and remains Draft.
+
+### Exact-head validation snapshot
+- PR #22 CFO read-only persistence: head `c3d3edc2ed91f88994cb93bb6acc7843f09992c0`; exact-head CI #984 SUCCESS. Migration remains unapplied to the live Supabase project.
+- PR #23 provider consent / FreeLLMAPI routing: head `2e9f3de2ddc0cdf46464e3f385aff97e5e54fbc3`; exact-head CI #982 SUCCESS. Provider pools remain disabled; no provider inference or production deployment.
+- PR #25 Observer Preview/Vercel metadata: code head `431cb78a31e439f94a048754b3a8d9ae5195c730`; exact-head CI #994 SUCCESS and Observer Validation #156 SUCCESS. A documentation-only follow-up commit `bae9e951b76fbd2d48a35d056e2b09c5fe44d733` records the Vercel signal; that newer exact head requires CI again.
+- PR #26 cloud action-approval primitives: head `59e454969cf3f2875b18ee50dfea48b98c9e3425`; exact-head CI #979 SUCCESS. These are pure domain primitives only; no persistence, approval UI, integrations or external action execution is wired.
+- PR #27 CFO transfer-confidence guard: head `4c31dc2032b4217a887f483b3ec943e1647fbbe0`; exact-head CI #987 SUCCESS after correcting the synthetic cash-flow fixture to carry an explicit internal-transfer pair ID. No financial records were accessed or changed.
+- PR #28 native secure-storage adapter: head `56c6e5cccf1337e25388e3a1a1683ac1b2915c6d`; exact-head CI #996 was still running at this checkpoint. No Capacitor dependency or native project was installed.
+
+### Cloud Brain and Supabase
+- The existing Supabase project remains the only database/auth project and is on the Free plan. Current aggregate state: 2 Auth users; 0 provider-preference rows; 1 memory-preference row; 1 account with context enabled and 1 with automatic capture enabled; 0 approved semantic facts. Do not change either account's consent or infer shared access.
+- Production Edge Functions observed: `jarvis-api` v32 and `jarvis-preview-api` v23. Existing memory tables and policies remain in place. No CFO tables or PR #22 migration have been applied.
+- Supabase security advisor has one warning: leaked-password protection is disabled. No Auth/security setting was changed because enabling it can affect account behavior and requires a separately reviewed change.
+- Supabase Free currently includes 500 MB database, 500,000 Edge Function invocations/month and 5 GB egress; Free projects may pause after seven days of low database activity and do not include automatic downloadable database backups or an uptime SLA. A few genuine requests per day may prevent pausing but are not a guarantee. Therefore, do not claim guaranteed 24/7 availability or recovery until an independent encrypted backup/restore path is tested.
+- Cloudflare R2 is not enabled (the account API returned “Please enable R2 through the Cloudflare Dashboard”); no bucket or backup exists. R2 Free is a candidate only after billing/overage controls, encryption and restore tests are verified. Do not enable it or store personal data yet.
+
+### Self-Evolution and hosting
+- The read-only Observer now reads the canonical branch's GitHub commit-status API and selects only the `Vercel` context. It emits only normalized status and observation time, uses `statuses: read`, and does not request a Vercel token or log deployment URLs/payloads.
+- The workflow is triggered by pushes to the canonical development branch. GitHub scheduled workflows run only from the repository default branch, so periodic monitoring is not active until this workflow is deliberately integrated into `main`. Do not merge the divergent app branch into `main) just to activate the schedule.
+- Current Vercel Hobby project hit the free API deployment limit (>100 deployments/day). Vercel status is failing for the current candidate; no paid upgrade was attempted. The latest confirmed deployments are previews, not a verified production release. Avoid repeated deployment attempts until the free limit resets.
+- Cloudflare has no JARVIS Worker or AI Gateway. Workers Free limits are 100,000 requests/day and 10 ms CPU per invocation; Workers AI has 10,000 Neurons/day, after which Free requests fail rather than silently becoming paid. No paid plan or billing change is authorized.
+- Oracle Always Free A1 offers up to 2 OCPUs/12 GB RAM, but Oracle may reclaim an instance when CPU p95, network and (for A1) memory utilization are each below 20% over seven days. The Oracle tenancy is not connected/verified. It is a recovery-prone candidate, not a proven 24/7 host.
+- No production deployment, migration, data mutation, secret access, provider inference, billing change or paid upgrade occurred during this checkpoint.
+
+### Family CFO
+- PR #22 remains a draft read-only persistence proposal. Its exact-head CI passed, but migration remains unapplied. Currency-specific minor-unit handling and the distinction between account-settled amount and original merchant amount for FX/card purchases remain unresolved data-contract gates; do not merge/apply until these are resolved.
+- PR #27 only tightens synthetic internal-transfer matching and confidence handling. No real financial data or external money-moving action is involved.
+
+### iOS
+- Candidate selected for further validation: `@aparajita/capacitor-secure-storage@8.0.1`, compatible with Capacitor 8. The adapter uses an injected platform getter, refuses web before any plugin call, sets a JARVIS key prefix, disables iCloud synchronization and requires the device-only Keychain policy on iOS.
+- The adapter is not yet wired into sign-in; the package, Capacitor config and native iOS project are not installed/created. Physical iPhone Keychain, logout and reinstall tests remain mandatory.
+- A free Apple Developer account supports testing on personal devices through Xcode, but requires a macOS/Xcode host and personal provisioning expires after seven days. TestFlight/App Store distribution requires the $99/year Apple Developer Program and is excluded by the €0 recurring-cost rule.
+
+### Next actions
+1. Let PR #25's new exact-head CI finish after the documentation follow-up; confirm the Vercel status observer step remains bounded and read-only.
+2. Let PR #28 exact-head CI finish; then update the iOS decision record with the verified plugin API and the €0 distribution boundary.
+3. Preserve PR #22/#23/#26/#27 as separate reviewable changes; do not merge as a batch. Reconcile the canonical-ledger-only base drift before any merge.
+4. Keep provider pools disabled until per-profile free quota, no-card/no-overage, EEA eligibility, retention/training, downstream chain and per-account consent are verified.
+5. Design an independent encrypted backup path before importing real CFO or personal-memory data; test restoration, not just backup creation.
