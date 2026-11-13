@@ -67,3 +67,34 @@ test('triage deduplicates, prioritizes and never auto-approves remediation', () 
   assert.equal(proposals[0].evidence[0], 'api_unavailable at 2026-11-12T12:03:00.000Z')
   assert.equal(proposals.every((proposal) => proposal.requiresHumanApproval), true)
 })
+
+
+test('normalizes CI and deployment metadata without retaining upstream payloads', () => {
+  const failedCi = normalizeObservation({
+    source: 'ci',
+    status: 'failed',
+    observedAt: '2026-11-13T13:00:00Z',
+    runNumber: 881,
+    repository: 'private/repository',
+    token: 'Bearer should-not-be-retained',
+  })
+  assert.deepEqual(failedCi, {
+    source: 'ci',
+    status: 'failed',
+    severity: 'critical',
+    signalCode: 'ci_failed',
+    observedAt: '2026-11-13T13:00:00.000Z',
+  })
+  assert.equal(JSON.stringify(failedCi).includes('private/repository'), false)
+  assert.equal(JSON.stringify(failedCi).includes('Bearer'), false)
+
+  const deployment = normalizeObservation({
+    source: 'deployment',
+    status: 'running',
+    observedAt: '2026-11-13T13:01:00Z',
+    deploymentId: 'internal-deployment-id',
+  })
+  assert.equal(deployment?.signalCode, 'deployment_running')
+  assert.equal(deployment?.severity, 'info')
+  assert.equal(JSON.stringify(deployment).includes('internal-deployment-id'), false)
+})
