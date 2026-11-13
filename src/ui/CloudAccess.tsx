@@ -109,6 +109,7 @@ export function CloudAccess({ onConnected, onDisconnected, onResumeConversation,
     try {
       const providers = await runtime.api.getProviderStatus()
       if (!isCurrentRuntime(runtime, generation)) return
+      // Fail closed on older backend responses: only an explicit Cloudflare ZDR identity may activate chat.
       cloudProviderReady = providers.configured && providers.providers.length > 0 &&
         providers.providers.every((item) => item.providerType === 'cloudflare-workers-ai' && item.privacyMode === 'zdr')
       cloudSpeechReady = cloudProviderReady && providers.speechProvider === 'cloudflare-whisper'
