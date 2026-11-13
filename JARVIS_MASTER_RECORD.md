@@ -1479,3 +1479,9 @@ This checkpoint is an evidence-based status update, not a declaration that JARVI
 - The five continuity docs other than `JARVIS_MASTER_RECORD.md` were not present in the root tree at canonical HEAD; the repository tree contained 219 paths and only this master ledger matched the requested document names. Treat this as a single-file continuity ledger for now; do not create duplicate root docs.
 - Next: confirm CI #1000 final result; run read-only preview smoke checks against the new exact-head Preview; separately obtain exact-head CI/Observer evidence for PR #25; continue CFO currency-contract design without choosing a financial policy on the user's behalf.
 - No live database, user data, provider secrets, production deployment, auth setting or billing configuration was changed in this continuation.
+
+
+### Follow-up workflow result — 2026-11-13
+- Observer Validation run `43472284650` completed SUCCESS on exact checkpoint commit `5d6b4edfeee838f57a7bf75298b8d650b46e8f50`.
+- Full CI run `43472284595` for the same commit remains IN_PROGRESS. At last observation, typecheck/build/tests/lint, provider privacy, semantic-memory policy, Edge Function type-check and speech tests had passed; isolated Supabase teardown was running. No failure was reported, but do not mark the run green until it completes.
+- A subsequent documentation-only master-ledger commit `643d4ba580ffbae3409d2035c1ec43cc841db25b` was created after the Vercel Preview build. The READY deployment therefore corresponds to `5d6b4ed...`, not this later docs-only commit; no source code changed between them.
