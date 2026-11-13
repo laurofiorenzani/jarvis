@@ -1337,10 +1337,10 @@ Latest verified CI at this checkpoint: PR #27 #961 success; PR #22 #959 success;
 ### Exact-head validation snapshot
 - PR #22 CFO read-only persistence: head `c3d3edc2ed91f88994cb93bb6acc7843f09992c0`; exact-head CI #984 SUCCESS. Migration remains unapplied to the live Supabase project.
 - PR #23 provider consent / FreeLLMAPI routing: head `2e9f3de2ddc0cdf46464e3f385aff97e5e54fbc3`; exact-head CI #982 SUCCESS. Provider pools remain disabled; no provider inference or production deployment.
-- PR #25 Observer Preview/Vercel metadata: code head `431cb78a31e439f94a048754b3a8d9ae5195c730`; exact-head CI #994 SUCCESS and Observer Validation #156 SUCCESS. A documentation-only follow-up commit `bae9e951b76fbd2d48a35d056e2b09c5fe44d733` records the Vercel signal; that newer exact head requires CI again.
+- PR #25 Observer Preview/Vercel metadata: code head `431cb78a31e439f94a048754b3a8d9ae5195c730`; exact-head CI #994 SUCCESS and Observer Validation #156 SUCCESS. Follow-up commits `bae9e951b76fbd2d48a35d056e2b09c5fe44d733`, `1f65ff1af4748ceebef6562b179b24e09b0714cc` and `34816ded68c172d95a24addb8ce2e9d633a4f743` are documentation-only; no source/workflow changes followed the validated code head.
 - PR #26 cloud action-approval primitives: head `59e454969cf3f2875b18ee50dfea48b98c9e3425`; exact-head CI #979 SUCCESS. These are pure domain primitives only; no persistence, approval UI, integrations or external action execution is wired.
 - PR #27 CFO transfer-confidence guard: head `4c31dc2032b4217a887f483b3ec943e1647fbbe0`; exact-head CI #987 SUCCESS after correcting the synthetic cash-flow fixture to carry an explicit internal-transfer pair ID. No financial records were accessed or changed.
-- PR #28 native secure-storage adapter: head `56c6e5cccf1337e25388e3a1a1683ac1b2915c6d`; exact-head CI #996 was still running at this checkpoint. No Capacitor dependency or native project was installed.
+- PR #28 native secure-storage adapter: code head `56c6e5cccf1337e25388e3a1a1683ac1b2915c6d`; exact-head CI #996 SUCCESS. Documentation-only follow-ups `05aa0e3e18f546064d71b92b6af906b403523dd3` and `fbba6962a23cfb9f9aeab61f62e84d2da82e70fa` add the plugin decision and handoff; no Capacitor dependency or native project was installed.
 
 ### Cloud Brain and Supabase
 - The existing Supabase project remains the only database/auth project and is on the Free plan. Current aggregate state: 2 Auth users; 0 provider-preference rows; 1 memory-preference row; 1 account with context enabled and 1 with automatic capture enabled; 0 approved semantic facts. Do not change either account's consent or infer shared access.
@@ -1367,8 +1367,8 @@ Latest verified CI at this checkpoint: PR #27 #961 success; PR #22 #959 success;
 - A free Apple Developer account supports testing on personal devices through Xcode, but requires a macOS/Xcode host and personal provisioning expires after seven days. TestFlight/App Store distribution requires the $99/year Apple Developer Program and is excluded by the €0 recurring-cost rule.
 
 ### Next actions
-1. Let PR #25's new exact-head CI finish after the documentation follow-up; confirm the Vercel status observer step remains bounded and read-only.
-2. Let PR #28 exact-head CI finish; then update the iOS decision record with the verified plugin API and the €0 distribution boundary.
+1. Keep PR #25's validated Observer code unchanged; reconcile its one-commit ledger/base drift before any merge and preserve the Vercel free-tier failure signal.
+2. Continue PR #28 from the validated adapter; the remaining gate is a physical iPhone Keychain/logout/reinstall test when a macOS/Xcode host is available.
 3. Preserve PR #22/#23/#26/#27 as separate reviewable changes; do not merge as a batch. Reconcile the canonical-ledger-only base drift before any merge.
 4. Keep provider pools disabled until per-profile free quota, no-card/no-overage, EEA eligibility, retention/training, downstream chain and per-account consent are verified.
 5. Design an independent encrypted backup path before importing real CFO or personal-memory data; test restoration, not just backup creation.
