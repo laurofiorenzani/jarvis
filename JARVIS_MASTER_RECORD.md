@@ -1654,3 +1654,45 @@ J. **Next conversation:** “Continue JARVIS from the latest JARVIS_MASTER_RECOR
 - Opened Draft PR #30: https://github.com/laurofiorenzani/jarvis/pull/30. PR metadata now reports mergeable=true; exact-head workflow lookup currently returned no runs. Do not merge until exact-head CI passes.
 - The original Docker registry `Rate exceeded` remains a separate external blocker; this one-line fix does not claim to resolve it. No paid Docker Hub account or service was introduced.
 - Vercel bot again reported the Hobby deployment cap (>100 deployments/day) on PR #30. Stop triggering deployments; no upgrade and no bypass. Continue GitHub CI independently.
+
+
+## 2026-11-13 — continued autonomous parallel session (run #1009)
+
+### CI / PR #30
+- PR #30 remains Draft/open/mergeable, head `4e56733f1c2e18d592794eb48e1fce55de00f0f4`, branch `work/ci-supabase-start-resilience`; only changed file is `.github/workflows/ci.yml` and exact diff replaces invalid Supabase CLI exclusion `inbucket` with `mailpit`.
+- Exact-head CI run #1009, run ID `43475736715`, is now **IN_PROGRESS**. Job `132058961144`: build/typecheck, tests, lint, Deno provider privacy, semantic-memory policy, Edge Function check and speech tests all SUCCESS; Supabase local startup SUCCESS; `supabase db reset` currently IN_PROGRESS. SQL isolation, two-user API integration, production CORS and Preview CORS remain pending. No approval until all complete.
+- PR #30 has Vercel bot deployment failure due Hobby free cap (>100 deployments/day). Respect the cap; no upgrades, bypasses or further unnecessary deployment triggers.
+
+### Observer / PR #25 source review
+- PR #25 remains Draft/non-mergeable, exact head `725e1bbdf7ef8a68b34f9f3c7a7c6b960bd47a5b`; exact-head CI lookup still returned no workflow runs.
+- Reviewed changed files: observer validation workflow, read-only observer workflow, observer tests, architecture notes and master ledger. Current observer implementation accepts only allowlisted source/status/timestamp/HTTP/duration fields, drops unknown fields, rejects invalid timestamps/inconsistent HTTP status, deduplicates bounded low-cardinality signals and emits proposals requiring human approval. Workflow validates JSON health payload `status === 'ok'`, checks production and Preview API, filters canonical CI to branch + push event, selects only Vercel commit-status context, uses redirect:error and bounded timeouts, grants read-only permissions. Tests assert no secret access or write methods.
+- The PR's own description records older exact-head CI #994 / Observer #156 green on SHA `431cb78...`; these do not validate current head `725e1bb...`. No merge.
+
+### Family CFO PRs
+- PR #22 remains Draft/non-mergeable and source-only. Current PR body states exact-head CI #984 passed on `c3d3edc2ed91f88994cb93bb6acc7843f09992c0`, including 31 synthetic SQL assertions, isolated migrations, RLS/two-user and CORS. Schema still uses `NUMERIC(20,2)` and a three-letter currency format; this is not yet compatible with the versioned currency-exponent contract proposed in PR #29. Do not merge/apply until coordinated.
+- PR #27 remains open/non-mergeable; exact-head CI #987 passed on `4c31dc2032b4217a887f483b3ec943e1647fbbe0`. Transfer matching requires explicit shared pair ID plus same owner/currency, different accounts, exact opposite amounts, bounded date gap, unique pair and posted/confirmed source. Unpaired records remain in cash flow.
+- PR #29 remains Draft/non-mergeable; exact-head CI #1004 previously passed; design-only currency exponent registry, exact decimals/BigInt, original vs reporting currency and FX provenance. No final allowlist selected.
+- No CFO live migration or financial data.
+
+### Cloud / deployment / security
+- Supabase migration inventory unchanged; last live migration `20261113125437 provider_preferences_rls_initplan`. Security advisor remains INFO `jarvis_rate_limits` RLS/no policies and WARN leaked-password protection disabled. No auth/RLS changes.
+- Vercel latest queried canonical deployments are READY with target=null and commit `d2d964...`; Preview only, not Production. Rate limit remains a blocker.
+- Self-Evolution architecture source confirms the guardrails: isolated development, no prompt-to-code execution, no self-approval, production mutation requires explicit approval, audit/rollback and bounded resource use. Observer remains read-only/proposal-only.
+
+### Actions in this session
+- Rechecked PR #30 exact diff/comments/status, exact-head CI run #1009 and job step progress.
+- Rechecked PR #25 exact head/diff and reviewed observer implementation/tests.
+- Rechecked PR #22 and #27 exact validation metadata, Supabase migrations/security advisor, Vercel deployment history and Self-Evolution architecture.
+- No additional source changes, merges, deployments, live migrations, provider activations, secrets, account changes, auth settings or inference.
+
+### Session handoff
+A. **State:** development continues; no production-ready claim.
+B. **Completed:** PR #30 correction is in exact-head CI; initial code checks and Supabase startup passed. Observer source/test review completed. CFO transfer and currency contract differences recorded.
+C. **In progress:** PR #30 CI migration reset; subsequent SQL/two-user/CORS stages pending. PR #25 exact-head CI/Observer validation pending. Production/Preview parity and provider downstream verification remain open.
+D. **Evidence:** run #1009 / `43475736715`, job `132058961144`; PR #30 head `4e56733...`; PR #25 head `725e1bb...`; PR #22 head `c3d3ed...`; PR #27 head `4c31dc...`; PR #29 head `adf664...`; Supabase last migration `20261113125437`; Vercel target=null.
+E. **Decisions:** no merge until exact-head checks and review; no live CFO migration; no provider activation; no production promotion; obey €0 recurring cost and Vercel Hobby limits.
+F. **Pending by workstream:** Self-Evolution—finish CI and Observer validation; Cloud Brain—production/Preview source parity; Multi-AI—verify downstream provider chain, quota/EEA/retention/no-billing before enablement; CFO—reconcile ISO exponent contract with PR #22 schema and keep transfer pairing explicit; iOS/integrations—continue capability/source review, no unverified implementation claims.
+G. **User action:** none currently.
+H. **Next:** inspect run #1009 final result; if failure, use logs to isolate cause and make minimal branch-only fix. Continue PR #25 exact-head validation and source parity.
+I. **GitHub:** `laurofiorenzani/jarvis`; canonical `work/jarvis-canonical-integration`; PR #30 branch `work/ci-supabase-start-resilience`, commit `4e56733...`; ledger updated below.
+J. **Next conversation:** “Continue from latest JARVIS_MASTER_RECORD.md. PR #30 CI #1009 is in progress: code checks and local Supabase startup passed; db reset is running, SQL isolation/two-user/CORS still pending. PR #25 observer code reviewed but exact-head CI remains missing. Reconcile CFO PR #22 NUMERIC(20,2) against PR #29 currency exponent contract; no live migrations. Continue Cloud Brain parity and Multi-AI verification. Respect €0 cost and Vercel Hobby limit.”
