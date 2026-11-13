@@ -2060,3 +2060,41 @@ No third-party integration was connected, no credentials were requested, no data
 - PR #32 CI #1039 SUCCESS.
 - PR #33 CI #1053 SUCCESS on unchanged code tree; branch includes documentation-only ledger updates.
 - PR #34 CI #1066 in progress.
+
+
+## 2026-11-13 — Approval API and BMW Vault follow-through
+
+### PR #26 — authenticated approval API
+- Stacked PR #26 on PR #23 branch `work/provider-consent-app-integration` so the action API reuses the provider-consent/authenticated Edge Function without copying that implementation. Compare against PR #23 base contains action approval changes only.
+- Added authenticated `GET /action-approvals`, `POST /action-approvals`, `POST /action-approvals/:id/decision` and `POST /action-approvals/:id/cancel`. User identity comes from verified JWT, not request body. Per-user rate limits apply. The GET projection omits execution_id; create response is an explicit allowlist that omits raw `arguments`; database stores only argument digest and display metadata.
+- Added six Deno service tests and CI step. Exact-head CI #1078 (`43512797901`) SUCCESS on `4af6a1fd1daee5bee573b7cc55bab1a22a7b482e`: 242 TypeScript tests passed (2 skipped), build/lint/typecheck, Deno approval service tests, Edge Function typecheck, isolated Supabase migrations, 35 action approval SQL assertions, 12 semantic-memory SQL assertions, semantic-memory two-user API integration and CORS smoke checks passed.
+- Important limit: the two-user API integration in CI is for semantic memory, not the new action-approval routes. The approval service unit tests and Edge Function typecheck passed, but live route-level two-user integration remains pending.
+- No execution claim or external action route is exposed. No actual BMW, email, WhatsApp, payment or home action can execute through this PR. Approval UI, capability allowlist and encrypted argument handoff remain follow-up work. PR #26 is Draft and depends on PR #23; no production migration/deployment.
+
+### PR #34 — BMW CarData token vault extension
+- PR #34 now includes the read-only BMW CarData adapter, OAuth PKCE, mappings/basic data/telematics/charging history, 50-request/day injected budget, and Vault-backed refresh-token source migration/helper.
+- Read-only production metadata/privilege checks confirmed `supabase_vault` is installed; service_role has Vault schema/read/decrypt/delete privileges; anon/authenticated have no Vault schema/decrypted-secret access. No secret values were read.
+- Added migration `20261113220000_jarvis_bmw_cardata_vault.sql`: application metadata table stores only user ID, Vault secret UUID, public client ID and expiry metadata; service-role-only invoker RPCs store/rotate refresh token in `vault.secrets`, retrieve via `vault.decrypted_secrets`, and delete on disconnect. No production migration applied and no BMW token exists.
+- Added six Deno token-store tests and 28 pgTAP assertions using only synthetic tokens in isolated CI. CI #1079 (`43513281842`) is running on `49f560208c7df59091faf7cbf8bac240ad38f428`; exact-head validation is pending.
+- Persistent 50/day Supabase budget RPC and authenticated OAuth/connect/disconnect routes remain unimplemented. No account registration or device consent performed.
+
+### Current release gates
+- PRs #23, #26, #28, #31, #32, #33 and #34 remain Draft/open. PR #26 is stacked on PR #23. PR #34 is independent on canonical base.
+- No merges, deployments, live migrations, provider inference, Vault secret creation, BMW account connection or external action execution.
+- Cloudflare Free/no-overage billing attestation remains unverified and unset. Provider pools remain disabled.
+
+### Current evidence
+- PR #23 CI #1052 SUCCESS; Draft; operator billing attestation absent.
+- PR #26 CI #1078 SUCCESS; head `4af6a1fd1daee5bee573b7cc55bab1a22a7b482e`; Draft; base PR #23.
+- PR #28 CI #1074 SUCCESS; head `92a9722df271300bf5df5b78fe764046d5775f31`; Draft.
+- PR #31 CI #1054 + Observer #176 SUCCESS.
+- PR #32 CI #1039 SUCCESS.
+- PR #33 CI #1053 SUCCESS on unchanged provider-lockout code tree; branch has documentation-only ledger commits.
+- PR #34 CI #1079 in progress on `49f560208c7df59091faf7cbf8bac240ad38f428`; Draft.
+
+### Next actions
+1. Inspect PR #34 CI #1079, especially Vault extension migration and 28 SQL assertions; fix exact failures from logs.
+2. Add persistent atomic 50/day BMW request-budget RPC, then connect Vault token helper to authenticated OAuth device-flow routes only after owner consent.
+3. Add a live two-user integration test for action-approval routes in an isolated Edge Function environment; do not claim route-level integration until it passes.
+4. Build the approval UI and capability allowlist before any execution claim/adapter is enabled.
+5. Keep all changes Draft and production untouched until owner review; maintain €0 recurring-cost rule.
