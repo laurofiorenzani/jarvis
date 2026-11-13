@@ -73,6 +73,8 @@ jobs:
 
       - name: Test per-account ZDR speech consent enforcement
         run: deno test supabase/functions/jarvis-api/provider-consent_test.ts
+      - name: Test persistent action approval API service
+        run: deno test supabase/functions/jarvis-api/action-approval-api_test.ts
 
       - name: Test semantic-memory validation and auto-capture policy
         run: deno test supabase/functions/jarvis-api/semantic-memory.deno.ts
