@@ -1201,3 +1201,8 @@ The available Supabase connector cannot inspect or set Edge Function secrets. Do
 - Canonical development head includes PR #17's STT daily-quota classifier and PR #18's migration source provenance. PR #17 CI #926 and canonical CI #928 passed; Observer Validation #139 passed on the PR #17 merge commit.
 - Production `jarvis-api` v32 remains unchanged; Preview `jarvis-preview-api` v23 remains unchanged. No provider secrets were read, no inference was sent, no provider pool enabled, no account/auth/session/memory data changed, and no production deployment or billing change occurred.
 - Native iOS/Swift/Xcode/Capacitor project remains absent from the canonical tree. PWA is not the native iOS deliverable.
+
+
+### PR #19 canonical rebase — 2026-11-13
+- Rebased the complete proxy package and master-ledger update directly onto canonical merge commit `428d42b52e2c917969ced3a11ba2eca7987cc4c0`; compare confirms 1 commit ahead / 0 behind. The deployment package includes the Dockerfile, Compose overlay, environment template, proxy, README and tests.
+- The first CI #931 ran against the pre-rebase head and exposed the route-metadata test assertion mismatch; the assertion is corrected. Exact-head CI for the rebased branch is required before merge.
