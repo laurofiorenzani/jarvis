@@ -16,6 +16,7 @@ import {
   type ListMemoriesResponse,
   type CreateMemoryResponse,
   type MemoryPreferenceResponse,
+  type ProviderPreferencesResponse,
   type SemanticMemoryCandidateListResponse,
   type SemanticMemoryCandidateDecisionResponse,
   type MemoryCategory,
@@ -224,9 +225,15 @@ export function createCloudApiClient(options: CloudApiOptions) {
     getProviderStatus: () => request<{
       version: typeof CLOUD_API_VERSION
       configured: boolean
-      providers: { name: string; model: string; providerType?: string; privacyMode?: 'zdr' | 'standard' }[]
+      providers: { name: string; model: string; providerType?: string; privacyMode?: 'zdr' | 'standard'; pool?: 'default' | 'standard' }[]
       speechProvider?: 'cloudflare-whisper' | 'unconfigured'
     }>('/v1/provider-status'),
+    getProviderPreferences: () => request<ProviderPreferencesResponse>('/v1/provider-preferences'),
+    setProviderPreferences: (patch: { zdrPoolEnabled: boolean; standardPoolEnabled: boolean; policyVersion: string }) =>
+      request<ProviderPreferencesResponse>('/v1/provider-preferences', {
+        method: 'PUT',
+        body: JSON.stringify({ version: CLOUD_API_VERSION, ...patch }),
+      }),
     getMemoryPreference: () => request<MemoryPreferenceResponse>('/v1/memory-preferences'),
     setMemoryPreferences: (patch: Partial<Pick<MemoryPreferenceResponse, 'contextEnabled' | 'autoCaptureEnabled'>>) =>
       request<MemoryPreferenceResponse>('/v1/memory-preferences', {
