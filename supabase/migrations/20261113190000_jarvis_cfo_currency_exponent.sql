@@ -62,5 +62,5 @@ alter table public.jarvis_cfo_accounts
   check (public.jarvis_cfo_amount_matches_currency_exponent(0, currency, current_date, currency_registry_version));
 
 alter table public.jarvis_cfo_currency_registry enable row level security;
-revoke all on table public.jarvis_cfo_currency_registry from public, anon, authenticated, service_role;
-grant select on table public.jarvis_cfo_currency_registry to authenticated, service_role;
+revoke all on table public.jarvis_cfo_currency_registry from public, anon, authenticated;
+grant select on table public.jarvis_cfo_currency_registry to service_role;
