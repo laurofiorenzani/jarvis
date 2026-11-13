@@ -1112,3 +1112,12 @@ The available Supabase connector cannot inspect or set Edge Function secrets. Do
 - Live Supabase schema audit for provider preferences is now recorded: RLS enabled; consent CHECK constraint present; only authenticated SELECT policy scoped to `(select auth.uid()) = user_id`; authenticated has SELECT only; service_role retains server-side DML. Zero preference rows; no pools enabled.
 - Current PR #13 divergence is 69 ahead / 34 behind. Its older migration version `20261113110000` must be reconciled against live-applied `20261113125425` before any selective integration. No PR #13 code, provider secret, provider pool, or production function was changed.
 - No production deploy, auth/account mutation, billing change, real finance import or provider inference occurred.
+
+
+## 2026-11-13 — PR #15 Self-Evolution observer merged to canonical development
+
+- Exact PR #15 head `2249853a157f5e6b1782ce202c6c70998604d864` passed GitHub Actions CI #921 (`43452600850`): all substantive stages successful, including typecheck/build/tests/lint, provider privacy and semantic-memory tests, Edge Function typecheck, speech tests, isolated Supabase migration and SQL isolation, authenticated two-user semantic-memory API integration, production CORS and canonical Preview CORS.
+- Observer Validation #135 (`43452601059`) passed exact same head: observer privacy/triage tests, typecheck/build and lint.
+- PR #15 was marked Ready for Review and squash-merged into `work/jarvis-canonical-integration`. Merge commit: `b18af5a36938a5ae3521d277075957527f16c9c6`. This is canonical development only; no main/production merge or deployment. The observer remains read-only with `contents: read` and `actions: read`.
+- The PR's five intended files were the only changed paths. PR #15 is closed/merged; re-run canonical branch CI/Observer after this merge before any further promotion. Vercel Preview for the PR branch existed but recorded a SHA older than the exact final head; exact validation is GitHub CI/Observer, not a claim of exact-head Vercel build.
+- Live Supabase remains ACTIVE_HEALTHY in Paris, Production `jarvis-api` v32 and Preview `jarvis-preview-api` v23. No function deployment, provider activation, secrets, user/account data, auth or billing changes.
