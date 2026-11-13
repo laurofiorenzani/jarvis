@@ -586,3 +586,13 @@ The older `docs/PROJECT_DECISIONS.md`, `docs/architecture/IMPLEMENTATION_STATUS_
 - Also found that every immutable Vercel Preview gets a new hostname. Added a narrowly scoped CORS rule accepting only HTTPS hosts matching this Jarvis project's Vercel deployment naming pattern (jarvis-…-lauro-fiorenzani.vercel.app), not arbitrary Vercel origins. Deployed jarvis-preview-api v14.
 - Production jarvis-api remains v32 and has not been deployed or modified. No Auth accounts, credentials, production data, or Auth settings were changed.
 - Current code commits: route match 53c200a3f34b18b6da16926622bb3e7a45f5f2c6; Preview CORS 25bd55b45a2a2676a3bed7f4d40a0a454eefae92. Require a new Preview build and verify OPTIONS/CORS + GET health returns 200 before asking for another iPhone retest. PR #12 remains Draft.
+
+
+## 2026-11-13 — CORS bootstrap fix after repeated iPhone failure
+
+- The latest iPhone health request reached `jarvis-preview-api` v14 and returned HTTP 200 at 06:53:12 Dublin time. This proves the public health route itself now executes successfully.
+- The Edge log response headers did not include `Access-Control-Allow-Origin`; the browser therefore could still reject the cross-origin response and surface `Cloud service could not be reached` despite HTTP 200.
+- Corrected the bootstrap health endpoint to return `Access-Control-Allow-Origin: *` because it exposes only a non-sensitive health status. Its OPTIONS preflight now returns narrowly scoped GET/OPTIONS headers. Authenticated API routes retain their restricted CORS handling and bearer-token requirement.
+- Also corrected the Jarvis Preview hostname matcher to use a literal escaped dot in the regex.
+- Deployed `jarvis-preview-api` v16. Production `jarvis-api` remains v32 and was not changed. No account/auth data or secrets were modified.
+- New Vercel Preview for commit `3ccda6096cceaf14a9810db54e4a5250dea0f033` is building; do not retest until it is READY. Verify health CORS response and authenticated follow-up before requesting another device test.
