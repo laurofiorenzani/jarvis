@@ -133,7 +133,7 @@ export function matchInternalTransfers(
 /** Stable conservative duplicate key; retain original records and review collisions. */
 export function transactionFingerprint(tx: CfoTransaction): string {
   const normalizedDescription = tx.description.normalize('NFKC').trim().toLocaleLowerCase('en')
-    .replace(/\\s+/g, ' ')
+    .replace(/\s+/g, ' ')
   return [
     tx.ownerUserId,
     tx.accountId,
