@@ -258,7 +258,8 @@ const MCP_SERVERS = Object.fromEntries(
  * strictMcpConfig limits the session to the servers passed below. Set
  * JARVIS_ACCOUNT_CONNECTORS=1 to let the account's connectors in as well.
  */
-const ACCOUNT_CONNECTORS = process.env.JARVIS_ACCOUNT_CONNECTORS === '1'
+// Claude.ai account connectors require a separate commercial account and are disabled.
+const ACCOUNT_CONNECTORS = false
 
 // Memory is disabled unless a separately installed, tested OS-vault adapter is
 // explicitly configured. If enabled, startup fails closed when that adapter or
