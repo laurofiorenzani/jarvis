@@ -117,8 +117,9 @@ function configuredProviders(secretName = 'JARVIS_MODEL_PROVIDERS'): Provider[] 
     if (item.taskType !== undefined && !['auto', 'chat', 'code'].includes(String(item.taskType))) continue
     const gateway = item.gateway === 'freellmapi' ? 'freellmapi' : undefined
     const taskType = item.taskType === 'chat' || item.taskType === 'code' ? item.taskType : 'auto'
-    // Keep the local-first multi-provider gateway isolated from the default
-    // privacy pool. It belongs only in the explicitly standard pool.
+    // Keep the default pool strict: only explicitly ZDR providers are accepted.
+    // Standard-retention gateways/providers must use the separately consented pool.
+    if (secretName === 'JARVIS_MODEL_PROVIDERS' && item.privacyMode !== 'zdr') continue
     if (gateway === 'freellmapi' &&
         (secretName !== 'JARVIS_MODEL_PROVIDERS_STANDARD' || !isFreeLlmApiModel(item.model))) continue
     if (secretName === 'JARVIS_MODEL_PROVIDERS_STANDARD' && item.privacyMode === 'zdr') continue
