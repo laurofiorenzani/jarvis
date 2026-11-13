@@ -1050,3 +1050,29 @@ The available Supabase connector cannot inspect or set Edge Function secrets. Do
 - Canonical CI #907 was cancelled during isolated Supabase startup after its fast stages passed; migrations, SQL isolation, authenticated two-user API and CORS steps were skipped. A rerun attempt led to CI #908, which was also cancelled during isolated Supabase startup. Observer #119 passed on canonical head `911139752056b452152ebda755f0337659e12d78`. This is not a full green CI result.
 - Vercel remains blocked by the Hobby build-rate-limit status for canonical head; no paid upgrade.
 - PR #12 remains OPEN/Ready for Review/unmerged. PR #13 remains OPEN/Draft/unmerged and diverged from canonical (67 ahead / 31 behind at latest comparison). Its provider-consent UI currently describes differing retention/training/regional terms generically; the more explicit EEA data-processing disclosure requirement remains a blocker before either account enables external-provider routing.
+
+
+## 2026-11-13 — Family CFO date validation merged; provider deployment cross-check
+
+### Family CFO
+- PR #14 (`work/family-cfo-date-validation`) was merged by squash into the canonical integration branch only. Merge commit: `7dac36fbcaf1e0fbb13f017a8e397ac538fe4b10`.
+- Exact PR validation CI #909 (run ID `43449606038`) completed SUCCESS. All 23 substantive stages passed: dependency install/audit, typecheck/build, Node tests, lint, provider privacy, semantic-memory tests, Edge Function typecheck, speech tests, isolated Supabase startup, migrations, SQL isolation, authenticated two-user API integration, teardown, production CORS and canonical Preview CORS.
+- Change: `IsoDateSchema` now rejects impossible calendar dates, not just malformed YYYY-MM-DD strings. Synthetic tests cover valid leap day, invalid non-leap day, impossible month/day and invalid provenance effective date.
+- This merge targets `work/jarvis-canonical-integration`, not `main`; no production deployment or real financial data/schema change.
+
+### Cloud / provider runtime cross-check
+- Supabase project `Jarvis` remains healthy; migration inventory confirms provider-preferences migrations `20261113125425` and `20261113125437` are applied.
+- Live Edge Function inventory: Production `jarvis-api` ACTIVE v32; Preview `jarvis-preview-api` ACTIVE v23.
+- Read-only deployed-source inspection confirms Preview v23 contains the per-account `/provider-preferences` route, separate standard/ZDR pool handling and FreeLLMAPI gateway/task-classification code. It does not contain the newer `isCloudflareDailyQuotaExhausted` helper. Production v32 contains none of the provider-preferences or FreeLLMAPI additions. No function deployment was performed in this session.
+- Cloudflare API inventory confirms the connected account currently has **zero Worker scripts deployed**. The earlier plan/absence-of-payment-method observation remains historical; current API inventory does not grant a new inference host or verify Neurons quota. No Worker, tunnel, secrets or inference were created.
+
+### PR #13 privacy disclosure work
+- Added an explicit provider consent notice in `src/ui/CloudAccess.tsx` distinguishing Supabase Paris primary-region storage from categories that may be processed outside that region, Cloudflare Workers AI's documented stateless ZDR/no-training commitments and exceptions, and FreeLLMAPI downstream provider-specific retention/training/region terms.
+- Added official references and the same processing-boundary explanation to `docs/cloud/FREELLMAPI_CLOUD_INTEGRATION.md`.
+- Source checks: Supabase Data Residency and Transfers FAQ (2026-10-06) and Cloudflare Workers AI data-usage docs (2026-10-16). The disclosure commits no account to provider use; both pools remain opt-in and must be enabled separately per account.
+- PR #13 remains OPEN/Draft/unmerged. Its branch is 69 commits ahead and 32 behind canonical (diverged). No merge/rebase attempted; exact-head CI for its latest disclosure commits has not appeared in the connected workflow lookup. Vercel Hobby build-rate-limit remains a failure status; no paid upgrade.
+
+### Current gates
+- PR #12 remains OPEN/Ready for Review/unmerged; production `jarvis-api` v32 remains unchanged.
+- PR #13 requires branch reconciliation, full exact-head CI, private persistent €0 gateway host verification, provider eligibility/consent and authenticated two-account E2E before merge or activation.
+- Native iOS, physical device PT/EN voice E2E, BMW/home/messaging integrations and real Family CFO bank imports remain unimplemented/unvalidated.
