@@ -649,3 +649,30 @@ The older `docs/PROJECT_DECISIONS.md`, `docs/architecture/IMPLEMENTATION_STATUS_
 8. **Integrations:** capability and permission audit for email, messaging, BMW, Blink, Dreame, lights and Maps; implement only through authorized direct adapters and report unsupported scopes honestly.
 9. **Safety and operations:** approval lifecycle, cancellation, audit events, rate limits, backup/recovery, observability and rollback gates.
 10. **Later self-evolution:** read-only observer and guarded isolated PR workflow after V1; no self-approval, merge or production deploy.
+
+## 2026-11-13 — voice empty-transcript fix, preview deployment and exact-head validation
+
+### Verified implementation change
+- The iPhone Safari log window at 07:01–07:02 Dublin showed authenticated account/memory/provider-status requests returning HTTP 200 and two STT requests returning HTTP 200, but no subsequent turns or TTS request. The logs do not contain audio or transcript content, so the precise provider response cannot be reconstructed.
+- Code inspection found a concrete silent-failure path: STT extraction defaulted to an empty string when Gemini returned no candidate text, then checked only whether transcript was a string. Because the fallback was already a string, the handler returned HTTP 200 with an empty transcript and the voice loop discarded it as unintelligible. This is consistent with the observed no-turn symptom, but is not claimed as the only possible cause.
+- Fixed in commit 9d0b5f436b5a24ce2fd526180715d17645c7e1ea: extracted defensive provider-response parsing into speech-transcript.ts; empty/malformed provider transcripts now return a retryable 503 instead of false success; diagnostic logs contain only audio byte count, MIME type and candidate count, never audio or transcript content.
+- Added speech-transcript_test.ts covering valid multi-part transcripts, missing/malformed candidates, non-text parts, whitespace and candidate counting. CI now runs this test explicitly.
+- Deployed the exact candidate Edge Function source to non-production jarvis-preview-api version 19. Verified the deployed bundle contains route-path normalization and the empty-transcript guard. Production jarvis-api remains version 32 and was not changed.
+- New Vercel Preview for commit 9d0b5f436b5a24ce2fd526180715d17645c7e1ea is READY: https://jarvis-mmq8qjks7-lauro-fiorenzani.vercel.app.
+
+### Exact-head validation
+- CI run #823, 43393414158, passed on exact code head 9d0b5f436b5a24ce2fd526180715d17645c7e1ea: dependency audit, TypeScript/Vite production build, app tests, lint, provider privacy tests, semantic-memory policy tests, Edge Function type-check, speech-transcript regression tests, isolated Supabase startup/migrations, SQL isolation tests, authenticated semantic-memory integration with two isolated synthetic users, teardown, production API/CORS smoke test and Preview CORS smoke test.
+- Observer Validation run 43393414148 passed on the same exact head.
+- These checks prove the automated code/database/API gates, not a physical iPhone microphone-to-model-to-speaker end-to-end test. Do not claim the new voice path is device-verified until a fresh iPhone session produces a non-empty transcript, a turn response and audible TTS.
+- The prior teardown-only CI failure is resolved: the new full CI run completed successfully, including local Supabase teardown. No further cleanup workaround is needed.
+
+### Branch/release regression diagnosis
+- work/intelligent-memory-foundation is the cloud foundation PR #1 base: 454 commits ahead of main and 3 commits behind it. The three main-only commits include 1a96365176e83a2012ce99f926bf56ca2f354a14 (added CloudAccess), e18151ca3b6d959b3e07263894cbf124689dea54 (reverted its cloud speech adapter prop), and da4e4591a0fe364ba5823d44ee2954b88ffd3383 (removed CloudAccess.tsx). These changes explain why following mainline blindly would regress the cloud experience.
+- PR #12 remains OPEN/Ready for Review and is stacked on work/intelligent-memory-foundation; it is not merged to main. PR #1 remains OPEN/Ready for Review against main. PR #7 remains OPEN/Draft as the earlier amber visual baseline. Keep the stack and reconcile features deliberately; do not bulk-merge the 537/212 divergent amber/canonical histories.
+- No branches or repositories were deleted. No production deployment, production Edge Function, account, password, auth setting, secret, billing setting or production data was changed.
+
+### Remaining release gates and honest limits
+- Existing Supabase Auth account count remains two. The read-only count-only audit found one memory-preference row, one account opted into memory context/auto-capture, zero approved saved semantic facts, 13 conversations and 42 messages. The other account remains default-off. The automated two-user isolation test uses synthetic users and does not modify either existing account.
+- The current cloud model router requires server-side JARVIS_MODEL_PROVIDERS configuration plus the referenced provider secret. The existing Google AI Studio key in the Windows FreeLLMAPI installation is not automatically available to Supabase. The available Supabase connector cannot inspect or create Edge Function secrets; actual cloud model inference therefore remains unverified and may require an owner-only Dashboard secret/configuration step. Do not claim the brain is live based only on successful build or STT.
+- The Vercel Preview is a responsive web/PWA surface for iPhone and desktop; it is not a native iOS binary. Capacitor/Xcode project, Keychain integration, signed build and TestFlight remain unimplemented. Physical iPhone PT/EN STT, model turn and TTS validation remains outstanding.
+- Free-tier hosting is not an unlimited or permanent always-on guarantee. Do not enable paid billing or paid fallback. The full self-evolution engine remains post-V1.
