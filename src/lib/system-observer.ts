@@ -124,7 +124,7 @@ export function triageObservations(
       title: `${item.source.toUpperCase()} service reports ${item.status}`,
       severity: item.severity,
       confidence: item.status === 'unavailable' || item.status === 'failed' ? 'high' : 'medium',
-      evidence: [`${item.signalCode} at ${new Date(Date.parse(item.observedAt)).toISOString()}`],
+      evidence: [`${item.signalCode} at ${item.observedAt}`],
       recommendedAction: 'Inspect sanitized service health and recent deployment or CI metadata before proposing a change.',
       requiresHumanApproval: true,
     }))
