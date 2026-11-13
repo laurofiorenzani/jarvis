@@ -159,3 +159,22 @@ Do not create these tables until the schema, indexes, RLS policies, retention/de
 The first TypeScript domain layer is now implemented in `src/lib/family-cfo.ts`, with regression coverage in `tests/family-cfo.test.ts`. The full CI run #892 passed on code-equivalent commit `fdbebbd58f229bdd7164ad5e99325178dc46ee5a`, including the new CFO tests, TypeScript build, lint, migration application, SQL isolation tests, and authenticated two-user semantic-memory integration. The following documentation/workflow-only commit updates the Supabase CLI setup action to the current `setup-cli@v3` with the v2 stable CLI line; that workflow adjustment still requires an exact-head CI run.
 
 No CFO database migrations, real bank data, financial imports, or external account connections have been created. All CFO fixtures remain synthetic.
+
+
+## Currency and exact-money implementation proposal (design-only)
+
+The current proposal's combination of `numeric(20,2)` and accepting any syntactically valid three-letter currency code is incomplete: ISO 4217 currencies do not all share two minor-unit digits, and a regex does not prove a code is current or supported.
+
+Proposed v1 rules:
+- Keep the ISO 4217 code as the currency identity; never infer currency from locale or symbol.
+- Keep authoritative decimal amounts as exact decimal strings at API boundaries and PostgreSQL `numeric`, never JavaScript `number`.
+- Use a versioned currency metadata registry: supported code, exponent (minor-unit digits), effective dates, source and registry version.
+- Validate fractional precision against that currency's configured exponent. Reject unknown, historic/withdrawn or unsupported codes; never silently round or truncate.
+- Use integer minor units only when the exponent is known for the record's effective date. Use TypeScript `BigInt` for arithmetic and decimal strings for serialization.
+- Preserve original transaction amount/currency separately from account settlement/reporting currency. When available, preserve settled amount/currency, bank FX rate and fee as separate fields.
+- FX conversions are derived values with source/target currencies, exact rate, timestamp, source and method. Never sum mixed currencies.
+- A missing currency must not silently default to EUR. Require an explicit reporting currency or return separate per-currency totals.
+
+Candidate source for a pinned registry snapshot: the ISO 4217 list published by SIX Group, the ISO 4217 Maintenance Agency. Record retrieval date and source version; do not fetch mutable metadata at runtime. An initial allowlist should be explicitly reviewed based on actual supported records, not assumed to include every ISO code.
+
+This is a design proposal only. It does not change PR #22's migration, does not select the final v1 allowlist, and must not be applied to live Supabase without separate review and approval.
