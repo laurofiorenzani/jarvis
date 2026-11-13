@@ -653,3 +653,70 @@ test('provider consent errors explain the next step in Brazilian Portuguese', ()
     'Ative um pool de provedores de IA nas configurações do JARVIS para esta conta.',
   )
 })
+
+test('cloud client lists and resolves metadata-only action approvals with bound context', async () => {
+  const calls: Array<{ url: string; init?: RequestInit }> = []
+  const approval = {
+    request_id: '10000000-0000-4000-8000-000000000041',
+    session_id: 'session-a',
+    conversation_id: 'conversation-a',
+    invocation_id: 'invocation-a',
+    capability_id: 'bmw.climate.start',
+    argument_digest: 'a'.repeat(64),
+    title: 'Start cabin climate',
+    target: 'BMW iX1',
+    impact: 'Starts cabin climate',
+    reversibility: 'Can be stopped',
+    policy_version: '2026-11-13-v1',
+    status: 'pending',
+    created_at: '2026-11-13T12:00:00.000Z',
+    expires_at: '2026-11-13T12:05:00.000Z',
+    decided_at: null,
+  }
+  const client = createCloudApiClient({
+    baseUrl: 'https://api.example.test',
+    publishableKey: 'test-publishable-key',
+    getAccessToken: async () => 'approval-token',
+    fetchImpl: async (input, init) => {
+      calls.push({ url: String(input), init })
+      const payload = calls.length === 1
+        ? { version: 1, approvals: [approval] }
+        : { version: 1, result: { valid: true, reason: 'resolved', status: 'approved' } }
+      return new Response(JSON.stringify(payload), { status: 200, headers: { 'Content-Type': 'application/json' } })
+    },
+  })
+  const listed = await client.listActionApprovals()
+  assert.equal(listed.approvals[0].request_id, approval.request_id)
+  const resolved = await client.decideActionApproval(approval, 'approved')
+  assert.equal(resolved.result.valid, true)
+  assert.equal(resolved.result.status, 'approved')
+  assert.equal(calls[0].url, 'https://api.example.test/v1/action-approvals')
+  assert.equal(calls[1].url, `https://api.example.test/v1/action-approvals/${approval.request_id}/decision`)
+  assert.equal(calls[1].init?.method, 'POST')
+  const body = JSON.parse(String(calls[1].init?.body))
+  assert.equal(body.sessionId, 'session-a')
+  assert.equal(body.invocationId, 'invocation-a')
+  assert.equal(body.capabilityId, 'bmw.climate.start')
+  assert.equal(body.argumentDigest, 'a'.repeat(64))
+  assert.equal(body.decision, 'approved')
+  assert.equal(new Headers(calls[1].init?.headers).get('Authorization'), 'Bearer approval-token')
+})
+
+test('cloud client rejects malformed action approval identifiers and digests locally', async () => {
+  const client = createCloudApiClient({
+    baseUrl: 'https://api.example.test',
+    publishableKey: 'test-publishable-key',
+    getAccessToken: async () => 'approval-token',
+    fetchImpl: async () => { throw new Error('fetch must not run for invalid approval input') },
+  })
+  await assert.rejects(
+    () => client.decideActionApproval({
+      request_id: 'not-a-uuid',
+      session_id: 'session-a',
+      invocation_id: 'invocation-a',
+      capability_id: 'bmw.climate.start',
+      argument_digest: 'bad',
+    }, 'approved'),
+    /Invalid action approval/,
+  )
+})
