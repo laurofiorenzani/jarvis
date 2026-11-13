@@ -892,3 +892,34 @@ The available Supabase connector cannot inspect or set Edge Function secrets. Do
 - No Worker was created, no AI inference was invoked, no billing setting changed, and no secret was read or written.
 - Next: verify Workers AI free allocation and the correct least-privilege token permission through Cloudflare dashboard or a separately authorized read-only billing/usage connection. Keep all inference disabled until the free quota and zero-billing guard are verified.
 
+
+
+## 2026-11-13 — iOS release consistency + Family CFO contract
+
+### iOS documentation reconciliation
+- Reviewed `docs/architecture/CLOUD_FIRST_ARCHITECTURE.md`, `docs/mobile/IOS_NATIVE_APP_DECISION.md`, `docs/mobile/MOBILE_COMPANION_PLAN.md` and `docs/mobile/IOS_APP_AND_CARPLAY_DELIVERY.md`.
+- Found a conflict: the delivery plan described PWA/web as a release-capable fallback, while the canonical architecture requires an installable signed iOS app and permits PWA only as a temporary development/test fallback.
+- Updated `IOS_APP_AND_CARPLAY_DELIVERY.md` to match the canonical architecture. The browser client remains a useful companion/test surface; Capacitor 8 native iOS remains a required deliverable. No Capacitor package, Xcode project, signing or iOS build was falsely claimed.
+- iOS implementation remains blocked on an available macOS/Xcode environment for native build/signing and physical-device validation. No paid build service is approved.
+
+### Family CFO — first data contract
+- Added `docs/agents/FAMILY_CFO_DATA_CONTRACT.md` as a design contract only. It defines source provenance, exact decimal money values, transaction deduplication, transfer handling, balances, income, budgets, mortgage, assets, pensions, investments, document evidence, freshness, and calculation assumptions.
+- Defines per-user RLS and bilateral consent before household sharing; read-only/analysis-only first release; no transfers, payments, trades or other money-moving actions.
+- Requires official APIs or user-authorized exports, verified zero-cost/privacy eligibility, and synthetic tests before any schema migration or real financial-data import.
+- No CFO database tables, connectors, balances, statements, credentials or financial records were created/imported.
+
+### Current validation and deployment evidence
+- PR #12 remains OPEN / Ready for Review. Its head now includes the two documentation commits and this ledger update; base remains `work/intelligent-memory-foundation`. It is not merged to `main` and production remains unchanged.
+- CI run #881 is running on code-equivalent commit `3427619bd078b2af3cfd5426d11c130ec273ff70`. Typecheck/build, unit tests, lint, provider privacy tests, semantic-memory policy tests, Edge Function typecheck and speech transcript tests have passed; isolated local Supabase startup/migration/isolation and hosted CORS smoke tests were still pending at last observation. Observer Validation #? on the same head completed successfully (run ID `43436195235`). Do not call CI fully green until run #881 completes.
+- Vercel has a READY preview at `jarvis-94ta6vje2-lauro-fiorenzani.vercel.app`, but it is built from earlier commit `153e69baab4a2b055f30d20ce0d9b163fbaa5592`, not the latest documentation commits. Do not present it as an exact-head preview. New deployment creation is currently constrained by the previously observed Hobby build-rate limit; no upgrade or billing change.
+- Supabase project `Jarvis` remains ACTIVE_HEALTHY in `eu-west-3`; Production `jarvis-api` v32 and Preview `jarvis-preview-api` v23. Production remains untouched. Public table inventory confirms 13 conversations, 42 messages, 33 turns, 116 rate-limit rows, zero approved memories/facts/summaries/topics/links, and zero provider preference rows; these are live row counts, not a claim that memory is populated.
+- Security Advisor still reports: rate-limit table RLS with no client policies (INFO; keep fail-closed) and leaked-password protection disabled (WARN; requires a separate owner decision).
+
+### Next actions
+1. Wait for and inspect CI #881 final result; if it fails, isolate the failing job before editing code.
+2. Keep PR #12 as canonical candidate; no merge or production deployment before exact-head CI, account-isolation, provider consent and device E2E gates.
+3. Keep PR #13 separate and Draft until private FreeLLMAPI hosting, exact-head CI, provider consent and zero-cost safeguards are proven.
+4. Continue CFO implementation planning from the new contract with synthetic-only Zod contracts/tests before any migrations.
+5. Continue native iOS implementation preparation, but do not claim a native app until a macOS/Xcode build and physical-device validation exist.
+6. Continue integration registry design and vendor API feasibility checks without claiming BMW/Blink/Dreame/WhatsApp/CarPlay operations are live.
+
