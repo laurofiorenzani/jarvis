@@ -1953,3 +1953,32 @@ J. Next conversation: Continue from this checkpoint. PR #31 exact-head CI #1014 
 - PR #31: `7849419dfeef11984cdac4be0458678623d199ac` — CI #1054 and Observer #176 SUCCESS.
 - PR #32: `dfea9b296647ed257915932998700ce0fbe4ac39` — CI #1039 SUCCESS.
 - PR #33: `7cfa58933af77def7b4c47cf96f8479b83218713` — CI #1053 SUCCESS.
+
+
+## 2026-11-13 — Exact validation checkpoint and review gates
+
+### Additional verified outcomes
+- PR #28 iOS secure-storage adapter: CI #1060 (`43510166694`) SUCCESS on refreshed head `29ac8c261d3af5953ff67d02edab46b0eea5273c`. Build/tests/lint, native token-store unit tests, Deno/Edge Function checks, isolated Supabase migrations, SQL isolation, two-user integration and production/Preview CORS smoke checks passed. Still no native iOS target, plugin dependency, Xcode signing or device E2E.
+- PR #26 action approval persistence: CI #1061 (`43510506410`) SUCCESS on migration/code head `1056d4bf6cdab46064b8caa10c4ee0f718c93e14`. The new migration applied to isolated local Supabase; pgTAP reported 47 total tests across action-approval persistence (35 assertions) and semantic-memory isolation (12 assertions), all successful. The subsequent test-only `RESET ROLE` addition is under exact-head CI #1063; no migration SQL changed after #1061.
+- PR #23 remains exact-head CI #1052 SUCCESS; operator billing attestation still absent. Converted PR #23 to Draft pending owner verification of Workers Free/no-overage and review.
+- PR #26 converted to Draft because persistent approval RPCs are not yet wired to authenticated Edge API routes and no integration execution adapter exists.
+
+### Current review state
+- Draft/open: PR #23 Multi-AI/provider consent; PR #26 persistent action approvals; PR #28 iOS secure storage; PR #31 Observer; PR #32 Family CFO; PR #33 zero-cost provider lockout.
+- PR #23 code is CI validated but providers remain disabled by the server-side operator billing attestation. PR #26 schema/RPCs are isolated CI validated but not deployed or exposed by the API.
+- PR #22 and #29 remain superseded by PR #32; do not merge independently.
+- No PR merged, no live migration, no production Edge Function change, no provider inference, no paid service, no deployment.
+
+### Next actions
+1. Finish exact-head CI #1063 on PR #26 after the test-only role reset. If green, record exact run and preserve Draft status.
+2. Wire approval persistence RPCs into the existing authenticated `jarvis-api` only after PR #23 base is reviewed/merged; add route-level two-user tests. No action execution until UI/capability authorization is connected.
+3. Verify Cloudflare Workers Free/no-overage through owner confirmation or read-only Billing Read. Never set billing attestation before that.
+4. Continue iOS toward a real native target only when macOS/Xcode and device signing validation are available.
+
+### Exact heads and runs
+- PR #23 `ead81317ba70c9a88a61cf7bc477540eb44e7763` — CI #1052 SUCCESS; Draft.
+- PR #26 `9cd41bfdd95c2d3e1c2ee6bbe756dd4b0fc2d005` — CI #1061 SUCCESS on prior code head; #1063 in progress on latest test-harness head; Draft.
+- PR #28 `29ac8c261d3af5953ff67d02edab46b0eea5273c` — CI #1060 SUCCESS; Draft.
+- PR #31 `7849419dfeef11984cdac4be0458678623d199ac` — CI #1054 and Observer #176 SUCCESS; Draft.
+- PR #32 `dfea9b296647ed257915932998700ce0fbe4ac39` — CI #1039 SUCCESS; Draft.
+- PR #33 code tree `7cfa58933af77def7b4c47cf96f8479b83218713` — CI #1053 SUCCESS; current branch head also includes documentation-only ledger commit `8f802abfdd210f47e371804d09205791f441ffbf`; Draft.
