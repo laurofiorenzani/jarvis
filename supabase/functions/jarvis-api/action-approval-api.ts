@@ -128,6 +128,7 @@ export async function createActionApprovalRecord(
   return {
     requestId: envelope.requestId,
     userId: envelope.userId,
+    protocolVersion: envelope.protocolVersion,
     sessionId: envelope.sessionId,
     conversationId: envelope.conversationId,
     invocationId: envelope.invocationId,
