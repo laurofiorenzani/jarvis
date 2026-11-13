@@ -1321,3 +1321,7 @@ The canonical branch has three additional documentation-only ledger commits afte
 The three commits after f217 on canonical are ledger-only updates to `JARVIS_MASTER_RECORD.md`; no source-code changes were introduced by them. The divergence is therefore documentation/ancestry drift, not proof of code conflict. Do not force-push or reconstruct full branch trees. Before any merge, inspect the actual PR mergeability/diff and ensure the current canonical ledger remains intact. Exact-head CI remains the merge gate; review remains human-owned.
 
 Latest verified CI at this checkpoint: PR #27 #961 success; PR #22 #959 success; PR #25 #955 and Observer #144 success; PR #23 #966 in progress; PR #26 #971 pending. Canonical CI #970 and Observer #146 were in progress at the prior check. No merge or production change is authorized by this status note.
+
+
+### PR #25 exact-head refresh — 2026-11-13
+- Rebased read-only Observer preview-health extension onto canonical ledger commit 86d171b3e869bee138795342963995adaa302b93. It adds public Preview API health monitoring and canonical-branch Observer validation. CI #955 and Observer Validation #144 passed before rebase; exact-head checks must pass again. No production resources changed.

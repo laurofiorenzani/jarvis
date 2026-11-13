@@ -2,16 +2,18 @@ name: JARVIS Observer Validation
 
 on:
   push:
-    branches: ["main", "work/self-evolution-readonly-observer"]
+    branches: ["main", "work/self-evolution-readonly-observer", "work/jarvis-canonical-integration"]
     paths:
       - "src/lib/system-observer.ts"
       - "tests/system-observer.test.ts"
       - ".github/workflows/jarvis-observer-validation.yml"
+      - ".github/workflows/jarvis-readonly-observer.yml"
   pull_request:
     paths:
       - "src/lib/system-observer.ts"
       - "tests/system-observer.test.ts"
       - ".github/workflows/jarvis-observer-validation.yml"
+      - ".github/workflows/jarvis-readonly-observer.yml"
   workflow_dispatch:
 
 permissions:
