@@ -104,3 +104,27 @@ Unknown, stale, ambiguous, paid, or geographically ineligible entries are disabl
 - No provider inference request, personal prompt, or audio was sent during this documentation work.
 - No production function, database, account, secret, or billing setting was changed.
 - The feature branch contains this integration contract only; implementation and runtime verification remain outstanding.
+
+
+## Implementation progress — 2026-11-13
+
+- Added an explicit gateway: freellmapi provider kind to the server-side model router.
+- FreeLLMAPI entries are accepted only from the separate JARVIS_MODEL_PROVIDERS_STANDARD secret, must use HTTPS, require a server-side apiKeyEnv, and must select a supported FreeLLMAPI router profile (auto, auto:fast, auto:smart, auto:reliable, fusion, or a named auto:<profile>).
+- The adapter sends X-FreeLLM-Task-Type (auto, chat, or code) so FreeLLMAPI can bias its own routing while retaining its configured fallback chain and quota tracking.
+- Provider diagnostics report the FreeLLMAPI gateway identity and pool without exposing credentials.
+- The existing JARVIS_MODEL_PROVIDERS default pool and all existing callers remain unchanged. The standard pool is available through an explicit startFreeModelStream(..., { pool: standard }) option, but ordinary user turns do not select it yet; per-account provider acceptance and runtime pool selection are still required.
+- FreeLLMAPI is never labelled ZDR merely because its own gateway is self-hosted: downstream providers have independent retention and training terms. It is therefore isolated from the strict ZDR pool.
+- Added unit tests for accepted/rejected routing profiles and task-type headers.
+- Updated JARVIS cloud client error messages to Brazilian Portuguese and added regression assertions.
+- Current code commits: ae9d95bf316334026d74f911e7ba440a139a495b (router), 119bb48168977fce5f81d83d90182c925f11b036 (adapter tests), 937b6b3fc637aaa8f131319368e5bff81ab4e222 (pool isolation), 04c5ab75ab6848bf036f89b67292a5f3d7f03c68 (pt-BR translations), 276d1373e2c935c9651eb28523ec8d27a14d9fcd (locale tests).
+- The FreeLLMAPI host, unified API key and provider credentials are not configured. No inference request has been sent and no user content has been routed through it.
+
+### Infrastructure refresh
+
+- Cloudflare account read-only inventory returned zero Workers scripts. Workers AI model search returned 75 records on its first page (40 text-generation entries); 9 explicitly carry require_workers_paid=true. Thirty-one text-generation entries lacked that explicit paid-only flag, but this is only a candidate list, not a verified free-plan allowlist. Pagination returned no additional records despite the API reporting 334 total catalog entries.
+- Cloudflare's official July 28, 2026 notice confirms GLM-4.7-Flash, Gemma-4-26B-A4B-IT, and Nemotron-3-120B-A12B are among models available on Workers Free; models explicitly marked require_workers_paid=true must be excluded. The Cloudflare account billing plan remains unverified because the connected account lacks Billing Read permission.
+- Supabase jarvis-preview-api remains v21 and production jarvis-api remains v32. No function deployment or secrets were changed during this code work.
+- Vercel's latest READY deployment is still the documentation-only commit a2c1248e5a193436e33fd4a8e3b63f27df731909; no deployment of the newer adapter code has been confirmed.
+- The connected GitHub CI run #842 was in progress when this ledger was updated; its exact-head completion must be checked before deployment.
+- Oracle Cloud is not exposed through an available connected account tool in this session. The previously mentioned VM and its runtime state remain unverified; no host has been provisioned.
+- No production functions, production data, accounts, billing plans, secrets, branches or repositories were changed or deleted.
