@@ -305,6 +305,7 @@ Deno.serve(async (request) => {
       console.info('[jarvis] ignored near-empty speech segment', { bytes: audio.byteLength, mimeType })
       return response({ version: VERSION, text: '' }, 200, cors)
     }
+    // Copy into a concrete ArrayBuffer; Deno fetch rejects generic ArrayBufferLike views as BodyInit.
     const audioBody = new ArrayBuffer(audio.byteLength)
     new Uint8Array(audioBody).set(audio)
     const upstream = await fetch(`https://api.cloudflare.com/client/v4/accounts/${accountId}/ai/run/@cf/openai/whisper`, {
