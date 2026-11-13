@@ -1370,3 +1370,12 @@ Latest verified CI at this checkpoint: PR #27 #961 success; PR #22 #959 success;
 8. Continue native iOS only with a verified zero-recurring build/signing path; no App Store/paid developer subscription is authorized.
 
 No new PRs were merged, no live migrations were run, and no production deployment occurred in this handoff.
+
+
+## 2026-11-13 — Capacitor 8 secure-storage preparation
+
+- PR #28 `work/ios-secure-storage-v8` updates the native token-store adapter for `@aparajita/capacitor-secure-storage@8.0.1`, selected after checking its Capacitor 8 package metadata and API. It remains a dependency-injected adapter; no native package or iOS target is installed.
+- Adapter behaviour: calls the injected platform getter first; refuses `web` before any plugin method; sets `jarvis_` key prefix; disables iCloud Keychain synchronization; uses the supplied `KeychainAccess.whenUnlockedThisDeviceOnly` enum value on iOS; propagates Keychain errors; rejects empty keys/tokens.
+- Tests cover iOS/Android configuration, web fail-closed behaviour, missing values, Keychain read failures and invalid inputs. Exact-head CI #996 passed on code commit `56c6e5cccf1337e25388e3a1a1683ac1b2915c6d`; documentation follow-up is commit `05aa0e3e18f546064d71b92b6af906b403523dd3` and requires fresh exact-head CI.
+- Apple free-account testing on a personal device is possible through Xcode, but requires macOS and provisioning expires after seven days. TestFlight/App Store require the $99/year Apple Developer Program and are excluded under the €0 recurring-cost rule.
+- No Capacitor dependency/configuration, iOS project, signing identity, TestFlight build or physical iPhone test has been created. No production/auth settings, tokens or user data were changed.
