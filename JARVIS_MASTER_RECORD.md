@@ -1842,344 +1842,39 @@ I. GitHub: `laurofiorenzani/jarvis`; canonical `work/jarvis-canonical-integratio
 J. Next conversation: Continue from this checkpoint. PR #31 exact-head CI #1014 and Observer #172 both SUCCESS; PR remains Draft/non-mergeable. Supabase prod v32 lacks Preview's /provider-preferences route; route parity review required. PR #22 numeric(20,2) conflicts with PR #29 currency exponent registry; no live CFO migration. PR #23 provider pools remain disabled pending per-provider EEA/free-quota/retention/no-overage evidence. Vercel Hobby daily deployment cap reached; do not upgrade/bypass. Continue multitask under €0 recurring cost.
 
 
-## 2026-11-13 — Multitrack continuation: cost lockout, provider billing gate, CFO and Observer
+## 22. Session handoff — 2026-11-14 (Europe/Dublin)
 
-### A. State
-- Continued from the existing canonical JARVIS repository; no new repository, database, auth system or memory store created.
-- The only project-wide continuity ledger found in the current repository tree is `JARVIS_MASTER_RECORD.md`. The separately named `PROJECT_MASTER.md`, `PROJECT_STATUS.md`, `DECISIONS_LOG.md`, `TASK_REGISTRY.md`, `CHANGELOG.md`, `TEST_REPORTS.md`, `DEPLOYMENT_STATUS.md` and `NEXT_SESSION.md` do not currently exist. No duplicate docs were created.
-- No production deployment, live migration, provider activation, inference request, bank connection, real financial import or money movement was performed.
+### Work completed in this session
+- Re-fetched current metadata for PRs #23, #31, #32, #26, #33 and #34. All six remain OPEN and Draft; none was merged. Exact heads at inspection: #23 `ead81317ba70c9a88a61cf7bc477540eb44e7763`; #31 `7849419dfeef11984cdac4be0458678623d199ac`; #32 `dfea9b296647ed257915932998700ce0fbe4ac39`; #26 `ec286b6b835609f45d018d1d6d490c1e605582fb`; #33 `ff2aa270765723ca45a0e272760ae3558f098c09`; #34 `9846edb396250e9e5f1810d03fa631ca1395b593` before the documentation correction below.
+- Re-queried workflow runs for those six exact heads: each returned a completed CI SUCCESS. PR #31 additionally returned Observer Validation SUCCESS. This is CI evidence only, not production readiness or device/integration E2E.
+- Found a policy contradiction in PR #34's BMW CarData integration document: its final paragraph suggested My BMW app Shortcuts as a user-triggered handoff, contrary to the no-Shortcuts product decision in this master record.
+- Corrected `docs/integrations/BMW_CARDATA_READONLY.md` on the existing isolated branch `work/bmw-cardata-readonly-20261113`, replacing the Shortcut handoff suggestion with an explicit rule that JARVIS must not rely on Apple/Siri Shortcuts and must report unsupported BMW commands honestly.
+- Documentation commit: `bfdf4d38d41aea52b8339622f84b0be39c203c66`. PR #34 remains open/Draft; CI for this new exact head was observed IN_PROGRESS at handoff time. Do not mark this correction validated until the run completes successfully.
 
-### B. Completed / source changes
-**Family CFO — PR #32**
-- Exact-head GitHub Actions CI #1039 (`43505906597`) passed on `dfea9b296647ed257915932998700ce0fbe4ac39`, including build/tests/lint, isolated Supabase migration, pgTAP owner isolation/currency exponent tests, authenticated integration and CORS checks.
-- Exact PostgreSQL numeric amount storage and versioned currency exponent registry are source/CI validated. Migration has NOT been applied to production; registry remains unseeded.
-- Domain arithmetic uses BigInt at a four-place internal scale; actual currency exponent remains registry/DB controlled. JPY/EUR/KWD and explicit empty-period currency tests added.
-- PR #22 base migration is byte-identical to the migration in PR #32; PR #29 design contract is extended in PR #32. Both older PRs are marked superseded and should not merge independently.
-
-**Cloud Brain / Multi-AI — PR #23**
-- Exact-head CI #1038 (`43505827312`) passed on `e01e11ceb4f97b3037c1da603e2aae3286b8d026` before the later billing-attestation changes. It included provider privacy, server-side ZDR speech consent, semantic-memory tests, Edge Function typecheck, isolated migrations, SQL isolation, two-user API integration and CORS smoke checks.
-- Added a second, operator-level billing gate in `model-router.ts`: no cloud model or speech provider is exposed/invoked until `JARVIS_FREE_PROVIDER_BILLING_ATTESTATION=2026-11-13-v1` is set after actual account plan and no-overage verification. Missing/stale attestation returns no providers and `startFreeModelStream` fails closed before network I/O. This is separate from each user's provider/data-transfer consent.
-- Added tests for missing, boolean, stale, paid and current billing-attestation values; updated Cloudflare and FreeLLMAPI integration docs. Latest PR #23 head `ead81317ba70c9a88a61cf7bc477540eb44e7763`; exact-head CI #1052 is running. CI #1038 does not validate this later code.
-- Live Supabase read-only audit: project `undmhmdwhxvjgvezvucy` is ACTIVE_HEALTHY in eu-west-3; production `jarvis-api` v32 and Preview `jarvis-preview-api` v23 remain materially different. Production still has the older Google speech path and lacks Preview's provider-preferences/ZDR auto-capture protections. No Edge Function was deployed or changed.
-
-**Cloudflare billing verification**
-- Read-only Cloudflare account lookup identified one standard account. `GET /accounts/{id}/workers/account-settings` returned `default_usage_model: standard`; this field alone does not prove the account is Workers Free or Workers Paid.
-- Current Cloudflare Workers AI pricing docs (updated 12 Nov 2026) state Workers Free includes 10,000 Neurons/day and further operations fail when that quota is exhausted; Workers Paid starts at $5/month and charges usage above the daily free allocation at $0.011/1,000 Neurons. Some large models require Workers Paid.
-- Subscription/billing API inspection returned 403 because the connected Cloudflare OAuth session lacks Billing Read. No permission change or billing mutation was attempted. Account plan, payment method/auto-top-up and spend controls remain unverified. Do NOT set the new billing attestation or activate provider pools until the owner confirms Workers Free and no paid/overage path.
-- Source: https://developers.cloudflare.com/workers-ai/platform/pricing/ and https://developers.cloudflare.com/changelog/post/2026-07-28-models-require-workers-paid/.
-
-**Zero-cost local provider guard — PR #33**
-- New isolated branch `work/no-paid-provider-guard-20261113` and Draft PR #33: https://github.com/laurofiorenzani/jarvis/pull/33.
-- Bridge now defaults to loopback FreeLLMAPI only and rejects Claude/Anthropic direct billing. Inherited Claude OAuth/auth-token/Bedrock/Vertex environment values are stripped before the SDK receives the FreeLLMAPI key and loopback endpoint.
-- Browser-direct Anthropic backend and browser-exposed provider keys are disabled. Paid ElevenLabs speech endpoints fail closed; the ElevenLabs MCP server is excluded even if explicitly named. Claude.ai account connectors remain disabled even if the legacy environment flag is set. MCP allowlist docs now correctly state unset means none.
-- Tests updated to provide a dummy local FreeLLMAPI key for bridge subprocesses (no inference), remove the obsolete `usingDirect` expectation, assert paid connectors stay disabled, and verify metered speech returns 503. Additional MCP allowlist coverage excludes ElevenLabs.
-- Earlier CI #1040/#1044 failed and exposed TypeScript and integration-fixture issues; those were corrected. Exact-head CI for the newest branch head `b31c1df7c49834a35b83cc698aa281a020f27dd0` is still pending (runs #1047/#1048). Do not mark PR #33 validated until an exact-head run succeeds.
-- This change intentionally requires a valid existing local FreeLLMAPI key/config; if absent, bridge startup refuses rather than falling back to a paid Claude account. Local .env values were not inspected in this session.
-
-**Self-Evolution / Observer — PR #31**
-- Exact-head CI #1014 (`43477580864`) passed on `56f9871d92aa3a45fed02bbd7944af5774e64f67`; Observer validation #172 (`43477580659`) completed SUCCESS on the exact Observer branch head. PR remains Draft; no scheduled automation was created and no production release occurred.
-
-**iOS / action approvals**
-- Existing PR #28 contains a fail-closed Capacitor secure-storage adapter and unit tests, but no Capacitor dependency, iOS target, Xcode project, signing or physical-device validation exists. No native build claimed.
-- Existing PR #26 action-approval module remains pure/domain-only; no persistent server approval table, atomic decision RPC or action execution service exists. No external action enabled.
-
-### C. Validation / release controls
-- PR #32 exact-head CI #1039: SUCCESS.
-- PR #23 exact-head CI #1038: SUCCESS for the pre-attestation head only; #1052 running for the current head.
-- PR #31 exact-head CI #1014 and Observer #172: SUCCESS.
-- PR #33 exact-head CI #1047/#1048: pending; earlier #1040/#1044 failures were corrected but not yet superseded by a passing exact-head run.
-- Supabase production migration history is unchanged; production Edge Functions unchanged; no Vercel deployment made; no paid service/upgrade/credit purchased; no provider inference attempted.
-
-### D. Decisions
-- Keep PRs #23, #31, #32, #33 Draft/open as currently configured; no batch merge.
-- Do not set `JARVIS_FREE_PROVIDER_BILLING_ATTESTATION` until the account owner verifies Workers Free and no paid subscription/auto-top-up/overage route. Cloudflare Billing Read permission is currently unavailable to this session.
-- Do not activate either provider pool until both the operator billing attestation and each user's separate current policy consent are valid.
-- Keep FreeLLMAPI local gateway restricted to loopback and provider list verified as free-only. No Claude/Anthropic account or API fallback.
-- No production or Auth/RLS/billing settings changed.
-
-### E. Next actions
-1. Monitor exact-head CI #1052 for PR #23 and #1047/#1048 for PR #33; fix only evidence-backed failures and rerun on exact head.
-2. After CI green, update this ledger with final run IDs and current heads; do not merge or deploy without review.
-3. Ask owner to verify Cloudflare Workers Free plan, no subscription/auto-top-up and billing controls, or reconnect Cloudflare with read-only Billing Read permission. Do not request Billing Write.
-4. After verification only, owner may set the server-side billing attestation; keep per-user privacy consent independent.
-5. Continue action-approval persistence design and route parity; native iOS still requires Mac/Xcode and physical iPhone.
-6. Keep €0 recurring cost, no paid API, no quota bypass, no background-work promises.
-
-### F. Handoff
-- GitHub repo: `laurofiorenzani/jarvis`.
-- PR #23 branch `work/provider-consent-app-integration`, latest code head `ead81317ba70c9a88a61cf7bc477540eb44e7763`; CI #1052 in progress.
-- PR #32 branch `work/cfo-currency-exponent-schema-20261113`, latest head `dfea9b296647ed257915932998700ce0fbe4ac39`; CI #1039 SUCCESS.
-- PR #31 Observer head `56f9871d92aa3a45fed02bbd7944af5774e64f67`; CI #1014 SUCCESS; Observer #172 SUCCESS.
-- PR #33 branch `work/no-paid-provider-guard-20261113`, latest code head `b31c1df7c49834a35b83cc698aa281a020f27dd0`; exact-head CI #1047/#1048 pending.
-- Production Supabase: API v32; Preview: v23; no changes made.
-- Next conversation: resume from this section. Do not repeat successful CFO/Observer validation. First inspect CI #1052 and #1047/#1048; then continue route parity and action approval persistence. Cloudflare billing plan remains unverified; do not enable providers. PR #33 disables paid local provider fallbacks and is not yet exact-head CI green. No production deploy/merge.
-
-
-## 2026-11-13 — Continuation checkpoint after parallel CI refreshes
-
-### Verified since the previous handoff
-- PR #23 Cloud Brain/Multi-AI: exact-head CI #1052 (`43508404232`) SUCCESS on `ead81317ba70c9a88a61cf7bc477540eb44e7763`, including operator free-plan billing-attestation tests, ZDR speech consent, provider privacy, semantic-memory policy, isolated Supabase migrations, SQL isolation, two-user API integration and CORS. The later attestation gate is source/CI validated; secret remains unset and no inference was sent.
-- PR #32 Family CFO: exact-head CI #1039 (`43505906597`) SUCCESS on `dfea9b296647ed257915932998700ce0fbe4ac39`; exact numeric currency exponent schema and 31 SQL assertions passed. No live migration or financial data import.
-- PR #33 zero-cost provider lockout: exact-head CI #1053 (`43508940578`) SUCCESS on refreshed head `7cfa58933af77def7b4c47cf96f8479b83218713`. Browser-direct paid model, Claude fallback, ElevenLabs speech and subscription connectors are disabled in source. Local FreeLLMAPI config was not inspected and no inference request was made.
-- PR #31 Observer: exact-head CI #1054 (`43509076704`) SUCCESS and Observer Validation #176 (`43509077137`) SUCCESS on refreshed head `7849419dfeef11984cdac4be0458678623d199ac`.
-
-### New work in progress
-- PR #26 action approval persistence: branch refreshed onto canonical; added owner-scoped `jarvis_action_approvals`, server-only invoker RPCs for create/resolve/cancel/claim/complete, ten-minute expiry, digest/context binding, idempotent create and one-time execution claim. Raw arguments and action results are not stored. 35 pgTAP assertions added.
-- CI #1059 applied the migration successfully but SQL tests stopped after 11 assertions due an ambiguous PL/pgSQL `status` reference in the resolver. Qualified the resolver table alias/predicates in commit `1056d4bf6cdab46064b8caa10c4ee0f718c93e14`; exact-head CI #1061 is pending. Do not mark the approval persistence layer validated until all 35 SQL assertions pass.
-- PR #28 iOS secure-storage adapter: branch refreshed onto canonical in merge commit `29ac8c261d3af5953ff67d02edab46b0eea5273c`; exact-head CI #1060 is in progress. Capacitor 8 adapter and decision doc are source-only; no dependency, native iOS target, Xcode project, signing or device E2E.
-
-### Cloudflare billing blocker remains
-- Workers AI pricing docs state 10,000 Neurons/day on Workers Free, while Workers Paid starts at $5/month and bills usage above that quota. Account `default_usage_model=standard` does not prove the plan. Billing/subscription read API remains 403 due missing Billing Read OAuth scope.
-- Do not set `JARVIS_FREE_PROVIDER_BILLING_ATTESTATION=2026-11-13-v1` or enable provider pools until the owner verifies Workers Free, no paid subscription/auto-top-up and no-overage behaviour. Do not request Billing Write or modify billing settings.
-
-### Release and safety
-- All branches are based on current canonical ancestry (compare 0 behind): PR #23, #31, #32, #33, #26 and #28. No forced update, merge or deployment.
-- Supabase production remains API v32; Preview remains v23. No Edge Function, production schema, Auth/RLS policy, secret, provider preference, Vercel alias, billing plan or user data changed.
-- Older PR #22 and #29 are superseded by PR #32 and should not merge independently.
-- iOS hardware/macOS build and real device testing remain outstanding. Persistent approval RPCs are not yet wired into the Edge API and do not execute integrations.
+### Current state and boundaries
+- No merge, production deployment, live database migration, provider inference, billing change, secret access, account change, or external vehicle action occurred.
+- BMW CarData remains a read-only adapter. It cannot control climate, locks, windows or trunk. Its Vault migration and authenticated consent/revocation routes remain prerequisites, not deployed features.
+- PR #26 approvals are records/UI/API only; no real action executor is available yet.
+- Native iOS/Keychain and physical-device validation remain outstanding. Do not claim a native app is ready.
+- Vercel Hobby deployment cap and the €0 recurring-cost rule remain hard constraints; do not upgrade or bypass limits.
 
 ### Next actions
-1. Inspect CI #1061 for PR #26. Fix any remaining SQL failures based on exact logs; rerun until all 35 pgTAP assertions pass.
-2. Inspect CI #1060 for PR #28 and record exact-head outcome.
-3. Keep PR #23, #26, #28, #31, #32, #33 open; do not self-approve or merge.
-4. After approval SQL passes, wire the service-role RPCs behind authenticated Edge API routes, then add API-level two-user tests. Keep actual action execution disabled until the approval UI and capability policy are connected.
-5. Ask owner to verify Cloudflare Workers Free/no-overage or reconnect read-only Billing Read; no provider inference before that.
-6. Continue under €0 recurring cost, no paid API/subscription, no quota bypass, no production changes.
+1. Recheck CI on commit `bfdf4d38d41aea52b8339622f84b0be39c203c66`; fix only if a concrete failure is returned.
+2. Review PR #34 OAuth lifecycle and SQL/Vault tests, then add the authenticated device-consent, disconnect/revocation and route-level daily-budget wiring only in isolated code with exact-head tests; do not deploy its migration.
+3. Continue CFO currency exponent reconciliation across PRs #22/#29/#32 without importing real financial data.
+4. Review PR #23 provider fallback-before-dispatch and free-tier/EEA/privacy attestations; keep provider pools default-off until evidence is complete.
+5. Continue the native iOS shell/Keychain investigation and the cloud approval executor design as separate workstreams; preserve the amber HUD and existing accounts.
+6. Reconcile every material change back into this single master record. No duplicate status ledger.
 
-### Current branch heads
-- PR #23: `ead81317ba70c9a88a61cf7bc477540eb44e7763` — CI #1052 SUCCESS.
-- PR #26: `1056d4bf6cdab46064b8caa10c4ee0f718c93e14` — CI #1061 pending after SQL resolver fix.
-- PR #28: `29ac8c261d3af5953ff67d02edab46b0eea5273c` — CI #1060 in progress.
-- PR #31: `7849419dfeef11984cdac4be0458678623d199ac` — CI #1054 and Observer #176 SUCCESS.
-- PR #32: `dfea9b296647ed257915932998700ce0fbe4ac39` — CI #1039 SUCCESS.
-- PR #33: `7cfa58933af77def7b4c47cf96f8479b83218713` — CI #1053 SUCCESS.
-
-
-## 2026-11-13 — Exact validation checkpoint and review gates
-
-### Additional verified outcomes
-- PR #28 iOS secure-storage adapter: CI #1060 (`43510166694`) SUCCESS on refreshed head `29ac8c261d3af5953ff67d02edab46b0eea5273c`. Build/tests/lint, native token-store unit tests, Deno/Edge Function checks, isolated Supabase migrations, SQL isolation, two-user integration and production/Preview CORS smoke checks passed. Still no native iOS target, plugin dependency, Xcode signing or device E2E.
-- PR #26 action approval persistence: CI #1061 (`43510506410`) SUCCESS on migration/code head `1056d4bf6cdab46064b8caa10c4ee0f718c93e14`. The new migration applied to isolated local Supabase; pgTAP reported 47 total tests across action-approval persistence (35 assertions) and semantic-memory isolation (12 assertions), all successful. The subsequent test-only `RESET ROLE` addition is under exact-head CI #1063; no migration SQL changed after #1061.
-- PR #23 remains exact-head CI #1052 SUCCESS; operator billing attestation still absent. Converted PR #23 to Draft pending owner verification of Workers Free/no-overage and review.
-- PR #26 converted to Draft because persistent approval RPCs are not yet wired to authenticated Edge API routes and no integration execution adapter exists.
-
-### Current review state
-- Draft/open: PR #23 Multi-AI/provider consent; PR #26 persistent action approvals; PR #28 iOS secure storage; PR #31 Observer; PR #32 Family CFO; PR #33 zero-cost provider lockout.
-- PR #23 code is CI validated but providers remain disabled by the server-side operator billing attestation. PR #26 schema/RPCs are isolated CI validated but not deployed or exposed by the API.
-- PR #22 and #29 remain superseded by PR #32; do not merge independently.
-- No PR merged, no live migration, no production Edge Function change, no provider inference, no paid service, no deployment.
-
-### Next actions
-1. Finish exact-head CI #1063 on PR #26 after the test-only role reset. If green, record exact run and preserve Draft status.
-2. Wire approval persistence RPCs into the existing authenticated `jarvis-api` only after PR #23 base is reviewed/merged; add route-level two-user tests. No action execution until UI/capability authorization is connected.
-3. Verify Cloudflare Workers Free/no-overage through owner confirmation or read-only Billing Read. Never set billing attestation before that.
-4. Continue iOS toward a real native target only when macOS/Xcode and device signing validation are available.
-
-### Exact heads and runs
-- PR #23 `ead81317ba70c9a88a61cf7bc477540eb44e7763` — CI #1052 SUCCESS; Draft.
-- PR #26 `9cd41bfdd95c2d3e1c2ee6bbe756dd4b0fc2d005` — CI #1061 SUCCESS on prior code head; #1063 in progress on latest test-harness head; Draft.
-- PR #28 `29ac8c261d3af5953ff67d02edab46b0eea5273c` — CI #1060 SUCCESS; Draft.
-- PR #31 `7849419dfeef11984cdac4be0458678623d199ac` — CI #1054 and Observer #176 SUCCESS; Draft.
-- PR #32 `dfea9b296647ed257915932998700ce0fbe4ac39` — CI #1039 SUCCESS; Draft.
-- PR #33 code tree `7cfa58933af77def7b4c47cf96f8479b83218713` — CI #1053 SUCCESS; current branch head also includes documentation-only ledger commit `8f802abfdd210f47e371804d09205791f441ffbf`; Draft.
+### GitHub and handoff
+- Repository: `laurofiorenzani/jarvis`.
+- Canonical record branch: `work/jarvis-canonical-integration`.
+- BMW documentation branch: `work/bmw-cardata-readonly-20261113`.
+- Latest BMW documentation commit: `bfdf4d38d41aea52b8339622f84b0be39c203c66`; CI was still running when this entry was written.
+- No PR merged and no production deployment performed.
+- Next conversation: resume by checking the exact CI result for the BMW documentation commit, then continue the independent CFO, provider-policy, cloud-approval, iOS and infrastructure workstreams. Preserve the no-Shortcuts rule, €0 recurring cost, one canonical repository and this single master handoff record.
 
 
-## 2026-11-13 — Official integration capability review (read-only research)
-
-### BMW iX1 / BMW CarData
-- BMW CarData's personal customer portal explicitly states personal use is free and supports a Device Code Flow, REST API and MQTT streaming. The API requires a customer-created client ID and explicit scopes `cardata:api:read` / `cardata:streaming:read`; the published integration guide documents a 50 REST requests/day limit and refresh tokens valid for 14 days.
-- This is a read-only telematics/data product: BMW's own CarData information says direct access to the vehicle is not possible. It does not provide official remote commands for climate, doors, trunk or windows. Do not implement remote control through CarData or reverse-engineered ConnectedDrive endpoints.
-- Potential next step: implement a personal, read-only CarData adapter for vehicle status, mileage, charging/battery and service events after the owner creates a client ID and explicitly authorizes the device flow. Keep the 50/day limit and token refresh schedule enforced. Streaming needs a long-lived MQTT-capable cloud worker; Supabase Edge Functions are not suitable for a persistent MQTT session.
-- Personal-use pricing must remain distinct from the BMW third-party service-provider platform, which charges for telematics data. No account registration or token request was made.
-- Official sources: https://bmw-cardata.bmwgroup.com/customer/public/ ; https://bmw-cardata.bmwgroup.com/customer/public/api-documentation ; https://www.bmwgroup.com/en/general/regulations/cardata.html
-
-### Blink cameras
-- Blink's EU third-party data-transfer feature can share selected device settings, motion/event data and location data after explicit authorization. Blink states video data is not included in these third-party transfers.
-- This does not establish an official live camera-stream API. Do not promise live view, snapshots or camera control through this data-transfer interface; keep those capabilities blocked unless Blink provides a supported official API/SDK.
-- Official source: https://support.blinkforhome.com/en_US/contact-support/transfer-your-blink-data-to-third-parties
-
-### Dreame vacuum
-- No official public developer API/SDK or supported third-party cloud API was identified in this review. Community integrations commonly rely on unofficial protocols; those are not approved under JARVIS's official-API/no-security-bypass rules.
-- Keep cloud control disabled until Dreame confirms an official supported API or publishes a developer program. No reverse-engineered endpoints or credentials were used.
-
-### WhatsApp
-- Meta's Cloud API is part of the WhatsApp Business Platform and charges for conversations; it is not a free personal-account inbox API. It is incompatible with the strict €0 rule unless Meta's actual account pricing and a hard zero-spend boundary are proven, and it does not provide access to a normal personal WhatsApp account.
-- Do not use unofficial WhatsApp Web automation, browser scraping or device-session extraction. Revisit only if the user chooses a business-number integration and explicitly approves any conversation charges (which would be a change to the €0 rule).
-- Official source: https://developers.facebook.com/docs/whatsapp/cloud-vs-onprem
-
-### Instagram
-- Meta's Instagram Messaging API supports messaging for Instagram Professional accounts linked to a Facebook Page, with required permissions and App Review/advanced access for relevant data. It is not a general personal-account inbox API.
-- Potential next step: if the intended account is Business/Creator and linked to a Page, implement the official webhook/Graph API flow after app review and explicit account authorization. Do not scrape consumer accounts or automate the Instagram app UI.
-- Official sources: https://developers.facebook.com/documentation/business-messaging/instagram-messaging ; https://developers.facebook.com/docs/graph-api/reference/message
-
-### Apple CarPlay
-- Apple documents a dedicated `com.apple.developer.carplay-voice-based-conversation` entitlement for apps that answer questions/requests and perform actions. CarPlay is therefore a plausible JARVIS voice interface, but entitlement approval and supported CarPlay templates are required; it is not permission to draw an unrestricted holographic/custom desktop UI on the CarPlay screen.
-- Continue with the iOS secure-storage adapter and later build a native voice-first CarPlay experience using approved templates only. No entitlement request or app submission was made.
-- Official sources: https://developer.apple.com/carplay/ ; https://developer.apple.com/documentation/bundleresources/entitlements/com.apple.developer.carplay-voice-based-conversation
-
-### Resulting integration priorities
-1. BMW CarData read-only personal integration is the strongest official, potentially free path; remote vehicle commands remain unsupported.
-2. Instagram is conditional on Professional account + linked Page + Meta App Review.
-3. Blink can potentially provide EU-authorized event/settings exports, but not live video through the reviewed third-party transfer API.
-4. Dreame remains blocked pending official API confirmation.
-5. WhatsApp Cloud API conflicts with €0 and personal-account access requirements; no unofficial workaround.
-6. CarPlay voice-based conversation is technically possible subject to Apple's entitlement and native app acceptance.
-
-No third-party integration was connected, no credentials were requested, no data was transferred, no message was sent, and no device was controlled during this research.
-
-
-## 2026-11-13 — Action approval exact-head pass and BMW adapter kickoff
-
-### Action approval persistence — PR #26
-- Exact-head CI #1063 (`43510991390`) SUCCESS on `9cd41bfdd95c2d3e1c2ee6bbe756dd4b0fc2d005` after adding an explicit RESET ROLE in the pgTAP harness.
-- Build, 238 TypeScript tests passed (2 skipped, 0 failed), lint, Deno checks, Edge Function typecheck, isolated Supabase migration, 35 action-approval SQL assertions, 12 semantic-memory SQL assertions, authenticated two-user API integration and CORS smoke tests passed.
-- The schema and five SECURITY INVOKER RPCs are isolated-CI validated only. PR #26 remains Draft; no production migration, Edge API route, UI approval flow or action execution adapter exists yet.
-
-### BMW CarData read-only adapter — PR #34
-- New Draft PR #34: https://github.com/laurofiorenzani/jarvis/pull/34; branch `work/bmw-cardata-readonly-20261113`, initial code head `e9427f2be3016f4a216eb3c5ef49d14b12457141`.
-- Added official BMW personal CarData Device Code Flow with PKCE S256, token exchange/refresh, read-only vehicle mappings/basic data/telematics and an injected atomic daily budget that fails closed at 50 REST requests/day.
-- Seven mocked tests; no BMW credentials, VIN, vehicle data or external network request. Exact-head CI #1066 is in progress.
-- The adapter does not implement vehicle commands. Personal use is documented as free by BMW; service-provider data access has separate charges. Production enablement still requires owner-created client ID, explicit device consent, encrypted server-side token storage and a persistent Supabase budget RPC. No token or account setup performed.
-
-### Current release gate
-- PRs #23, #26, #28, #31, #32, #33 and #34 remain Draft/open. No merge or deployment.
-- Cloudflare billing plan remains unverified; `JARVIS_FREE_PROVIDER_BILLING_ATTESTATION` remains unset and provider pools remain disabled.
-- No production Supabase migration or Edge Function change; no paid service; no external integration connected; no vehicle control, message send or data transfer.
-
-### Next
-1. Inspect PR #34 exact-head CI #1066; fix any source/test issue and record result.
-2. After PR #26 is reviewed/merged, wire its RPCs into the authenticated existing `jarvis-api` and add route-level two-user tests; keep actual actions disabled until the approval UI/capability policy is connected.
-3. For BMW, owner must create the CarData client ID and authorize device flow only after encrypted token storage and persistent daily budget are ready. Never add remote command methods without official API support.
-4. Continue Cloudflare Free plan verification; do not set the operator billing attestation until confirmed.
-
-### Current exact-head evidence
-- PR #23 CI #1052 SUCCESS; provider billing gate remains unset.
-- PR #26 CI #1063 SUCCESS; migration not deployed.
-- PR #28 CI #1060 SUCCESS; native iOS build/device validation absent.
-- PR #31 CI #1054 and Observer #176 SUCCESS.
-- PR #32 CI #1039 SUCCESS.
-- PR #33 CI #1053 SUCCESS on unchanged code tree; branch includes documentation-only ledger updates.
-- PR #34 CI #1066 in progress.
-
-
-## 2026-11-13 — Approval API and BMW Vault follow-through
-
-### PR #26 — authenticated approval API
-- Stacked PR #26 on PR #23 branch `work/provider-consent-app-integration` so the action API reuses the provider-consent/authenticated Edge Function without copying that implementation. Compare against PR #23 base contains action approval changes only.
-- Added authenticated `GET /action-approvals`, `POST /action-approvals`, `POST /action-approvals/:id/decision` and `POST /action-approvals/:id/cancel`. User identity comes from verified JWT, not request body. Per-user rate limits apply. The GET projection omits execution_id; create response is an explicit allowlist that omits raw `arguments`; database stores only argument digest and display metadata.
-- Added six Deno service tests and CI step. Exact-head CI #1078 (`43512797901`) SUCCESS on `4af6a1fd1daee5bee573b7cc55bab1a22a7b482e`: 242 TypeScript tests passed (2 skipped), build/lint/typecheck, Deno approval service tests, Edge Function typecheck, isolated Supabase migrations, 35 action approval SQL assertions, 12 semantic-memory SQL assertions, semantic-memory two-user API integration and CORS smoke checks passed.
-- Important limit: the two-user API integration in CI is for semantic memory, not the new action-approval routes. The approval service unit tests and Edge Function typecheck passed, but live route-level two-user integration remains pending.
-- No execution claim or external action route is exposed. No actual BMW, email, WhatsApp, payment or home action can execute through this PR. Approval UI, capability allowlist and encrypted argument handoff remain follow-up work. PR #26 is Draft and depends on PR #23; no production migration/deployment.
-
-### PR #34 — BMW CarData token vault extension
-- PR #34 now includes the read-only BMW CarData adapter, OAuth PKCE, mappings/basic data/telematics/charging history, 50-request/day injected budget, and Vault-backed refresh-token source migration/helper.
-- Read-only production metadata/privilege checks confirmed `supabase_vault` is installed; service_role has Vault schema/read/decrypt/delete privileges; anon/authenticated have no Vault schema/decrypted-secret access. No secret values were read.
-- Added migration `20261113220000_jarvis_bmw_cardata_vault.sql`: application metadata table stores only user ID, Vault secret UUID, public client ID and expiry metadata; service-role-only invoker RPCs store/rotate refresh token in `vault.secrets`, retrieve via `vault.decrypted_secrets`, and delete on disconnect. No production migration applied and no BMW token exists.
-- Added six Deno token-store tests and 28 pgTAP assertions using only synthetic tokens in isolated CI. CI #1079 (`43513281842`) is running on `49f560208c7df59091faf7cbf8bac240ad38f428`; exact-head validation is pending.
-- Persistent 50/day Supabase budget RPC and authenticated OAuth/connect/disconnect routes remain unimplemented. No account registration or device consent performed.
-
-### Current release gates
-- PRs #23, #26, #28, #31, #32, #33 and #34 remain Draft/open. PR #26 is stacked on PR #23. PR #34 is independent on canonical base.
-- No merges, deployments, live migrations, provider inference, Vault secret creation, BMW account connection or external action execution.
-- Cloudflare Free/no-overage billing attestation remains unverified and unset. Provider pools remain disabled.
-
-### Current evidence
-- PR #23 CI #1052 SUCCESS; Draft; operator billing attestation absent.
-- PR #26 CI #1078 SUCCESS; head `4af6a1fd1daee5bee573b7cc55bab1a22a7b482e`; Draft; base PR #23.
-- PR #28 CI #1074 SUCCESS; head `92a9722df271300bf5df5b78fe764046d5775f31`; Draft.
-- PR #31 CI #1054 + Observer #176 SUCCESS.
-- PR #32 CI #1039 SUCCESS.
-- PR #33 CI #1053 SUCCESS on unchanged provider-lockout code tree; branch has documentation-only ledger commits.
-- PR #34 CI #1079 in progress on `49f560208c7df59091faf7cbf8bac240ad38f428`; Draft.
-
-### Next actions
-1. Inspect PR #34 CI #1079, especially Vault extension migration and 28 SQL assertions; fix exact failures from logs.
-2. Add persistent atomic 50/day BMW request-budget RPC, then connect Vault token helper to authenticated OAuth device-flow routes only after owner consent.
-3. Add a live two-user integration test for action-approval routes in an isolated Edge Function environment; do not claim route-level integration until it passes.
-4. Build the approval UI and capability allowlist before any execution claim/adapter is enabled.
-5. Keep all changes Draft and production untouched until owner review; maintain €0 recurring-cost rule.
-
-
-## 2026-11-13 — Latest CI ledger update
-- PR #33 continuity branch exact-head CI #1080 (`43513423136`) SUCCESS on `8473ab92300308cc491d41e0304e20a01efa54ee`; this validates the latest ledger/integration research documentation. Provider-lockout code tree remains unchanged from #1053 SUCCESS.
-- PR #26 authenticated action-approval API exact-head CI #1078 SUCCESS on `4af6a1fd1daee5bee573b7cc55bab1a22a7b482e`. Six approval service tests and Edge Function typecheck pass; route-level live two-user integration is still pending.
-- PR #34 BMW CarData exact-head CI #1082 is still in the isolated local Supabase startup step. Earlier #1079 failed only because the test fake lacked a constructor; that was fixed. The Vault migration and 28 SQL assertions have not yet been confirmed by a completed run.
-
-
-## 2026-11-13 — OpenClaw evaluation and cross-front CI checkpoint
-
-### OpenClaw review — architecture reference only
-- Reviewed official OpenClaw docs for Gateway architecture, security/prompt injection, Gateway WebSocket protocol, node pairing/capabilities, iOS node, tool plugins, Ollama/local models and WhatsApp channel.
-- Decision: do not install or embed a second OpenClaw Gateway. JARVIS remains sole owner of identity, Supabase Auth, conversations, family memory, provider policy, approvals and interfaces. Avoid duplicate sessions/memory and a second control plane.
-- Adopt as design references: device identity/pairing separated from capability approval; device-scoped roles/scopes; token rotation/revocation; typed node invocation with deadlines/cancellation/idempotency; capability-change reapproval; narrow per-agent tool allowlists; isolated browser profiles; SKILL.md-compatible task documentation.
-- iOS node capabilities (camera/screen/location/Talk) are useful inspiration for JARVIS's first-party SwiftUI app, but OpenClaw's iOS docs note foreground/background lifecycle limits. No assumption of always-on background camera/screen or persistent iPhone WebSocket.
-- Do not adopt OpenClaw's WhatsApp Web/Baileys session for family production messaging without a separate account-risk and policy review. It is distinct from an official WhatsApp Business API integration.
-- OpenClaw is self-hosted, not a hosted free inference service. It still needs an AI provider API key or local model hardware; local inference does not remove compute/storage/electricity/operations costs. No OpenClaw install, package, server, plugin, provider or credential was created.
-- Official Plugin SDK is documented as experimental. Prefer JARVIS-owned TypeScript/Deno adapters and capability contracts; no runtime dependency.
-- Detailed assessment: `docs/architecture/OPENCLAW_EVALUATION.md`.
-
-### Current exact-head CI evidence
-- PR #23 provider consent/FreeLLMAPI: CI #1052 SUCCESS on `ead81317ba70c9a88a61cf7bc477540eb44e7763`. Operator-level Cloudflare Free/no-overage attestation is still absent/unverified; provider pools remain disabled and no inference sent.
-- PR #26 persistent action approvals: CI #1078 SUCCESS on `4af6a1fd1daee5bee573b7cc55bab1a22a7b482e`; metadata-only authenticated create/list/approve/reject/cancel API validated. No execution adapter is wired; no external actions occur.
-- PR #31 Observer: refreshed exact-head CI #1054 and Observer #176 SUCCESS on `7849419dfeef11984cdac4be0458678623d199ac`.
-- PR #32 CFO currency exponent: CI #1039 SUCCESS on `dfea9b296647ed257915932998700ce0fbe4ac39`; isolated migration/SQL and API tests only, no production CFO migration or financial import.
-- PR #33 no-paid-provider guard: CI #1083 SUCCESS on `20ddcb5d5330cf7f840a8e1ff79d031139782eec`.
-- PR #34 BMW CarData/Vault: CI #1084 SUCCESS on `9846edb396250e9e5f1810d03fa631ca1395b593`; BMW Vault migration and 40 isolated pgTAP assertions passed. Source only; no production migration, BMW client registration, user consent, token, API route or vehicle request.
-
-### Live platform checkpoint
-- Supabase project `undmhmdwhxvjgvezvucy` remains ACTIVE_HEALTHY in eu-west-3; production `jarvis-api` v32 and Preview `jarvis-preview-api` v23. Live migration history ends at `20261113125437`; PR #26 action-approval, PR #32 CFO and PR #34 BMW Vault migrations are not applied to production.
-- Security advisor INFO remains on `public.jarvis_rate_limits` (RLS enabled without policies); direct grants are verified absent for anon/authenticated and service_role has intended access. WARN remains for leaked-password protection disabled; no Auth setting changed. Performance advisor still lists 18 unused indexes; do not drop without workload evidence.
-- No production deployment, merge, migration, provider activation/inference, secret read, Vault secret creation, BMW connection or external action was performed.
-
-### Handoff
-A. State: JARVIS remains in development. Six active workstreams are CI-validated at their respective exact heads, but are not merged/released: provider consent, action approvals, Observer, CFO currency, zero-paid-provider guard and BMW CarData.
-B. Completed/validated: PR #23 CI #1052; PR #26 CI #1078; PR #31 CI #1054 + Observer #176; PR #32 CI #1039; PR #33 CI #1083; PR #34 CI #1084; OpenClaw architecture review documented.
-C. In progress: PR #26 UI/capability executor boundary; PR #34 authenticated OAuth connect/data routes and persistent daily budget wiring; provider operator billing attestation and Preview/production policy parity; CFO schema integration; native iOS device registry and secure storage; Observer schedule/release control.
-D. Evidence: repo `laurofiorenzani/jarvis`; PR #23, #26, #31, #32, #33, #34; OpenClaw assessment at `docs/architecture/OPENCLAW_EVALUATION.md`; Supabase production v32/Preview v23; migrations through `20261113125437`.
-E. Decisions: OpenClaw is a reference only, not a second Gateway/brain. Do not enable paid providers or WhatsApp Web/Baileys personal account. Do not deploy/migrate/activate integrations before exact release gates and explicit user consent.
-F. Pending: authenticated BMW OAuth lifecycle + atomic request budget; action approval UI and separately gated executor; live two-user integration for action approval; Cloudflare no-overage billing evidence; production/Preview route parity; CFO migration after schema reconciliation; iOS native/Keychain physical-device tests.
-G. User action: BMW CarData client registration and device consent will be required before connection; no credentials should be sent in chat. Cloudflare billing attestation requires owner verification because current OAuth scope lacks Billing Read. Mac/Xcode and iPhone will be needed for native acceptance.
-H. Next: inspect exact PR #34 files and implement only safe authenticated BMW API plumbing that remains disabled until owner OAuth; inspect PR #26 UI/API wiring; keep parallel checks on provider and CFO; no production changes.
-I. GitHub: `laurofiorenzani/jarvis`; PR #23/#26/#31/#32/#33/#34 remain open Draft; no merge.
-J. Next conversation: Continue from this checkpoint. Exact CI green: #23/#1052, #26/#1078, #31/#1054 + Observer #176, #32/#1039, #33/#1083, #34/#1084. OpenClaw review says reuse device pairing/capability scopes/token revocation and node protocol ideas, but do not install a second Gateway or duplicate Supabase memory; keep JARVIS first-party iOS. BMW PR is source/isolated-CI only, no live account or endpoints. Supabase prod v32/Preview v23, live migrations through 20261113125437. Keep €0 recurring cost and production untouched.
-
-
-## 2026-11-13 — Action approval UI implementation and OpenClaw decision recorded
-
-### Action approval UI / PR #26
-- Added authenticated cloud-client methods for listing approvals, resolving approve/reject decisions and cancelling pending requests. Request UUID and SHA-256 argument digest are validated client-side; server remains authoritative.
-- Added a pending-approval panel to the existing Cloud Access HUD. It displays title, target, impact, reversibility, capability, expiry and a shortened digest only; raw arguments are never returned/displayed.
-- Explicit warning in the UI: approval records a decision only; this panel does not execute an external action. This preserves the boundary between approval state and future execution adapters.
-- Added API client regression tests for authenticated bearer forwarding, exact context binding and invalid UUID/digest rejection. Corrected the client/UI contract to use the SQL resolver's `status` result (not a non-existent `decision` property).
-- Current PR #26 head `7a92d99de93d1716a17c9f7e54162cc08fb2aa1a`. CI #1088 (`43522861440`) is running; tests stage is in progress. CI #1078 remains valid for the previous server/API/migration head only, not the new UI/client changes.
-
-### OpenClaw documentation and validation
-- OpenClaw evaluation document committed at `docs/architecture/OPENCLAW_EVALUATION.md` (commit `7e650063f3d6e3b9678844b0bd70a44e4738cd44`). Master record updated in commit `c579863a1d52a0c341b40c2efccfac5808583cb0`.
-- CI #1085 on the doc-only commit was cancelled by GitHub Actions concurrency; CI #1089 is now running on the latest ledger head. Prior CI #1083 SUCCESS validates the provider-lockout code tree, which was not changed by the OpenClaw documentation.
-- Decision unchanged: OpenClaw is a design reference only; no runtime installation, Gateway, WhatsApp Web/Baileys account, provider, or extra memory was created.
-
-### Latest independent exact-head validations
-- PR #23: CI #1052 SUCCESS on `ead81317ba70c9a88a61cf7bc477540eb44e7763`.
-- PR #26: CI #1078 SUCCESS on prior server/API head; new UI/client exact-head CI #1088 in progress.
-- PR #31: CI #1054 and Observer #176 SUCCESS on `7849419dfeef11984cdac4be0458678623d199ac`.
-- PR #32: CI #1039 SUCCESS on `dfea9b296647ed257915932998700ce0fbe4ac39`.
-- PR #33: CI #1083 SUCCESS on provider-lockout head; docs/ledger-only latest head CI #1089 in progress.
-- PR #34: CI #1084 SUCCESS on `9846edb396250e9e5f1810d03fa631ca1395b593`.
-
-### Handoff update
-A. State: action approval service now has a first UI/client surface in a Draft PR; OpenClaw review is documented; other validated PRs remain open and unmerged.
-B. Completed: action approval list/decision client methods; pending queue UI with metadata-only disclosure; client tests; OpenClaw evaluation document and master ledger entry.
-C. In progress: CI #1088 for PR #26 UI/client; CI #1089 for PR #33 documentation/ledger.
-D. Evidence: PR #26 head `7a92d99de93d1716a17c9f7e54162cc08fb2aa1a`; PR #33 doc commit `7e650063f3d6e3b9678844b0bd70a44e4738cd44`, ledger commit `c579863a1d52a0c341b40c2efccfac5808583cb0`; CI run IDs #1088 `43522861440`, #1089 `43522905916`.
-E. Decisions: no action executor is wired; approving only records consent. OpenClaw remains a reference, not a second brain. Keep production untouched and €0 recurring cost.
-F. Pending: after UI CI, add isolated authenticated two-user integration coverage for action-approval routes; implement capability registry and separately gated executor; BMW OAuth routes still need user-owned client registration and secure pending-flow lifecycle; provider billing attestation remains unset; iOS Keychain/node work remains.
-G. User action: none for current code validation. BMW client registration/device consent and Cloudflare Free/no-overage confirmation will be needed before enabling those integrations.
-H. Next: complete CI #1088/#1089; then add isolated Edge Function two-user integration test for approvals and continue BMW OAuth server adapter only with safe persisted PKCE/device state. No deployment or production migrations.
-I. GitHub: `laurofiorenzani/jarvis`; PR #26, #33 open Draft; no merge/deploy.
-J. Next conversation: Continue from this handoff. PR #26 has a new authenticated pending-action approval UI/client; it only records approve/reject and never executes. Exact-head CI #1088 in progress. OpenClaw is documented as a reference for device pairing/capability approval, not a dependency. PR #33 doc/ledger update CI #1089 in progress. PR #34 BMW CarData CI #1084 green in isolated CI only; no account/credentials/live route. Keep production untouched and €0 recurring cost.
-
-
-## 2026-11-13 — CI rerun status correction
-- PR #26 UI/client exact-head run #1088 (`43522861440`) FAILED only because a synchronous validation test used `assert.rejects` rather than `assert.throws`; the happy-path API client test passed. Corrected the test in commit `ec286b6b835609f45d018d1d6d490c1e605582fb`. Exact-head CI #1091 (`43523028466`) is now IN_PROGRESS on that commit; no green claim yet.
-- PR #33 OpenClaw/master-ledger commit #1085 and #1089 were cancelled by workflow concurrency. Latest exact-head CI #1090 (`43523001655`) is IN_PROGRESS on ledger head `116132cfa0789c3175b083b830f4c49082b22b51`. Provider-lockout code remains validated by prior CI #1083 SUCCESS; the new changes are documentation/ledger only.
-- Current JARVIS package manifest was checked on PR #33 branch: no OpenClaw dependency. The OpenClaw review did not install packages or create runtime infrastructure.
+### Follow-up review — CFO schema compatibility and BMW CI (2026-11-14)
+- Reviewed PR #22's current migration and PR #29's currency contract. Confirmed the incompatibility is material: PR #22's proposed `NUMERIC(20,2)` columns do not by themselves enforce the currency-specific exponent/precision rules described by PR #29. PR #32 adds a versioned exponent migration and domain validation, but its branch comparison against canonical is diverged (27 commits ahead, 1 behind) and includes edits to the same migration, CFO domain, tests and master record. Do not merge PR #22/#29/#32 independently or apply any CFO migration. Next work must reconcile one exact schema/domain/test set and validate it in isolated CI.
+- Rechecked PR #34 documentation-fix CI for commit `bfdf4d38d41aea52b8339622f84b0be39c203c66`; workflow remained IN_PROGRESS at this check. The no-Shortcuts correction is committed but not yet CI-validated.
