@@ -39,6 +39,7 @@ export const CfoTransactionSchema = z.object({
   description: z.string().trim().min(1).max(500),
   merchant: z.string().trim().max(200).nullable().default(null),
   money: CfoMoneySchema,
+  currencyRegistryVersion: z.string().trim().min(1).max(80),
   status: z.enum(['pending', 'posted', 'reversed']),
   confidence: CfoConfidenceSchema,
   recordStatus: CfoRecordStatusSchema,
@@ -51,6 +52,7 @@ export const CfoBalanceSnapshotSchema = z.object({
   accountId: z.string().uuid(),
   observedAt: IsoDateTimeSchema,
   money: CfoMoneySchema,
+  currencyRegistryVersion: z.string().trim().min(1).max(80),
   confidence: CfoConfidenceSchema,
   provenance: CfoProvenanceSchema,
 }).strict()
@@ -91,6 +93,68 @@ export function amountMatchesMinorUnit(value: string, minorUnit: number): boolea
       !Number.isInteger(minorUnit) || minorUnit < 0 || minorUnit > CFO_DECIMAL_SCALE) return false
   const fraction = (value.startsWith('-') ? value.slice(1) : value).split('.')[1] ?? ''
   return [...fraction.slice(minorUnit)].every((digit) => digit === '0')
+}
+
+export type CfoCurrencyRegistryEntry = {
+  currencyCode: string
+  registryVersion: string
+  minorUnit: number
+  effectiveFrom: string
+  effectiveTo?: string | null
+}
+
+/**
+ * Validate a money value against one unambiguous, effective-dated registry row.
+ * Unknown versions, overlapping rows, malformed metadata and unsupported codes fail closed.
+ */
+export function validateCfoMoneyAgainstRegistry(
+  money: unknown,
+  effectiveAt: unknown,
+  registryVersion: unknown,
+  registry: readonly CfoCurrencyRegistryEntry[],
+): boolean {
+  const parsed = CfoMoneySchema.safeParse(money)
+  if (!parsed.success || !IsoDateSchema.safeParse(effectiveAt).success ||
+      typeof registryVersion !== 'string' || !registryVersion.trim() || registryVersion.length > 80 ||
+      !Array.isArray(registry)) return false
+
+  const relevant = registry.filter((entry) =>
+    entry.currencyCode === parsed.data.currency && entry.registryVersion === registryVersion,
+  )
+  if (relevant.length === 0 || relevant.some((entry) =>
+    !/^[A-Z]{3}$/.test(entry.currencyCode) ||
+    !entry.registryVersion.trim() || entry.registryVersion.length > 80 ||
+    !Number.isInteger(entry.minorUnit) || entry.minorUnit < 0 || entry.minorUnit > CFO_DECIMAL_SCALE ||
+    !IsoDateSchema.safeParse(entry.effectiveFrom).success ||
+    (entry.effectiveTo != null &&
+      (!IsoDateSchema.safeParse(entry.effectiveTo).success || entry.effectiveTo <= entry.effectiveFrom))
+  )) return false
+
+  const matching = relevant.filter((entry) =>
+    effectiveAt >= entry.effectiveFrom &&
+    (entry.effectiveTo == null || effectiveAt < entry.effectiveTo),
+  )
+  return matching.length === 1 && amountMatchesMinorUnit(parsed.data.amount, matching[0].minorUnit)
+}
+
+export function validateCfoTransactionCurrency(
+  input: unknown,
+  registry: readonly CfoCurrencyRegistryEntry[],
+): boolean {
+  const parsed = CfoTransactionSchema.safeParse(input)
+  return parsed.success && validateCfoMoneyAgainstRegistry(
+    parsed.data.money, parsed.data.provenance.effectiveAt, parsed.data.currencyRegistryVersion, registry,
+  )
+}
+
+export function validateCfoBalanceSnapshotCurrency(
+  input: unknown,
+  registry: readonly CfoCurrencyRegistryEntry[],
+): boolean {
+  const parsed = CfoBalanceSnapshotSchema.safeParse(input)
+  return parsed.success && validateCfoMoneyAgainstRegistry(
+    parsed.data.money, parsed.data.provenance.effectiveAt, parsed.data.currencyRegistryVersion, registry,
+  )
 }
 
 export function sumMoney(
