@@ -180,7 +180,9 @@ export async function handleBMWCarDataRoute(
   const vehicleMatch = path.match(/^\/bmw\/vehicles\/([A-HJ-NPR-Z0-9]{17})\/(basic|telematics|charging-history)$/i)
   if ((request.method === 'GET' && matches('/bmw/vehicles')) ||
       (request.method === 'GET' && vehicleMatch)) {
-    const accessToken = await loadAccessToken(deps)
+    let accessToken: string | Response
+    try { accessToken = await loadAccessToken(deps) }
+    catch { return failure('bmw_token_refresh_failed', 'BMW authorization could not be refreshed. Reconnect BMW CarData from JARVIS.', 401) }
     if (accessToken instanceof Response) return accessToken
     const budget = createBMWCardataDailyBudget(deps.userId, deps.consumeLimit)
     const client = new BMWCarDataClient(deps.userId, budget, fetchImpl, deps.now)
