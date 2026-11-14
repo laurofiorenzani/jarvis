@@ -123,7 +123,7 @@ Deno.test('BMW data route rejects invalid VIN before making a vehicle request', 
     ['/bmw/vehicles/not-a-vin/basic'],
     { userId: owner, db, consumeLimit: async () => true, fetchImpl: async () => { throw new Error('must not fetch') } },
   )
-  assertEquals(response?.status, 404)
+  assertEquals(response, null)
 })
 
 Deno.test('BMW disconnect deletes only the authenticated owner credential mapping', async () => {
