@@ -246,7 +246,7 @@ function retryableStatus(status: number): boolean {
 
 /** Classify upstream failures without conflating missing models with exhausted quota. */
 export function classifyProviderFailure(status: number, detail = ''): string {
-  if (status === 429 && /(?:\"?code\"?\\s*:\\s*3036|\\b3036\\b)/i.test(detail)) return 'daily_neuron_quota_exhausted'
+  if (status === 429 && /3036/.test(detail)) return 'daily_neuron_quota_exhausted'
   if (status === 404) return 'model_or_endpoint_not_found'
   if (status === 401 || status === 403) return 'authentication_or_access'
   if (status === 429) return 'rate_limit_or_quota'
