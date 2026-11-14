@@ -8,6 +8,8 @@ import {
   startBMWDeviceAuthorization,
 } from '../../../src/lib/integrations/bmw-cardata.ts'
 import {
+  consumeBMWPendingAuthorization,
+  createBMWPendingAuthorization,
   deleteBMWCredentials,
   getBMWRefreshToken,
   storeBMWRefreshToken,
@@ -128,13 +130,25 @@ export async function handleBMWCarDataRoute(
       const device = await startBMWDeviceAuthorization(
         body.clientId, pkce.codeChallenge, fetchImpl, BMW_CARDATA_DEFAULT_SCOPES,
       )
+      if (!device.device_code || !device.user_code || !device.verification_uri ||
+          !Number.isInteger(device.expires_in) || device.expires_in < 1 || device.expires_in > 900) {
+        return failure('bmw_authorization_unavailable', 'BMW returned an invalid device authorization response.', 502, true)
+      }
+      const stateId = crypto.randomUUID()
+      const now = deps.now?.() ?? new Date()
+      const expiresAt = new Date(now.getTime() + device.expires_in * 1_000).toISOString()
+      await createBMWPendingAuthorization(deps.db, deps.userId, stateId, {
+        clientId: body.clientId,
+        deviceCode: device.device_code,
+        codeVerifier: pkce.codeVerifier,
+        expiresAt,
+      })
       return json({
         version: 1,
+        stateId,
         verificationUri: device.verification_uri,
         verificationUriComplete: device.verification_uri_complete ?? null,
         userCode: device.user_code,
-        deviceCode: device.device_code,
-        codeVerifier: pkce.codeVerifier,
         expiresIn: device.expires_in,
         interval: device.interval,
         scopes: BMW_CARDATA_DEFAULT_SCOPES,
@@ -149,17 +163,24 @@ export async function handleBMWCarDataRoute(
     if (allowed !== true) return failure('rate_limited', 'BMW authorization completion limit reached.', allowed === null ? 503 : 429, true)
     let body: unknown
     try { body = await readBody(request) } catch { return failure('invalid_request', 'A valid BMW authorization response is required.', 400) }
-    if (!isRecord(body) || !validClientId(body.clientId) ||
-        typeof body.deviceCode !== 'string' || body.deviceCode.length < 8 || body.deviceCode.length > 2_048 ||
-        typeof body.codeVerifier !== 'string' || body.codeVerifier.length < 40 || body.codeVerifier.length > 128) {
-      return failure('invalid_request', 'A valid BMW authorization response is required.', 400)
+    if (!isRecord(body) || typeof body.stateId !== 'string' ||
+        !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(body.stateId)) {
+      return failure('invalid_request', 'A valid BMW authorization state is required.', 400)
     }
     try {
-      const token = await exchangeBMWDeviceCode(body.clientId, body.deviceCode, body.codeVerifier, fetchImpl)
+      // State is owner-bound, short-lived and atomically consumed before token exchange.
+      // A failed exchange requires a fresh device authorization rather than replay.
+      const pending = await consumeBMWPendingAuthorization(deps.db, deps.userId, body.stateId)
+      if (!pending || Date.parse(pending.expiresAt) <= (deps.now?.() ?? new Date()).getTime()) {
+        return failure('bmw_authorization_expired', 'BMW authorization expired or was already used. Start a new connection.', 410)
+      }
+      const token = await exchangeBMWDeviceCode(
+        pending.clientId, pending.deviceCode, pending.codeVerifier, fetchImpl,
+      )
       if (!token.refresh_token) return failure('bmw_token_missing', 'BMW did not return a refresh token.', 502)
       const now = deps.now?.() ?? new Date()
       const refreshExpiresAt = new Date(now.getTime() + 14 * 24 * 60 * 60 * 1_000).toISOString()
-      await storeBMWRefreshToken(deps.db, deps.userId, body.clientId, token.refresh_token, refreshExpiresAt)
+      await storeBMWRefreshToken(deps.db, deps.userId, pending.clientId, token.refresh_token, refreshExpiresAt)
       return json({ version: 1, connected: true, scopes: token.scope ?? BMW_CARDATA_DEFAULT_SCOPES.join(' '), refreshExpiresAt }, 200)
     } catch {
       return failure('bmw_authorization_failed', 'BMW authorization was not completed. Check the BMW approval and try again.', 401)
