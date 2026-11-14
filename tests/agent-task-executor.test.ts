@@ -69,6 +69,30 @@ test('denies missing agents and capabilities before invoking the handler', async
   assert.equal(calls, 0)
 })
 
+test('rejects agents with write capabilities, approval gates or write-capable tools before dispatch', async () => {
+  let calls = 0
+  const writeCapabilityAgent = {
+    ...agent,
+    capabilities: ['research.public', 'code.branch.write'] as AgentDefinition['capabilities'],
+    tools: ['web_research', 'github_branch'] as AgentDefinition['tools'],
+    approvalMode: 'approval_required' as const,
+  }
+  const writeToolAgent = {
+    ...agent,
+    tools: ['web_research', 'github_branch'] as AgentDefinition['tools'],
+  }
+  const approvalAgent = { ...agent, approvalMode: 'approval_required' as const }
+  for (const definition of [writeCapabilityAgent, writeToolAgent, approvalAgent]) {
+    const results = await executeReadOnlyAgentTasks([task('task-a')], [definition], async () => {
+      calls += 1
+      return envelope({ taskId: 'task-a' })
+    })
+    assert.equal(results[0].status, 'denied')
+    assert.equal(results[0].reason, 'capability_denied')
+  }
+  assert.equal(calls, 0)
+})
+
 test('rejects mismatched, approval-gated and oversized result envelopes', async () => {
   const mismatch = await executeReadOnlyAgentTasks([task('task-a')], [agent], async () => envelope({ taskId: 'other' }))
   const approval = await executeReadOnlyAgentTasks([task('task-a')], [agent], async () => envelope({ taskId: 'task-a', approvalRequired: true }))
