@@ -4,7 +4,7 @@ import { z } from 'zod'
 // it does not connect to banks, persist records, or move money.
 
 export const CfoCurrencySchema = z.string().regex(/^[A-Z]{3}$/)
-export const CfoDecimalAmountSchema = z.string().regex(/^-?(?:0|[1-9]\d*)(?:\.\d{1,2})?$/, 'Use a decimal string with at most two fractional digits')
+export const CfoDecimalAmountSchema = z.string().regex(/^-?(?:0|[1-9]\d*)(?:\.\d{1,4})?$/, 'Use an exact decimal string with at most four fractional digits')
 
 export const CfoConfidenceSchema = z.enum(['verified', 'user_confirmed', 'estimated', 'unknown'])
 export const CfoRecordStatusSchema = z.enum(['pending_review', 'confirmed', 'rejected', 'superseded'])
@@ -55,35 +55,60 @@ export const CfoBalanceSnapshotSchema = z.object({
   provenance: CfoProvenanceSchema,
 }).strict()
 
-// Convert an exact decimal string into integer minor units. BigInt avoids
-// floating-point rounding errors; no implicit currency conversion is performed.
-export function decimalToMinorUnits(value: string): bigint {
+// Internal arithmetic uses a fixed four-decimal scale, the maximum ISO 4217
+// minor-unit exponent. This is NOT a currency's minor unit: the pinned currency
+// registry remains authoritative for validating each amount's actual exponent.
+// BigInt avoids floating-point rounding; no implicit FX conversion is performed.
+const CFO_DECIMAL_SCALE = 4
+const CFO_DECIMAL_FACTOR = 10n ** BigInt(CFO_DECIMAL_SCALE)
+
+export function decimalToScaledUnits(value: string): bigint {
   if (!CfoDecimalAmountSchema.safeParse(value).success) {
     throw new TypeError('Invalid decimal amount')
   }
   const negative = value.startsWith('-')
   const unsigned = negative ? value.slice(1) : value
   const [whole, fraction = ''] = unsigned.split('.')
-  const minor = BigInt(whole) * 100n + BigInt(fraction.padEnd(2, '0'))
-  return negative ? -minor : minor
+  const scaled = BigInt(whole) * CFO_DECIMAL_FACTOR +
+    BigInt(fraction.padEnd(CFO_DECIMAL_SCALE, '0'))
+  return negative ? -scaled : scaled
 }
 
-export function minorUnitsToDecimal(value: bigint): string {
+export function scaledUnitsToDecimal(value: bigint): string {
   const negative = value < 0n
   const absolute = negative ? -value : value
-  const whole = absolute / 100n
-  const fraction = (absolute % 100n).toString().padStart(2, '0')
-  return `${negative ? '-' : ''}${whole}.${fraction}`
+  const whole = absolute / CFO_DECIMAL_FACTOR
+  const fraction = (absolute % CFO_DECIMAL_FACTOR).toString()
+    .padStart(CFO_DECIMAL_SCALE, '0').replace(/0+$/, '')
+  return `${negative ? '-' : ''}${whole}${fraction ? `.${fraction}` : ''}`
 }
 
-export function sumMoney(values: readonly z.infer<typeof CfoMoneySchema>[]): z.infer<typeof CfoMoneySchema> {
-  if (values.length === 0) return { amount: '0.00', currency: 'EUR' }
+// Validate the exact numeric value against the trusted registry exponent.
+// Extra fractional zeroes are harmless; any non-zero digit beyond the exponent
+// is rejected, matching PostgreSQL's amount = trunc(amount, minor_unit) rule.
+export function amountMatchesMinorUnit(value: string, minorUnit: number): boolean {
+  if (!CfoDecimalAmountSchema.safeParse(value).success ||
+      !Number.isInteger(minorUnit) || minorUnit < 0 || minorUnit > CFO_DECIMAL_SCALE) return false
+  const fraction = (value.startsWith('-') ? value.slice(1) : value).split('.')[1] ?? ''
+  return [...fraction.slice(minorUnit)].every((digit) => digit === '0')
+}
+
+export function sumMoney(
+  values: readonly z.infer<typeof CfoMoneySchema>[],
+  emptyCurrency?: string,
+): z.infer<typeof CfoMoneySchema> {
+  if (values.length === 0) {
+    if (!emptyCurrency || !CfoCurrencySchema.safeParse(emptyCurrency).success) {
+      throw new TypeError('An explicit currency is required to sum an empty list')
+    }
+    return { amount: '0', currency: emptyCurrency }
+  }
   const currency = values[0].currency
   if (values.some((value) => value.currency !== currency)) {
     throw new TypeError('Cannot sum amounts in different currencies without an explicit FX conversion')
   }
-  const total = values.reduce((sum, value) => sum + decimalToMinorUnits(value.amount), 0n)
-  return { amount: minorUnitsToDecimal(total), currency }
+  const total = values.reduce((sum, value) => sum + decimalToScaledUnits(value.amount), 0n)
+  return { amount: scaledUnitsToDecimal(total), currency }
 }
 
 
@@ -105,14 +130,14 @@ export function matchInternalTransfers(
   const candidates = new Map<string, Set<string>>()
   for (let i = 0; i < eligible.length; i += 1) {
     const left = eligible[i]
-    const leftAmount = decimalToMinorUnits(left.money.amount)
+    const leftAmount = decimalToScaledUnits(left.money.amount)
     if (leftAmount === 0n) continue
     for (let j = i + 1; j < eligible.length; j += 1) {
       const right = eligible[j]
       if (left.ownerUserId !== right.ownerUserId ||
           left.accountId === right.accountId ||
           left.money.currency !== right.money.currency ||
-          leftAmount + decimalToMinorUnits(right.money.amount) !== 0n) continue
+          leftAmount + decimalToScaledUnits(right.money.amount) !== 0n) continue
       const days = Math.abs(Date.parse(`${left.postedAt}T00:00:00Z`) - Date.parse(`${right.postedAt}T00:00:00Z`)) / 86_400_000
       if (days > 3) continue
       const debit = leftAmount < 0n ? left : right
@@ -150,7 +175,7 @@ export function transactionFingerprint(tx: CfoTransaction): string {
 /** Confirmed posted cash flow, excluding only uniquely matched internal transfers. */
 export function calculateCashFlow(
   transactions: readonly CfoTransaction[],
-  period: { start: string; end: string },
+  period: { start: string; end: string; currency?: string },
 ): { currency: string; inflows: string; outflows: string; net: string; includedCount: number; excludedTransferCount: number } {
   if (!IsoDateSchema.safeParse(period.start).success ||
       !IsoDateSchema.safeParse(period.end).success ||
@@ -166,19 +191,28 @@ export function calculateCashFlow(
   )
   const currencies = new Set(eligible.map((tx) => tx.money.currency))
   if (currencies.size > 1) throw new TypeError('Cash flow requires a single currency; calculate currencies separately')
-  const currency = eligible[0]?.money.currency ?? transactions[0]?.money.currency ?? 'EUR'
-  const inflows = eligible.filter((tx) => decimalToMinorUnits(tx.money.amount) > 0n)
-  const outflows = eligible.filter((tx) => decimalToMinorUnits(tx.money.amount) < 0n)
+  const currency = eligible[0]?.money.currency ?? period.currency
+  if (!currency || !CfoCurrencySchema.safeParse(currency).success) {
+    throw new TypeError('An explicit currency is required when the period has no eligible transactions')
+  }
+  if (period.currency && period.currency !== currency) {
+    throw new TypeError('Requested cash-flow currency does not match the eligible records')
+  }
+  if (eligible.some((tx) => tx.money.currency !== currency)) {
+    throw new TypeError('Cash flow requires a single currency; calculate currencies separately')
+  }
+  const inflows = eligible.filter((tx) => decimalToScaledUnits(tx.money.amount) > 0n)
+  const outflows = eligible.filter((tx) => decimalToScaledUnits(tx.money.amount) < 0n)
   const sum = (items: readonly CfoTransaction[]) => items.reduce(
-    (total, tx) => total + decimalToMinorUnits(tx.money.amount), 0n,
+    (total, tx) => total + decimalToScaledUnits(tx.money.amount), 0n,
   )
   const inTotal = sum(inflows)
   const outTotal = -sum(outflows)
   return {
     currency,
-    inflows: minorUnitsToDecimal(inTotal),
-    outflows: minorUnitsToDecimal(outTotal),
-    net: minorUnitsToDecimal(inTotal - outTotal),
+    inflows: scaledUnitsToDecimal(inTotal),
+    outflows: scaledUnitsToDecimal(outTotal),
+    net: scaledUnitsToDecimal(inTotal - outTotal),
     includedCount: eligible.length,
     excludedTransferCount: transfers.reduce((count, pair) => count + transactions.filter((tx) =>
       (tx.id === pair.debitId || tx.id === pair.creditId) &&
