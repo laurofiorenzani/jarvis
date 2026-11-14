@@ -95,3 +95,14 @@ test('does not dispatch tasks after caller cancellation', async () => {
   assert.equal(results[0].reason, 'aborted')
   assert.equal(results[0].status, 'cancelled')
 })
+
+test('enforces the declared per-task tool-call budget', async () => {
+  const results = await executeReadOnlyAgentTasks([task('task-a')], [agent], async (_a, _t, context) => {
+    context.consumeCall()
+    context.consumeCall()
+    context.consumeCall()
+    return envelope({ taskId: 'task-a' })
+  })
+  assert.equal(results[0].reason, 'call_limit')
+  assert.equal(results[0].status, 'failed')
+})
