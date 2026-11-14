@@ -57,15 +57,39 @@ export function assertConsistentProviderPrivacy(
   }
 }
 
-/** ZDR is only meaningful on OpenRouter and must be authenticated server-side. */
+/** ZDR providers must use an official endpoint and a configured server-side key.
+ * Cloudflare Workers AI has built-in zero data retention for stateless inference;
+ * OpenRouter requires its explicit ZDR and data-collection-deny request flags.
+ */
+export function assertEeaProviderEligibility(hostname: string): void {
+  if (hostname === 'generativelanguage.googleapis.com') {
+    throw new ProviderUnavailableError(
+      'Gemini API is disabled for this Ireland/EEA JARVIS deployment. Google requires Paid Services for EEA API clients, and no paid provider is approved.',
+    )
+  }
+}
+
+export function assertProviderPrivacyMode(hostname: string, privacyMode?: 'zdr'): void {
+  if (hostname === 'api.cloudflare.com' && privacyMode !== 'zdr') {
+    throw new ProviderUnavailableError(
+      'Cloudflare Workers AI must be configured with privacyMode set to "zdr".',
+    )
+  }
+}
+
 export function assertZdrProviderConfig(
   hostname: string,
   apiKeyEnv?: string,
   apiKey?: string,
+  pathname?: string,
 ): void {
-  if (hostname !== 'openrouter.ai' || !apiKeyEnv || !apiKey) {
+  const openRouter = hostname === 'openrouter.ai'
+  const cloudflareWorkersAi = hostname === 'api.cloudflare.com' &&
+    typeof pathname === 'string' &&
+    /^\/client\/v4\/accounts\/[a-f0-9]{32}\/ai\/v1(?:\/chat\/completions)?$/i.test(pathname)
+  if ((!openRouter && !cloudflareWorkersAi) || !apiKeyEnv || !apiKey) {
     throw new ProviderUnavailableError(
-      'ZDR provider requires the official OpenRouter host and a configured server-side API key.',
+      'ZDR provider requires an approved OpenRouter or Cloudflare Workers AI endpoint and a configured server-side API key.',
     )
   }
 }
@@ -92,11 +116,13 @@ function configuredProviders(): Provider[] {
     if (url.protocol !== 'https:' || url.username || url.password ||
         url.search || url.hash || !item.name.trim() || !item.model.trim() ||
         (item.privacyMode !== undefined && item.privacyMode !== 'zdr')) continue
+    assertEeaProviderEligibility(url.hostname)
+    assertProviderPrivacyMode(url.hostname, item.privacyMode === 'zdr' ? 'zdr' : undefined)
     const apiKeyEnv = typeof item.apiKeyEnv === 'string' ? item.apiKeyEnv : undefined
     const apiKey = apiKeyEnv ? Deno.env.get(apiKeyEnv)?.trim() : undefined
     if (item.privacyMode === 'zdr') {
       // Do not skip an invalid ZDR entry and fall back to a standard provider.
-      assertZdrProviderConfig(url.hostname, apiKeyEnv, apiKey)
+      assertZdrProviderConfig(url.hostname, apiKeyEnv, apiKey, url.pathname)
     }
     if (apiKeyEnv && !apiKey) continue
     providers.push({
@@ -115,20 +141,36 @@ function configuredProviders(): Provider[] {
 }
 
 /** Safe provider diagnostics; never returns secret values or environment variable names. */
+/** Exposes only safe provider identity metadata for the client-side fail-closed activation check. */
 export function getFreeProviderStatus(): {
   configured: boolean
-  providers: { name: string; model: string }[]
+  providers: { name: string; model: string; providerType: string; privacyMode: 'zdr' | 'standard' }[]
+  speechProvider: 'cloudflare-whisper' | 'unconfigured'
 } {
   const providers = configuredProviders()
+  const accountId = Deno.env.get('CLOUDFLARE_ACCOUNT_ID')?.trim()
+  const apiToken = Deno.env.get('CLOUDFLARE_API_TOKEN')?.trim()
+  const speechProvider = /^[a-f0-9]{32}$/i.test(accountId ?? '') && apiToken
+    ? 'cloudflare-whisper'
+    : 'unconfigured'
   return {
     configured: providers.length > 0,
-    providers: providers.map(({ name, model }) => ({ name, model })),
+    providers: providers.map(({ name, model, baseUrl, privacyMode }) => ({
+      name,
+      model,
+      providerType: new URL(baseUrl).hostname === 'api.cloudflare.com' ? 'cloudflare-workers-ai' : 'other',
+      privacyMode: privacyMode ?? 'standard',
+    })),
+    speechProvider,
   }
 }
 
-/** Request-level privacy controls for OpenRouter-compatible endpoints. */
-export function providerRoutingOptions(privacyMode?: 'zdr'): Record<string, unknown> {
-  return privacyMode === 'zdr'
+/** Request-level privacy controls for providers with explicit routing flags. */
+export function providerRoutingOptions(privacyMode?: 'zdr', hostname?: string): Record<string, unknown> {
+  if (privacyMode !== 'zdr') return {}
+  // Cloudflare Workers AI's direct inference endpoint applies ZDR by default.
+  // Do not send OpenRouter-specific fields to Cloudflare.
+  return hostname === 'openrouter.ai'
     ? { provider: { zdr: true, data_collection: 'deny' } }
     : {}
 }
@@ -156,8 +198,8 @@ export function redactProviderDiagnostic(value: string): string {
 }
 
 export function toChatCompletionsUrl(baseUrl: string): string {
-  // Google Gemini's OpenAI-compatible endpoint is rooted at /v1beta/openai,
-  // not /v1. Appending /v1/chat/completions creates a 404.
+  // OpenAI-compatible gateways use different roots; Cloudflare Workers AI
+  // uses an account-scoped /ai/v1 path, which already ends in /v1.
   return baseUrl.endsWith('/chat/completions')
     ? baseUrl
     : baseUrl.endsWith('/v1') || baseUrl.endsWith('/openai')
@@ -196,7 +238,7 @@ export async function startFreeModelStream(
           messages,
           stream: true,
           temperature: 0.4,
-          ...providerRoutingOptions(provider.privacyMode),
+          ...providerRoutingOptions(provider.privacyMode, new URL(provider.baseUrl).hostname),
         }),
         // The 25-second deadline applies only to connection/response headers.
         // Keep the caller's signal attached for the full stream lifetime, but

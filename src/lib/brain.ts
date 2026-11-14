@@ -130,7 +130,9 @@ export function interrupt(): void {
  * so there is nothing that can be down until you try it.
  */
 export function isConnected(): boolean {
-  return activeCloudBrain ? true : usingBridge ? bridge.isConnected() : usingDirect
+  // A cloud session proves identity, not live API/provider reachability.
+  // Only the bridge has a persistent socket whose health can be reported here.
+  return usingBridge ? bridge.isConnected() : false
 }
 
 /**
@@ -167,7 +169,7 @@ export function decideMemoryConfirmation(
 
 /** Labels for the HUD's SYSTEMS rail. */
 export function connectedLabels(): string[] {
-  if (activeCloudBrain) return ['SUPABASE CLOUD']
-  if (BACKEND === 'cloud') return ['CLOUD SIGN-IN REQUIRED']
-  return usingBridge ? bridge.bridgeServers() : direct.connectedLabels()
+  // Cloud auth state is shown separately in Command Center. Do not present a
+  // stateless HTTPS backend as a live connection before a request succeeds.
+  return usingBridge ? bridge.bridgeServers() : BACKEND === 'cloud' ? [] : direct.connectedLabels()
 }

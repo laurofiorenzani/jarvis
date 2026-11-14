@@ -1,4 +1,4 @@
-import { BACKEND, BRIDGE_HTTP_URL } from '../config'
+import { BACKEND, BRIDGE_HTTP_URL, SPEECH_LOCALE } from '../config'
 import { getMic } from './audio'
 import { speakingNow, speakingSince } from './tts'
 import { startVad, type Vad } from './vad'
@@ -409,7 +409,7 @@ export async function startVoice(h: VoiceHandlers, cloudTranscribe?: CloudTransc
     // VAD pipeline in cloud mode and resolve the authenticated transcriber for
     // each segment, rather than falling back permanently to browser
     // SpeechRecognition when the user signs in a moment later.
-    diag.engine = 'gemini-cloud'
+    diag.engine = 'cloud-whisper'
     return startElevenVoice(h, cloudTranscribe, getCloudTranscriber)
   }
   diag.engine = caps().stt ? 'elevenlabs' : 'browser'
@@ -530,14 +530,19 @@ async function startElevenVoice(h: VoiceHandlers, cloudTranscribe?: CloudTranscr
     } catch (err) {
       diag.transcriptionFailures++
       transcriptionFailures++
+      // Do not silently fall back to Web Speech: browser speech services may
+      // send microphone audio to an OS/browser vendor. Keep cloud-only STT and
+      // surface the failure rather than changing the privacy boundary.
+      const quotaExhausted = Boolean(err && typeof err === 'object' && 'code' in err &&
+        (err as { code?: unknown }).code === 'quota_exhausted')
       const retryAfterMs = err && typeof err === 'object' && 'retryAfterMs' in err &&
         typeof (err as { retryAfterMs?: unknown }).retryAfterMs === 'number'
-        ? Math.min(300_000, Math.max(1_000, (err as { retryAfterMs: number }).retryAfterMs))
+        ? Math.min(quotaExhausted ? 86_400_000 : 300_000, Math.max(1_000, (err as { retryAfterMs: number }).retryAfterMs))
         : undefined
       const backoffMs = retryAfterMs ?? Math.min(60_000, 5_000 * (2 ** Math.min(transcriptionFailures - 1, 4)))
       transcribeBlockedUntil = Date.now() + backoffMs
       diag.lastError = `${String(err)} · retry in ${Math.ceil(backoffMs / 1000)}s`
-      drop('speech service failed; automatic backoff active')
+      drop('cloud STT service failed; automatic backoff active')
     }
   }
 
@@ -804,7 +809,7 @@ function startBrowserVoice(h: VoiceHandlers): Voice {
     rec = new Ctor()
     rec.continuous = true
     rec.interimResults = true
-    rec.lang = 'pt-BR'
+    rec.lang = SPEECH_LOCALE
     rec.onstart = () => {
       running = true
       diag.running = true

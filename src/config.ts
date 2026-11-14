@@ -76,6 +76,15 @@ export const BACKEND: 'cloud' | 'bridge' | 'direct' = choice(
 export const BRIDGE_WS_URL = str(viteEnv.VITE_BRIDGE_URL) ?? 'ws://localhost:8787'
 export const BRIDGE_HTTP_URL = BRIDGE_WS_URL.replace(/^ws/, 'http')
 
+/** Speech recognition locale. Brazilian Portuguese is the default; English
+ * deployments can select en-GB or en-US without changing application code. */
+export const SPEECH_LOCALE = choice(
+  'VITE_SPEECH_LOCALE',
+  viteEnv.VITE_SPEECH_LOCALE,
+  ['pt-BR', 'en-GB', 'en-US'] as const,
+  'pt-BR',
+)
+
 /**
  * Speech output engine.
  *

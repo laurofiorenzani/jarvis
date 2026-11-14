@@ -1,0 +1,43 @@
+name: JARVIS Observer Validation
+
+on:
+  push:
+    branches: ["main", "work/self-evolution-readonly-observer"]
+    paths:
+      - "src/lib/system-observer.ts"
+      - "tests/system-observer.test.ts"
+      - ".github/workflows/jarvis-observer-validation.yml"
+  pull_request:
+    paths:
+      - "src/lib/system-observer.ts"
+      - "tests/system-observer.test.ts"
+      - ".github/workflows/jarvis-observer-validation.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: jarvis-observer-validation-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install locked dependencies
+        run: npm ci
+      - name: Run observer privacy and triage tests
+        run: node --import tsx --test tests/system-observer.test.ts
+      - name: Typecheck and build
+        run: npm run build
+      - name: Run lint
+        run: npm run lint

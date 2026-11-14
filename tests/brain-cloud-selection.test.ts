@@ -4,6 +4,7 @@ import {
   ask,
   cancel,
   connectedLabels,
+  isConnected,
   selectCloudBrain,
   selectConfiguredBrain,
   warm,
@@ -31,7 +32,8 @@ test('HUD routes turns and lifecycle to the selected cloud brain', async () => {
     cancel()
     assert.equal(result.text, 'cloud reply')
     assert.deepEqual(events, ['warm', 'ask:hello cloud', 'cancel'])
-    assert.deepEqual(connectedLabels(), ['SUPABASE CLOUD'])
+    assert.deepEqual(connectedLabels(), [])
+    assert.equal(isConnected(), false)
   } finally {
     selectConfiguredBrain()
   }
@@ -51,5 +53,6 @@ test('signing out cancels an active cloud turn before restoring the configured b
   selectCloudBrain(cloud)
   selectConfiguredBrain()
   assert.deepEqual(events, ['cancel'])
-  assert.deepEqual(connectedLabels(), ['CLOUD SIGN-IN REQUIRED'])
+  assert.deepEqual(connectedLabels(), [])
+  assert.equal(isConnected(), false)
 })

@@ -62,6 +62,22 @@ async function setPreference(userId, enabled) {
   assert.ok(result.response.ok, `set memory preference: ${JSON.stringify(result.payload)}`)
 }
 
+async function setAutoCapture(user, enabled) {
+  const result = await request(`${api}/memory-preferences`, {
+    method: 'PUT',
+    token: user.token,
+    body: { version: 1, autoCaptureEnabled: enabled },
+  })
+  assert.equal(result.response.status, 200, `set auto-capture preference: ${JSON.stringify(result.payload)}`)
+  return result.payload
+}
+
+async function getMemoryPreferences(user) {
+  const result = await request(`${api}/memory-preferences`, { token: user.token })
+  assert.equal(result.response.status, 200, `get memory preferences: ${JSON.stringify(result.payload)}`)
+  return result.payload
+}
+
 async function insertFact(userId, fields) {
   const result = await request(`${rest}/jarvis_memory_facts`, {
     method: 'POST',
@@ -98,6 +114,30 @@ try {
   const userB = await createUser('b')
   await setPreference(userA.id, true)
   await setPreference(userB.id, false)
+
+  const initialPreferencesA = await getMemoryPreferences(userA)
+  const initialPreferencesB = await getMemoryPreferences(userB)
+  assert.equal(initialPreferencesA.contextEnabled, true)
+  assert.equal(initialPreferencesA.autoCaptureEnabled, false, 'new/fixture accounts must default to auto-capture off')
+  assert.equal(initialPreferencesB.contextEnabled, false)
+  assert.equal(initialPreferencesB.autoCaptureEnabled, false, 'separate account must remain opted out')
+
+  const blockedAutoCapture = await setAutoCapture(userB, true)
+  assert.equal(blockedAutoCapture.autoCaptureEnabled, false, 'auto-capture cannot bypass memory retrieval consent')
+
+  const enabledAutoCapture = await setAutoCapture(userA, true)
+  assert.equal(enabledAutoCapture.autoCaptureEnabled, true, 'owner can explicitly enable their own auto-capture')
+
+  const disabledContext = await request(`${api}/memory-preferences`, {
+    method: 'PUT', token: userA.token, body: { version: 1, contextEnabled: false },
+  })
+  assert.equal(disabledContext.response.status, 200)
+  assert.equal(disabledContext.payload.autoCaptureEnabled, false, 'turning off retrieval must also turn off auto-capture')
+  const reenabledContext = await request(`${api}/memory-preferences`, {
+    method: 'PUT', token: userA.token, body: { version: 1, contextEnabled: true },
+  })
+  assert.equal(reenabledContext.response.status, 200)
+  assert.equal(reenabledContext.payload.autoCaptureEnabled, false, 're-enabling retrieval must not silently re-enable auto-capture')
 
   const disabledCreate = await request(`${api}/semantic-memory/candidates`, {
     method: 'POST',

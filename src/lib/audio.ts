@@ -33,6 +33,17 @@ export async function startAnalyser(): Promise<void> {
   buf = new Uint8Array(analyser.frequencyBinCount)
 }
 
+/** Release the shared microphone and analyser when the active account signs out. */
+export async function stopAnalyser(): Promise<void> {
+  for (const track of stream?.getTracks() ?? []) track.stop()
+  stream = null
+  analyser = null
+  buf = null
+  const current = ctx
+  ctx = null
+  if (current && current.state !== 'closed') await current.close().catch(() => {})
+}
+
 /** 0..1 loudness. Returns 0 before the analyser is up. */
 export function micLevel(): number {
   if (!analyser || !buf) return 0

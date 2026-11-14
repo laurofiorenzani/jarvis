@@ -65,45 +65,71 @@ export function CloudAccess({ onConnected, onDisconnected, onResumeConversation,
   const [conversations, setConversations] = useState<ConversationSummary[]>([])
   const [conversationBusy, setConversationBusy] = useState(false)
   const [memoryContextEnabled, setMemoryContextEnabled] = useState(false)
+  const [memoryAutoCaptureEnabled, setMemoryAutoCaptureEnabled] = useState(false)
   const [providerStatus, setProviderStatus] = useState('MODEL STATUS NOT CHECKED')
+  const [cloudBrainReady, setCloudBrainReady] = useState(false)
   const [memoryContent, setMemoryContent] = useState('')
   const [memoryCategory, setMemoryCategory] = useState<MemoryCategory>('preference')
   const [memoryBusy, setMemoryBusy] = useState(false)
   const runtimeRef = useRef<ReturnType<typeof createCloudRuntime> | null>(null)
+  const runtimeGeneration = useRef(0)
+  const isCurrentRuntime = (runtime: ReturnType<typeof createCloudRuntime>, generation: number) =>
+    runtimeRef.current === runtime && runtimeGeneration.current === generation
   const autoRestorePending = useRef(hasRestorableTabSession())
   const autoRestoreStarted = useRef(false)
   const restoreSessionRef = useRef<(() => Promise<void>) | null>(null)
 
   const activateRuntime = async (runtime: ReturnType<typeof createCloudRuntime>) => {
+    const generation = runtimeGeneration.current
     await runtime.brain.warm()
+    if (!isCurrentRuntime(runtime, generation)) return
     const [saved, preference, recentConversations] = await Promise.all([
       runtime.api.listMemories(),
       runtime.api.getMemoryPreference(),
       runtime.api.listConversations(),
     ])
+    if (!isCurrentRuntime(runtime, generation)) return
     setMemories(saved.memories)
     setMemoryContextEnabled(preference.contextEnabled)
+    setMemoryAutoCaptureEnabled(preference.autoCaptureEnabled === true)
     setConversations(recentConversations.conversations)
     try {
       const recentCandidates = await runtime.api.listSemanticMemoryCandidates()
+      if (!isCurrentRuntime(runtime, generation)) return
       setMemoryCandidates(recentCandidates.candidates)
       setMemoryReviewAvailable(true)
     } catch {
+      if (!isCurrentRuntime(runtime, generation)) return
       // The feature-branch UI may be previewed before the matching Edge Function is deployed.
       setMemoryCandidates([])
       setMemoryReviewAvailable(false)
     }
+    let cloudProviderReady = false
+    let cloudSpeechReady = false
     try {
       const providers = await runtime.api.getProviderStatus()
-      setProviderStatus(providers.configured
-        ? 'FREE-QUOTA CONFIG DECLARED · ' + providers.providers.map((item) => item.model).join(', ')
-        : 'NO FREE-ONLY MODEL PROVIDER CONFIGURED')
+      if (!isCurrentRuntime(runtime, generation)) return
+      // Fail closed on older backend responses: only an explicit Cloudflare ZDR identity may activate chat.
+      cloudProviderReady = providers.configured && providers.providers.length > 0 &&
+        providers.providers.every((item) => item.providerType === 'cloudflare-workers-ai' && item.privacyMode === 'zdr')
+      cloudSpeechReady = cloudProviderReady && providers.speechProvider === 'cloudflare-whisper'
+      setCloudBrainReady(cloudProviderReady)
+      setProviderStatus(cloudProviderReady
+        ? 'CLOUDFLARE WORKERS AI · ZDR · ' + providers.providers.map((item) => item.model).join(', ') +
+          (cloudSpeechReady ? ' · WHISPER STT READY' : ' · WHISPER STT NOT CONFIGURED')
+        : 'UNAPPROVED CLOUD PROVIDER · CHAT AND CLOUD STT DISABLED')
     } catch {
-      setProviderStatus('MODEL PROVIDER CONFIGURATION INVALID OR UNAVAILABLE')
+      if (!isCurrentRuntime(runtime, generation)) return
+      setCloudBrainReady(false)
+      setProviderStatus('MODEL PROVIDER CONFIGURATION INVALID OR UNAVAILABLE · CHAT/STT DISABLED')
     }
-    selectCloudBrain(runtime.brain)
-    onSpeechApiReady?.(runtime.api.transcribeAudio)
-    onTtsApiReady?.(runtime.api.synthesizeSpeech)
+    if (!isCurrentRuntime(runtime, generation)) return
+    if (cloudProviderReady) selectCloudBrain(runtime.brain)
+    else selectConfiguredBrain()
+    onSpeechApiReady?.(cloudSpeechReady ? runtime.api.transcribeAudio : null)
+    // Cloud TTS stays disabled until an approved provider supports both PT-BR and EN-GB.
+    // The device-native speech engine remains the active output path.
+    onTtsApiReady?.(null)
     setConnected(true)
     onConnected?.()
   }
@@ -118,19 +144,23 @@ export function CloudAccess({ onConnected, onDisconnected, onResumeConversation,
       supabasePublishableKey: env.supabasePublishableKey,
       tokenStore: createTabTokenStore(),
     })
+    runtimeGeneration.current += 1
     runtimeRef.current = runtime
     try {
       const restored = await runtime.auth.restoreSession()
+      if (!isCurrentRuntime(runtime, runtimeGeneration.current)) return
       if (!restored) throw new Error('The saved tab session has expired. Sign in again.')
       await activateRuntime(runtime)
       setMessage('TAB SESSION RESTORED · CLOUD API HEALTHY')
     } catch (error) {
+      if (!isCurrentRuntime(runtime, runtimeGeneration.current)) return
       selectConfiguredBrain()
       await runtime.auth.signOut().catch(() => {})
       runtimeRef.current = null
       onSpeechApiReady?.(null)
       onTtsApiReady?.(null)
       setConnected(false)
+      setCloudBrainReady(false)
       setCanRestoreTabSession(false)
       setMessage(error instanceof Error ? error.message : 'Cloud session could not be restored.')
     } finally {
@@ -177,9 +207,11 @@ export function CloudAccess({ onConnected, onDisconnected, onResumeConversation,
       } catch { /* Volatile sign-in remains available when storage is blocked. */ }
     }
     const runtime = createCloudRuntime(options)
+    runtimeGeneration.current += 1
     runtimeRef.current = runtime
     try {
       await runtime.auth.signInWithPassword(email, password)
+      if (!isCurrentRuntime(runtime, runtimeGeneration.current)) return
       await activateRuntime(runtime)
       setPassword('')
       setCanRestoreTabSession(hasRestorableTabSession())
@@ -187,10 +219,12 @@ export function CloudAccess({ onConnected, onDisconnected, onResumeConversation,
         ? 'AUTHENTICATED · TAB SESSION RESTORE ENABLED · CLEARED WHEN TAB CLOSES'
         : 'AUTHENTICATED · VOLATILE TOKENS · SIGN IN AGAIN AFTER PAGE RELOAD')
     } catch (error) {
+      if (!isCurrentRuntime(runtime, runtimeGeneration.current)) return
       selectConfiguredBrain()
       await runtime.auth.signOut().catch(() => {})
       runtimeRef.current = null
       setConnected(false)
+      setCloudBrainReady(false)
       setMessage(error instanceof Error ? error.message : 'Cloud sign-in failed.')
     } finally {
       setBusy(false)
@@ -308,31 +342,35 @@ export function CloudAccess({ onConnected, onDisconnected, onResumeConversation,
 
   const refreshConversations = async () => {
     const runtime = runtimeRef.current
+    const generation = runtimeGeneration.current
     if (!runtime || conversationBusy) return
     setConversationBusy(true)
     try {
       const result = await runtime.api.listConversations()
+      if (!isCurrentRuntime(runtime, generation)) return
       setConversations(result.conversations)
       setMessage(`CONVERSATIONS LOADED · ${result.conversations.length} AVAILABLE`)
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : 'Conversation history could not be loaded.')
+      if (isCurrentRuntime(runtime, generation)) setMessage(error instanceof Error ? error.message : 'Conversation history could not be loaded.')
     } finally {
-      setConversationBusy(false)
+      if (runtimeGeneration.current === generation) setConversationBusy(false)
     }
   }
 
   const resumeConversation = async (id: string) => {
     const runtime = runtimeRef.current
+    const generation = runtimeGeneration.current
     if (!runtime || conversationBusy) return
     setConversationBusy(true)
     try {
       const result = await runtime.brain.resumeConversation(id)
+      if (!isCurrentRuntime(runtime, generation)) return
       onResumeConversation?.(result.messages)
       setMessage(`CONVERSATION RESTORED · ${result.messages.length} MESSAGES`)
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : 'Conversation could not be restored.')
+      if (isCurrentRuntime(runtime, generation)) setMessage(error instanceof Error ? error.message : 'Conversation could not be restored.')
     } finally {
-      setConversationBusy(false)
+      if (runtimeGeneration.current === generation) setConversationBusy(false)
     }
   }
 
@@ -346,104 +384,160 @@ export function CloudAccess({ onConnected, onDisconnected, onResumeConversation,
 
   const refreshMemoryCandidates = async () => {
     const runtime = runtimeRef.current
+    const generation = runtimeGeneration.current
     if (!runtime || memoryReviewBusy || !memoryReviewAvailable) return
     setMemoryReviewBusy(true)
     try {
       const result = await runtime.api.listSemanticMemoryCandidates()
+      if (!isCurrentRuntime(runtime, generation)) return
       setMemoryCandidates(result.candidates)
       setMessage('MEMORY REVIEW QUEUE REFRESHED · ' + result.candidates.length + ' PENDING')
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : 'Memory review queue could not be refreshed.')
+      if (isCurrentRuntime(runtime, generation)) setMessage(error instanceof Error ? error.message : 'Memory review queue could not be refreshed.')
     } finally {
-      setMemoryReviewBusy(false)
+      if (runtimeGeneration.current === generation) setMemoryReviewBusy(false)
     }
   }
 
   const toggleMemoryContext = async (enabled: boolean) => {
     const runtime = runtimeRef.current
+    const generation = runtimeGeneration.current
     if (!runtime || memoryBusy) return
     const previous = memoryContextEnabled
     setMemoryContextEnabled(enabled)
     setMemoryBusy(true)
     try {
-      await runtime.api.setMemoryContextEnabled(enabled)
+      const updated = await runtime.api.setMemoryPreferences({ contextEnabled: enabled })
+      if (!isCurrentRuntime(runtime, generation)) return
+      setMemoryContextEnabled(updated.contextEnabled)
+      setMemoryAutoCaptureEnabled(updated.autoCaptureEnabled)
       setMessage(enabled
         ? 'APPROVED MEMORY CONTEXT ENABLED · UP TO 20 RECORDS'
-        : 'APPROVED MEMORY CONTEXT DISABLED')
+        : 'APPROVED MEMORY CONTEXT AND AUTO-CAPTURE DISABLED')
     } catch (error) {
-      setMemoryContextEnabled(previous)
-      setMessage(error instanceof Error ? error.message : 'Memory preference could not be saved.')
+      if (isCurrentRuntime(runtime, generation)) {
+        setMemoryContextEnabled(previous)
+        setMessage(error instanceof Error ? error.message : 'Memory preference could not be saved.')
+      }
     } finally {
-      setMemoryBusy(false)
+      if (runtimeGeneration.current === generation) setMemoryBusy(false)
+    }
+  }
+
+  const toggleMemoryAutoCapture = async (enabled: boolean) => {
+    const runtime = runtimeRef.current
+    const generation = runtimeGeneration.current
+    if (!runtime || memoryBusy || !memoryContextEnabled) return
+    const previous = memoryAutoCaptureEnabled
+    setMemoryAutoCaptureEnabled(enabled)
+    setMemoryBusy(true)
+    try {
+      const updated = await runtime.api.setMemoryPreferences({ autoCaptureEnabled: enabled })
+      if (!isCurrentRuntime(runtime, generation)) return
+      setMemoryContextEnabled(updated.contextEnabled)
+      setMemoryAutoCaptureEnabled(updated.autoCaptureEnabled)
+      setMessage(enabled
+        ? 'AUTOMATIC MEMORY SUGGESTIONS ENABLED · PENDING APPROVAL ONLY'
+        : 'AUTOMATIC MEMORY SUGGESTIONS DISABLED')
+    } catch (error) {
+      if (isCurrentRuntime(runtime, generation)) {
+        setMemoryAutoCaptureEnabled(previous)
+        setMessage(error instanceof Error ? error.message : 'Automatic memory preference could not be saved.')
+      }
+    } finally {
+      if (runtimeGeneration.current === generation) setMemoryBusy(false)
     }
   }
 
   const decideMemoryCandidate = async (id: string, decision: 'approved' | 'rejected') => {
     const runtime = runtimeRef.current
+    const generation = runtimeGeneration.current
     if (!runtime || memoryBusy) return
     setMemoryBusy(true)
     try {
       await runtime.api.decideSemanticMemoryCandidate(id, decision)
+      if (!isCurrentRuntime(runtime, generation)) return
       setMemoryCandidates((items) => items.filter((item) => item.id !== id))
       setMessage(decision === 'approved'
         ? 'MEMORY CANDIDATE APPROVED · AVAILABLE TO PERSONAL MEMORY SEARCH'
         : 'MEMORY CANDIDATE REJECTED')
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : 'Memory candidate decision could not be saved.')
+      if (isCurrentRuntime(runtime, generation)) setMessage(error instanceof Error ? error.message : 'Memory candidate decision could not be saved.')
     } finally {
-      setMemoryBusy(false)
+      if (runtimeGeneration.current === generation) setMemoryBusy(false)
     }
   }
 
   const saveMemory = async (event: FormEvent) => {
     event.preventDefault()
     const runtime = runtimeRef.current
+    const generation = runtimeGeneration.current
     if (!runtime || memoryBusy || !memoryContent.trim()) return
     setMemoryBusy(true)
     try {
       const result = await runtime.api.createMemory({ category: memoryCategory, content: memoryContent })
+      if (!isCurrentRuntime(runtime, generation)) return
       setMemories((items) => [result.memory, ...items])
       setMemoryContent('')
       setMessage('MEMORY SAVED · EXPLICIT USER APPROVAL')
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : 'Memory could not be saved.')
+      if (isCurrentRuntime(runtime, generation)) setMessage(error instanceof Error ? error.message : 'Memory could not be saved.')
     } finally {
-      setMemoryBusy(false)
+      if (runtimeGeneration.current === generation) setMemoryBusy(false)
     }
   }
 
   const deleteMemory = async (id: string) => {
     const runtime = runtimeRef.current
+    const generation = runtimeGeneration.current
     if (!runtime || memoryBusy) return
     setMemoryBusy(true)
     try {
       await runtime.api.deleteMemory(id)
+      if (!isCurrentRuntime(runtime, generation)) return
       setMemories((items) => items.filter((item) => item.id !== id))
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : 'Memory could not be deleted.')
+      if (isCurrentRuntime(runtime, generation)) setMessage(error instanceof Error ? error.message : 'Memory could not be deleted.')
     } finally {
-      setMemoryBusy(false)
+      if (runtimeGeneration.current === generation) setMemoryBusy(false)
     }
   }
 
   const signOut = async () => {
     if (busy) return
     setBusy(true)
+    const runtime = runtimeRef.current
+    runtimeGeneration.current += 1
+    runtimeRef.current = null
     selectConfiguredBrain()
+    // Clear local account-scoped state immediately; never wait for network
+    // sign-out before hiding one family member's private data.
+    onSpeechApiReady?.(null)
+    onTtsApiReady?.(null)
+    setConnected(false)
+      setCloudBrainReady(false)
+    setCanRestoreTabSession(false)
+    setMemories([])
+    setMemoryCandidates([])
+    setMemoryReviewAvailable(false)
+    setMemoryReviewBusy(false)
+    setConversations([])
+    setConversationBusy(false)
+    setMemoryContextEnabled(false)
+    setMemoryAutoCaptureEnabled(false)
+    setMemoryContent('')
+    setMemoryCategory('preference')
+    setMemoryBusy(false)
+    setProviderStatus('NOT CHECKED')
+    try { window.sessionStorage.removeItem(TAB_SESSION_CHOICE) } catch { /* Sign-out remains complete if storage is unavailable. */ }
+    onDisconnected?.()
     try {
-      await runtimeRef.current?.auth.signOut()
+      await runtime?.auth.signOut()
       setMessage('CLOUD SIGNED OUT · SIGN IN AGAIN TO CONTINUE')
     } catch {
       setMessage('CLOUD SIGNED OUT · LOCAL TOKENS CLEARED')
     } finally {
-      runtimeRef.current = null
-      onSpeechApiReady?.(null)
-      onTtsApiReady?.(null)
-      setConnected(false)
-      setCanRestoreTabSession(false)
-      try { window.sessionStorage.removeItem(TAB_SESSION_CHOICE) } catch { /* Sign-out remains complete if storage is unavailable. */ }
       setBusy(false)
-      onDisconnected?.()
     }
   }
 
@@ -461,7 +555,7 @@ export function CloudAccess({ onConnected, onDisconnected, onResumeConversation,
       <button type="button" onClick={() => setExpanded((value) => !value)}
         style={{ width: '100%', border: 0, background: 'transparent', color: 'inherit',
           textAlign: 'left', cursor: 'pointer', font: 'inherit', padding: 0 }}>
-        {connected ? '● CLOUD BRAIN ACTIVE' : '＋ CONNECT CLOUD BRAIN'}
+        {connected ? (cloudBrainReady ? '● CLOUD BRAIN ACTIVE' : '● CLOUD ACCOUNT CONNECTED') : '＋ CONNECT CLOUD BRAIN'}
         <span style={{ float: 'right' }}>{expanded ? '−' : '+'}</span>
       </button>
       {expanded && (
@@ -474,8 +568,13 @@ export function CloudAccess({ onConnected, onDisconnected, onResumeConversation,
                 onChange={(event) => void toggleMemoryContext(event.target.checked)} />
               Include approved memories in JARVIS replies
             </label>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8, letterSpacing: 0, opacity: memoryContextEnabled ? 1 : 0.55 }}>
+              <input type="checkbox" checked={memoryAutoCaptureEnabled} disabled={memoryBusy || !memoryContextEnabled}
+                onChange={(event) => void toggleMemoryAutoCapture(event.target.checked)} />
+              Automatically suggest memories from cloud conversations
+            </label>
             <div style={{ color: '#7797a2', marginBottom: 10, letterSpacing: 0 }}>
-              Off by default. When enabled, up to 20 non-expired saved memories and up to 8 relevant approved facts from prior conversations may be included with your message and sent to the configured AI provider. Pending candidates are never included.
+              Retrieval and automatic capture are separate account-level controls. Auto-capture is available only while memory context is enabled. It creates filtered, provenance-linked pending suggestions only — it never approves or saves a fact automatically. Sensitive content is excluded. Each household account controls its own setting.
             </div>
             <section aria-label="Pending semantic memory candidates" style={{ borderTop: '1px solid #214653', borderBottom: '1px solid #214653', padding: '10px 0', marginBottom: 12 }}>
               <strong style={{ display: 'block', color: '#83d9e8', marginBottom: 8 }}>MEMORY REVIEW QUEUE · {memoryCandidates.length}</strong>
@@ -608,13 +707,12 @@ export function CloudAccess({ onConnected, onDisconnected, onResumeConversation,
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
               {authMode !== 'signin' && authMode !== 'set-password' && <button type="button" onClick={() => setAuthMode('signin')} style={buttonStyle}>BACK TO SIGN IN</button>}
               {authMode === 'signin' && <>
-                <button type="button" onClick={() => setAuthMode('signup')} style={buttonStyle}>CREATE ACCOUNT</button>
                 <button type="button" onClick={() => setAuthMode('reset')} style={buttonStyle}>FORGOT PASSWORD?</button>
               </>}
             </div>
             {message && <div role="status" style={{ color: '#ffbd91', lineHeight: 1.5 }}>{message}</div>}
             <div style={{ color: '#7797a2', lineHeight: 1.5, letterSpacing: 0 }}>
-              {authMode === 'set-password' ? 'Your secure invitation or recovery link is ready. Choose a password to activate this account.' : 'Each family member signs in with a separate email and password. Conversations and personal memories remain private to that account.'}
+              {authMode === 'set-password' ? 'Your secure invitation or recovery link is ready. Choose a password to activate this account.' : 'Use the existing JARVIS account for this person. Each family member has a separate sign-in; conversations and personal memories remain private to that account. Account creation is disabled here to avoid duplicate registrations.'}
             </div>
           </form>
         )

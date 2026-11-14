@@ -1,6 +1,8 @@
 import { createClient } from '@supabase/supabase-js'
+import { getApiRoutePathCandidates } from './route-path.ts'
+import { extractSpeechTranscript, isCloudflareDailyQuotaExhausted } from './speech-transcript.ts'
 import { getFreeProviderStatus, startFreeModelStream } from './model-router.ts'
-import { isSemanticMemoryId, normalizeSemanticMemoryQuery, parseSemanticMemoryCandidate, parseSemanticMemoryDecision, parseSemanticMemorySearch } from './semantic-memory.ts'
+import { isSemanticMemoryId, isSafeAutoMemorySource, mergeSemanticMemoryPreferences, normalizeSemanticMemoryQuery, parseAutoMemoryCandidates, parseSemanticMemoryCandidate, parseSemanticMemoryDecision, parseSemanticMemorySearch } from './semantic-memory.ts'
 
 const VERSION = 1
 const MAX_TEXT = 20_000
@@ -29,6 +31,8 @@ function corsHeaders(origin: string | null): HeadersInit {
     'https://jarvis-lauro-fiorenzani.vercel.app',
     'https://jarvis-git-work-memory-integration-ready-lauro-fiorenzani.vercel.app',
     'https://jarvis-omiyzyv9b-lauro-fiorenzani.vercel.app',
+    'https://jarvis-git-work-jarvis-amber-production-track-lauro-fiorenzani.vercel.app',
+    'https://jarvis-git-work-jarvis-canonical-integration-lauro-fiorenzani.vercel.app',
     ...(Deno.env.get('JARVIS_ALLOWED_ORIGIN') || '').split(',').map((value) => value.trim()).filter(Boolean),
   ])
   const isLocalDevelopmentOrigin = (() => {
@@ -42,10 +46,23 @@ function corsHeaders(origin: string | null): HeadersInit {
       return false
     }
   })()
-  if (!origin || (!allowedOrigins.has(origin) && !isLocalDevelopmentOrigin)) return { Vary: 'Origin' }
+  // Vercel generates a fresh immutable hostname for each Preview deployment.
+  // Allow only this project's deployment host pattern, never arbitrary *.vercel.app.
+  const isJarvisPreviewOrigin = (() => {
+    if (!origin) return false
+    try {
+      const parsed = new URL(origin)
+      return parsed.protocol === 'https:' &&
+        /^jarvis-[a-z0-9-]+-lauro-fiorenzani\.vercel\.app$/i.test(parsed.hostname)
+    } catch {
+      return false
+    }
+  })()
+  if (!origin || (!allowedOrigins.has(origin) && !isLocalDevelopmentOrigin && !isJarvisPreviewOrigin)) return { Vary: 'Origin' }
   return {
     'Access-Control-Allow-Origin': origin,
-    'Access-Control-Allow-Headers': 'apikey, authorization, content-type, x-jarvis-api-version',
+    // Supabase regional invocations require x-region to survive browser preflight.
+    'Access-Control-Allow-Headers': 'apikey, authorization, content-type, x-jarvis-api-version, x-region',
     'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
     'Access-Control-Max-Age': '86400',
     Vary: 'Origin',
@@ -115,16 +132,22 @@ async function readBoundedJson(request: Request, maxBytes: number): Promise<unkn
 Deno.serve(async (request) => {
   const origin = request.headers.get('origin')
   const cors = corsHeaders(origin)
-  if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors })
-
   const url = new URL(request.url)
-  const rawPath = url.pathname.replace(/\/$/, '') || '/'
-  const functionMarker = '/jarvis-api'
-  const markerIndex = rawPath.lastIndexOf(functionMarker)
-  const suffixPath = markerIndex >= 0 ? rawPath.slice(markerIndex + functionMarker.length) || '/' : rawPath
-  const stripVersion = (value: string) => value.replace(/^\/v1(?=\/|$)/, '').replace(/\/$/, '') || '/'
-  const pathCandidates = [...new Set([rawPath, suffixPath, stripVersion(rawPath), stripVersion(suffixPath)])]
-  const path = stripVersion(suffixPath)
+  const isPublicHealthPath = url.pathname.endsWith('/v1/health') || url.pathname.endsWith('/health')
+  if (request.method === 'OPTIONS') {
+    const preflightHeaders = isPublicHealthPath
+      ? {
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Headers': 'apikey, authorization, content-type, x-jarvis-api-version',
+          'Access-Control-Allow-Methods': 'GET, OPTIONS',
+          'Access-Control-Max-Age': '86400',
+          Vary: 'Origin',
+        }
+      : cors
+    return new Response(null, { status: 204, headers: preflightHeaders })
+  }
+  const pathCandidates = getApiRoutePathCandidates(url.pathname)
+  const path = pathCandidates[pathCandidates.length - 1]
   const matchesPath = (expected: string) => pathCandidates.includes(expected)
   const matchPath = (pattern: RegExp) => {
     for (const candidate of pathCandidates) {
@@ -140,9 +163,17 @@ Deno.serve(async (request) => {
     url.pathname === '/health' ||
     url.pathname === '/v1/health' ||
     url.pathname.endsWith('/jarvis-api/health') ||
-    url.pathname.endsWith('/jarvis-api/v1/health')
+    url.pathname.endsWith('/jarvis-api/v1/health') ||
+    // The preview function has a different slug; the public health endpoint
+    // must remain reachable before a bearer token exists for every deployment.
+    url.pathname.endsWith('/v1/health')
   if (request.method === 'GET' && isHealthRoute) {
-    return response({ version: VERSION, status: 'ok' }, 200, cors)
+    // Health contains no account data or credentials. A wildcard CORS response
+    // keeps this public bootstrap check readable from immutable Preview origins.
+    return response({ version: VERSION, status: 'ok' }, 200, {
+      'Access-Control-Allow-Origin': '*',
+      Vary: 'Origin',
+    })
   }
 
   const authHeader = request.headers.get('authorization') ?? ''
@@ -173,12 +204,95 @@ Deno.serve(async (request) => {
     return limitError ? null : data === true
   }
 
+  const captureAutomaticMemory = async (
+    sourceConversationId: string,
+    sourceMessageIds: string[],
+    userText: string,
+    assistantText: string,
+  ) => {
+    // A separate per-user rate limit keeps this optional second model call bounded.
+    const allowed = await consumeLimit('semantic_memory_auto_capture_hour', 5, 3600)
+    if (allowed !== true || !isSafeAutoMemorySource(userText + '\n' + assistantText)) return
+    try {
+      const routed = await startFreeModelStream([
+        {
+          role: 'system',
+          content: 'You extract durable, useful, non-sensitive memory suggestions from one conversation exchange. Never infer or invent. Exclude health, medical, financial, legal, identity, contact, authentication, political, religious, sexual, intimate, and other sensitive personal data. Exclude secrets, credentials, tokens, passwords, account numbers, addresses, phone numbers, and email addresses. Do not store transient requests, one-off questions, temporary plans, or details that are only true for the current moment. Return ONLY valid JSON in this exact shape: {"candidates":[{"factType":"preference|fact|decision|goal|workflow|constraint","content":"short standalone factual statement"}]}. Return an empty candidates array if nothing is clearly durable and useful. Maximum 5 candidates.',
+        },
+        {
+          role: 'user',
+          content: JSON.stringify({ userMessage: userText.slice(0, 6_000), assistantReply: assistantText.slice(0, 6_000) }),
+        },
+      ], AbortSignal.timeout(20_000))
+      if (!routed.response.body) return
+      const reader = routed.response.body.getReader()
+      const decoder = new TextDecoder()
+      let buffer = ''
+      let extracted = ''
+      const consumeFrame = (frame: string) => {
+        const dataLine = frame.split(/\r?\n/).find((line) => line.startsWith('data:'))
+        if (!dataLine) return
+        const raw = dataLine.slice(5).trim()
+        if (!raw || raw === '[DONE]') return
+        const event = JSON.parse(raw)
+        if (isRecord(event) && event.type === 'content_block_delta' &&
+            isRecord(event.delta) && event.delta.type === 'text_delta' &&
+            typeof event.delta.text === 'string') {
+          extracted += event.delta.text
+          if (extracted.length > 12_000) throw new Error('memory_extraction_too_large')
+        }
+      }
+      try {
+        while (true) {
+          const { value, done } = await reader.read()
+          if (done) break
+          buffer += decoder.decode(value, { stream: true })
+          let separator: RegExpExecArray | null
+          while ((separator = /\r?\n\r?\n/.exec(buffer)) !== null) {
+            const frame = buffer.slice(0, separator.index)
+            buffer = buffer.slice(separator.index + separator[0].length)
+            consumeFrame(frame)
+          }
+        }
+        buffer += decoder.decode()
+        if (buffer.trim()) consumeFrame(buffer)
+      } finally {
+        reader.releaseLock()
+      }
+      const cleaned = extracted.trim()
+        .replace(/^\`\`\`(?:json)?\s*/i, '')
+        .replace(/\s*\`\`\`$/, '')
+      const parsed = JSON.parse(cleaned)
+      const candidates = parseAutoMemoryCandidates(parsed, sourceConversationId, sourceMessageIds)
+      for (const candidate of candidates) {
+        const { data: existing, error: duplicateError } = await db.from('jarvis_memory_facts')
+          .select('id').eq('user_id', userId).eq('content', candidate.content)
+          .in('status', ['pending', 'approved']).limit(1)
+        if (duplicateError || existing?.length) continue
+        await db.from('jarvis_memory_facts').insert({
+          user_id: userId,
+          fact_type: candidate.factType,
+          content: candidate.content,
+          source_conversation_id: candidate.sourceConversationId,
+          source_message_ids: candidate.sourceMessageIds,
+          confidence: 0.65,
+          sensitivity: 'normal',
+          status: 'pending',
+        })
+      }
+    } catch {
+      // Extraction is best-effort and must never fail or delay the completed chat turn.
+      console.warn('[jarvis] automatic memory candidate extraction failed')
+    }
+  }
+
   if (request.method === 'POST' && matchesPath('/stt')) {
     const allowed = await consumeLimit('speech_transcription_minute', 30, 60)
     if (allowed === null) return error('service_unavailable', 'Speech rate limiter is unavailable.', 503, true, cors)
     if (!allowed) return error('rate_limited', 'Too many speech segments. Please pause briefly.', 429, true, cors)
-    const apiKey = Deno.env.get('GOOGLE_AI_STUDIO_API_KEY')?.trim()
-    if (!apiKey) return error('service_unavailable', 'Speech provider is not configured.', 503, false, cors)
+    const accountId = Deno.env.get('CLOUDFLARE_ACCOUNT_ID')?.trim()
+    const apiToken = Deno.env.get('CLOUDFLARE_API_TOKEN')?.trim()
+    if (!/^[a-f0-9]{32}$/i.test(accountId ?? '') || !apiToken) return error('service_unavailable', 'Cloud speech recognition is not configured.', 503, false, cors)
     const mimeType = (request.headers.get('content-type') || '').split(';')[0].trim().toLowerCase()
     const allowedAudioTypes = new Set(['audio/webm', 'audio/mp4', 'audio/m4a', 'audio/x-m4a', 'audio/aac', 'audio/x-aac', 'audio/ogg', 'audio/wav', 'audio/mpeg', 'audio/mp3', 'audio/flac'])
     if (!allowedAudioTypes.has(mimeType)) return error('invalid_request', 'Unsupported audio format.', 415, false, cors)
@@ -188,92 +302,50 @@ Deno.serve(async (request) => {
       if (cause instanceof Error && cause.message === 'body_too_large') return error('invalid_request', 'Audio segment is too large.', 413, false, cors)
       return error('invalid_request', 'Audio segment is missing.', 400, false, cors)
     }
-    if (audio.byteLength < 1_200) return response({ version: VERSION, text: '' }, 200, cors)
-    const upstream = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-transcribe:generateContent', {
+    if (audio.byteLength < 256) {
+      console.info('[jarvis] ignored near-empty speech segment', { bytes: audio.byteLength, mimeType })
+      return response({ version: VERSION, text: '' }, 200, cors)
+    }
+    // Copy into a concrete ArrayBuffer; Deno fetch rejects generic ArrayBufferLike views as BodyInit.
+    const audioBody = new ArrayBuffer(audio.byteLength)
+    new Uint8Array(audioBody).set(audio)
+    const upstream = await fetch(`https://api.cloudflare.com/client/v4/accounts/${accountId}/ai/run/@cf/openai/whisper`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
-      body: JSON.stringify({
-        contents: [{ role: 'user', parts: [
-          { text: 'Transcribe exactly what the speaker says. Automatically detect the spoken language. Preserve the original language and wording. The speaker may switch between Portuguese and English within the same conversation. Return only the transcript.' },
-          { inlineData: { mimeType, data: encodeBase64(audio) } },
-        ] }],
-        generationConfig: { temperature: 0 },
-      }),
+      headers: { 'Content-Type': 'application/octet-stream', Authorization: 'Bearer ' + apiToken },
+      body: audioBody,
       signal: AbortSignal.timeout(30_000),
     }).catch(() => null)
     if (!upstream) return error('service_unavailable', 'Speech transcription service could not be reached.', 503, true, cors)
+    const payload = await upstream.json().catch(() => null)
     if (!upstream.ok) {
-      // Preserve provider throttling semantics so the client can distinguish
-      // exhausted quota from a network outage and honour a bounded cooldown.
-      console.warn('[jarvis] speech transcription provider returned non-success status', { status: upstream.status })
+      const dailyQuotaExhausted = isCloudflareDailyQuotaExhausted(payload)
+      console.warn('[jarvis] Cloudflare speech provider returned non-success status', { status: upstream.status, code: dailyQuotaExhausted ? 'daily_free_allocation_exhausted' : 'provider_error' })
+      if (dailyQuotaExhausted) {
+        const now = new Date()
+        const nextReset = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1)
+        const retryAfter = Math.max(60, Math.min(86_400, Math.ceil((nextReset - now.getTime()) / 1_000)))
+        return error('quota_exhausted', 'The Workers AI free daily allocation has been reached. It resets at 00:00 UTC.', 429, true, { ...cors, 'Retry-After': String(retryAfter) })
+      }
       if (upstream.status === 429) {
         const retryAfter = upstream.headers.get('retry-after')
         const seconds = retryAfter && /^\d{1,4}$/.test(retryAfter) ? Math.min(300, Math.max(5, Number(retryAfter))) : 60
-        return error('rate_limited', 'Speech transcription quota is temporarily unavailable. Please wait before trying again.', 429, true, {
-          ...cors,
-          'Retry-After': String(seconds),
-        })
+        return error('rate_limited', 'Speech transcription is temporarily rate limited. Please wait before trying again.', 429, true, { ...cors, 'Retry-After': String(seconds) })
       }
       return error('service_unavailable', 'Speech transcription failed. Please try again.', 503, true, cors)
     }
-    const payload = await upstream.json().catch(() => null)
-    const transcript = payload && typeof payload === 'object'
-      ? (payload as { candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }> }).candidates?.[0]?.content?.parts?.map((part) => part.text || '').join('').trim()
-      : ''
-    if (typeof transcript !== 'string') return error('service_unavailable', 'Speech transcription returned no text.', 503, true, cors)
+    const transcript = extractSpeechTranscript(payload)
+    if (!transcript) {
+      console.warn('[jarvis] speech provider returned an empty transcript', { audioBytes: audio.byteLength, mimeType })
+      return error('service_unavailable', 'Speech transcription returned no text. Please try again.', 503, true, cors)
+    }
     return response({ version: VERSION, text: transcript }, 200, cors)
   }
 
   if (request.method === 'POST' && matchesPath('/tts')) {
-    const allowed = await consumeLimit('speech_synthesis_minute', 30, 60)
-    if (allowed === null) return error('service_unavailable', 'Speech synthesis rate limiter is unavailable.', 503, true, cors)
-    if (!allowed) return error('rate_limited', 'Too many speech requests. Please pause briefly.', 429, true, cors)
-    let body: unknown
-    try { body = await readBoundedJson(request, 8_192) }
-    catch (cause) {
-      if (cause instanceof Error && cause.message === 'body_too_large') return error('invalid_request', 'Speech text is too large.', 413, false, cors)
-      return error('invalid_request', 'Speech request must be valid JSON.', 400, false, cors)
-    }
-    if (!isRecord(body) || body.version !== VERSION || typeof body.text !== 'string') return error('invalid_request', 'Invalid speech request.', 400, false, cors)
-    const text = body.text.replace(/[\u0000-\u001f\u007f]/g, ' ').replace(/\s+/g, ' ').trim()
-    if (!text || text.length > 2_000) return error('invalid_request', 'Speech text must contain between 1 and 2,000 characters.', 400, false, cors)
-    const apiKey = Deno.env.get('GOOGLE_AI_STUDIO_API_KEY')?.trim()
-    if (!apiKey) return error('service_unavailable', 'Speech provider is not configured.', 503, false, cors)
-    let upstream: Response | null = null
-    for (let attempt = 0; attempt < 2; attempt++) {
-      upstream = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-tts-preview:generateContent', {
-        method: 'POST', headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
-        body: JSON.stringify({
-          contents: [{ role: 'user', parts: [{ text: 'TTS the following transcript. Speak it exactly as written, in a composed, warm, precise male assistant voice with measured pacing and clear diction. Use natural Brazilian Portuguese for Portuguese text and neutral British English for English text. Do not translate, paraphrase, or add words. Transcript: ' + text }] }],
-          generationConfig: { responseModalities: ['AUDIO'], speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Charon' } } } },
-        }),
-        signal: AbortSignal.timeout(30_000),
-      }).catch(() => null)
-      if (upstream?.ok) break
-      if (attempt === 0 && upstream && upstream.status < 500 && upstream.status !== 429) break
-    }
-    if (!upstream) return error('service_unavailable', 'Speech synthesis service could not be reached.', 503, true, cors)
-    if (!upstream.ok) {
-      console.warn('[jarvis] speech synthesis provider returned non-success status', { status: upstream.status })
-      return error('service_unavailable', 'Speech synthesis failed. Please try again.', 503, true, cors)
-    }
-    const payload = await upstream.json().catch(() => null)
-    const parts = payload && typeof payload === 'object' ? (payload as { candidates?: Array<{ content?: { parts?: Array<{ inlineData?: { mimeType?: string; data?: string } }> } }> }).candidates?.[0]?.content?.parts ?? [] : []
-    const audioPart = parts.find((part) => part.inlineData?.data)
-    if (!audioPart?.inlineData?.data || (audioPart.inlineData.mimeType || '').split(';')[0].toLowerCase() !== 'audio/l16') return error('service_unavailable', 'Speech synthesis returned no compatible audio.', 503, true, cors)
-    let binary: string
-    try { binary = atob(audioPart.inlineData.data) } catch { return error('service_unavailable', 'Speech synthesis returned invalid audio.', 503, true, cors) }
-    const pcm = new Uint8Array(binary.length)
-    for (let i = 0; i < binary.length; i++) pcm[i] = binary.charCodeAt(i)
-    if (pcm.length < 2 || pcm.length > 4 * 1024 * 1024) return error('service_unavailable', 'Speech synthesis audio size is invalid.', 503, true, cors)
-    const wav = new Uint8Array(44 + pcm.length)
-    const view = new DataView(wav.buffer)
-    const ascii = (offset: number, value: string) => { for (let i = 0; i < value.length; i++) wav[offset + i] = value.charCodeAt(i) }
-    ascii(0, 'RIFF'); view.setUint32(4, 36 + pcm.length, true); ascii(8, 'WAVE')
-    ascii(12, 'fmt '); view.setUint32(16, 16, true); view.setUint16(20, 1, true); view.setUint16(22, 1, true)
-    view.setUint32(24, 24_000, true); view.setUint32(28, 48_000, true); view.setUint16(32, 2, true); view.setUint16(34, 16, true)
-    ascii(36, 'data'); view.setUint32(40, pcm.length, true); wav.set(pcm, 44)
-    return new Response(wav, { status: 200, headers: { ...cors, 'Content-Type': 'audio/wav', 'Content-Length': String(wav.byteLength), 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' } })
+    // Gemini Free is not an eligible provider for this EEA-hosted personal app.
+    // Keep device-native speech as the only active output until an approved
+    // Portuguese/English cloud TTS provider is configured and tested.
+    return error('service_unavailable', 'Cloud speech synthesis is not configured. Use the device voice.', 503, false, cors)
   }
 
   if (request.method === 'GET' && matchesPath('/provider-status')) {
@@ -397,9 +469,13 @@ Deno.serve(async (request) => {
     if (allowed === null) return error('service_unavailable', 'Rate limiter is unavailable.', 503, true, cors)
     if (!allowed) return error('rate_limited', 'Memory preference request limit reached.', 429, true, cors)
     const { data, error: preferenceError } = await db.from('jarvis_memory_preferences')
-      .select('context_enabled').eq('user_id', userId).maybeSingle()
+      .select('context_enabled,auto_capture_enabled').eq('user_id', userId).maybeSingle()
     if (preferenceError) return error('service_unavailable', 'Memory preferences could not be loaded.', 503, true, cors)
-    return response({ version: VERSION, contextEnabled: data?.context_enabled === true }, 200, cors)
+    return response({
+      version: VERSION,
+      contextEnabled: data?.context_enabled === true,
+      autoCaptureEnabled: data?.auto_capture_enabled === true,
+    }, 200, cors)
   }
 
   if (request.method === 'PUT' && matchesPath('/memory-preferences')) {
@@ -409,18 +485,33 @@ Deno.serve(async (request) => {
     let body: unknown
     try { body = await readBoundedJson(request, 1_024) }
     catch { return error('invalid_request', 'Request body must be valid JSON.', 400, false, cors) }
-    if (!isRecord(body) || body.version !== VERSION || typeof body.contextEnabled !== 'boolean') {
+    if (!isRecord(body) || body.version !== VERSION ||
+        (typeof body.contextEnabled !== 'boolean' && typeof body.autoCaptureEnabled !== 'boolean')) {
       return error('invalid_request', 'Invalid memory preference.', 400, false, cors)
     }
+    const { data: current, error: currentError } = await db.from('jarvis_memory_preferences')
+      .select('context_enabled,auto_capture_enabled').eq('user_id', userId).maybeSingle()
+    if (currentError) return error('service_unavailable', 'Current memory preferences could not be loaded.', 503, true, cors)
+    const nextPreferences = mergeSemanticMemoryPreferences({
+      contextEnabled: current?.context_enabled === true,
+      autoCaptureEnabled: current?.auto_capture_enabled === true,
+    }, {
+      ...(typeof body.contextEnabled === 'boolean' ? { contextEnabled: body.contextEnabled } : {}),
+      ...(typeof body.autoCaptureEnabled === 'boolean' ? { autoCaptureEnabled: body.autoCaptureEnabled } : {}),
+    })
+    const { contextEnabled, autoCaptureEnabled } = nextPreferences
     const { error: preferenceError } = await db.from('jarvis_memory_preferences').upsert({
-      user_id: userId, context_enabled: body.contextEnabled, updated_at: new Date().toISOString(),
+      user_id: userId,
+      context_enabled: contextEnabled,
+      auto_capture_enabled: autoCaptureEnabled,
+      updated_at: new Date().toISOString(),
     }, { onConflict: 'user_id' })
     if (preferenceError) return error('service_unavailable', 'Memory preference could not be saved.', 503, true, cors)
-    return response({ version: VERSION, contextEnabled: body.contextEnabled }, 200, cors)
+    return response({ version: VERSION, contextEnabled, autoCaptureEnabled }, 200, cors)
   }
 
-  // Personal memory is written only through this explicit authenticated endpoint.
-  // Chat turns never auto-populate this table; the caller must request a save.
+  // Legacy jarvis_memories remain explicit-only. Semantic facts are separate:
+  // opted-in cloud turns may create pending suggestions, never approved facts.
   if (request.method === 'GET' && matchesPath('/memories')) {
     const allowed = await consumeLimit('memory_read_minute', 30, 60)
     if (allowed === null) return error('service_unavailable', 'Rate limiter is unavailable.', 503, true, cors)
@@ -641,10 +732,10 @@ Deno.serve(async (request) => {
       return error('service_unavailable', 'Turn could not be reserved.', 503, true, cors)
     }
 
-    const { error: messageError } = await db.from('jarvis_messages').insert({
+    const { data: userMessage, error: messageError } = await db.from('jarvis_messages').insert({
       conversation_id: conversationId, user_id: userId, role: 'user', content: text,
-    })
-    if (messageError) {
+    }).select('id').single()
+    if (messageError || !userMessage) {
       await db.from('jarvis_turns').update({ status: 'failed', error_code: 'internal_error' })
         .eq('id', turnId).eq('user_id', userId)
       return error('service_unavailable', 'Message could not be saved.', 503, true, cors)
@@ -655,7 +746,7 @@ Deno.serve(async (request) => {
       .eq('user_id', userId).order('created_at', { ascending: false }).limit(40)
 
     const { data: memoryPreference, error: preferenceReadError } = await db.from('jarvis_memory_preferences')
-      .select('context_enabled').eq('user_id', userId).maybeSingle()
+      .select('context_enabled,auto_capture_enabled').eq('user_id', userId).maybeSingle()
     if (preferenceReadError) {
       await db.from('jarvis_turns').update({ status: 'failed', error_code: 'service_unavailable' })
         .eq('id', turnId).eq('user_id', userId)
@@ -874,6 +965,19 @@ Deno.serve(async (request) => {
           }
           await db.from('jarvis_conversations').update({ updated_at: new Date().toISOString() })
             .eq('id', conversationId).eq('user_id', userId)
+          if (memoryPreference?.context_enabled === true && memoryPreference.auto_capture_enabled === true) {
+            const task = captureAutomaticMemory(
+              conversationId,
+              [userMessage.id, assistantMessage.id],
+              text,
+              answer,
+            )
+            const edgeRuntime = (globalThis as unknown as {
+              EdgeRuntime?: { waitUntil?: (promise: Promise<unknown>) => void }
+            }).EdgeRuntime
+            if (edgeRuntime?.waitUntil) edgeRuntime.waitUntil(task)
+            else void task
+          }
           emit({
             version: VERSION, type: 'turn.completed', conversationId, turnId,
             assistantMessage: {

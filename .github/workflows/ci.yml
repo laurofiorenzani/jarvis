@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [main, "work/**"]
+    branches: [main]
   pull_request:
   workflow_dispatch:
 
@@ -71,16 +71,23 @@ jobs:
       - name: Test provider privacy routing
         run: deno test supabase/functions/jarvis-api/model-router_test.ts
 
+      - name: Test semantic-memory validation and auto-capture policy
+        run: deno test supabase/functions/jarvis-api/semantic-memory.deno.ts
+
       - name: Type-check Supabase Edge Function
         run: deno check supabase/functions/jarvis-api/index.ts
 
+      - name: Test speech transcript extraction and empty-response handling
+        run: deno test supabase/functions/jarvis-api/speech-transcript_test.ts
+
       - name: Set up Supabase CLI
-        uses: supabase/setup-cli@v1
+        id: setup_supabase_cli
+        uses: supabase/setup-cli@v3
         with:
-          version: latest
+          version: v2.stable
 
       - name: Start isolated local Supabase database
-        run: supabase start
+        run: supabase start --exclude inbucket
 
       - name: Apply migrations to isolated local database
         run: supabase db reset
@@ -117,8 +124,12 @@ jobs:
             node scripts/test-semantic-memory-integration.mjs
 
       - name: Stop isolated local Supabase stack
-        if: always()
-        run: supabase stop --no-backup
+        if: always() && steps.setup_supabase_cli.outcome == 'success'
+        shell: bash
+        run: |
+          if ! supabase stop --no-backup; then
+            echo "::warning::Local Supabase teardown failed after the database and authenticated API checks completed; the ephemeral GitHub runner will reclaim remaining containers."
+          fi
 
       - name: Smoke-test deployed cloud API and production CORS
         shell: bash
@@ -136,3 +147,17 @@ jobs:
             --header "Access-Control-Request-Headers: apikey,authorization,x-jarvis-api-version")"
           grep -Fqi "access-control-allow-origin: https://jarvis-lauro-fiorenzani.vercel.app" <<< "$headers"
           grep -Eqi "access-control-allow-headers:.*apikey" <<< "$headers"
+
+      - name: Smoke-test canonical integration preview CORS
+        shell: bash
+        run: |
+          set -euo pipefail
+          endpoint="https://undmhmdwhxvjgvezvucy.supabase.co/functions/v1/jarvis-preview-api"
+          apikey="$(sed -nE "s/.*supabasePublishableKey:.*'([^']+)'.*/\\1/p" src/config.ts | head -n 1)"
+          test -n "$apikey"
+          headers="$(curl --silent --show-error --dump-header - --output /dev/null --request OPTIONS "$endpoint/provider-status" \
+            --header "apikey: $apikey" \
+            --header "Origin: https://jarvis-git-work-jarvis-canonical-integration-lauro-fiorenzani.vercel.app" \
+            --header "Access-Control-Request-Method: GET" \
+            --header "Access-Control-Request-Headers: apikey,authorization,x-jarvis-api-version,x-region")"
+          grep -Fqi "access-control-allow-origin: https://jarvis-git-work-jarvis-canonical-integration-lauro-fiorenzani.vercel.app" <<< "$headers"

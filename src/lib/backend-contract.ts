@@ -23,6 +23,7 @@ export type ApiErrorCode =
   | 'forbidden'
   | 'invalid_request'
   | 'rate_limited'
+  | 'quota_exhausted'
   | 'service_unavailable'
   | 'internal_error'
 
@@ -60,6 +61,7 @@ export type CreateMemoryResponse = {
 export type MemoryPreferenceResponse = {
   version: typeof CLOUD_API_VERSION
   contextEnabled: boolean
+  autoCaptureEnabled: boolean
 }
 
 
