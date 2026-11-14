@@ -1,6 +1,6 @@
 begin;
 
-select plan(39);
+select plan(42);
 
 insert into auth.users (id, aud, role, email, encrypted_password, email_confirmed_at, created_at, updated_at)
 values
@@ -168,6 +168,31 @@ select is(
    where name = 'jarvis_bmw_cardata_pending_10000000-0000-4000-8000-000000000051'),
   0,
   'consuming the state deletes its short-lived Vault secret'
+);
+select is(
+  public.jarvis_create_bmw_cardata_pending_auth(
+    '10000000-0000-4000-8000-000000000052',
+    '00000000-0000-4000-8000-000000000051',
+    'bmw-client-test', 'synthetic-expired-device-code', repeat('e', 48),
+    now() + interval '1 second'
+  ),
+  true,
+  'creates a short-lived authorization for expiry testing'
+);
+select pg_catalog.pg_sleep(1.1);
+select is(
+  (select count(*)::int from public.jarvis_consume_bmw_cardata_pending_auth(
+    '10000000-0000-4000-8000-000000000052',
+    '00000000-0000-4000-8000-000000000051'
+  )),
+  0,
+  'expired authorization cannot be consumed'
+);
+select is(
+  (select count(*)::int from vault.secrets
+   where name = 'jarvis_bmw_cardata_pending_10000000-0000-4000-8000-000000000052'),
+  0,
+  'attempting to consume an expired state deletes its Vault secret'
 );
 
 select is(
