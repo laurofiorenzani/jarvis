@@ -210,7 +210,7 @@ begin
 
   if not found then return; end if;
 
-  if v_expires_at <= pg_catalog.now() then
+  if v_expires_at <= pg_catalog.clock_timestamp() then
     delete from public.jarvis_bmw_cardata_pending_auth as pending where pending.state_id = p_state_id;
     delete from vault.secrets as secret where secret.id = v_secret_id;
     return;
