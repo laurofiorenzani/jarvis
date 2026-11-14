@@ -5,11 +5,11 @@ import { BRIDGE_WS_URL } from '../config'
 /**
  * Client for the local bridge (see bridge/server.mjs).
  *
- * Same `ask()` shape as the browser-direct path, so App.tsx doesn't care which
- * brain is behind it. The difference is what's reachable: this one runs on your
- * machine, so every MCP server in your Claude Code config is in play.
+ * Shared turn interface for the local bridge. Model inference is sent only to
+ * the loopback FreeLLMAPI gateway; external MCP servers require an explicit
+ * JARVIS_MCP_SERVERS allowlist.
  *
- * The socket is the session. The bridge holds one Claude Agent SDK query per
+ * The socket is the session. The bridge holds one Agent SDK query per
  * connection and the whole conversation lives inside it, so a dropped socket
  * silently wipes JARVIS's memory of the exchange while the transcript on screen
  * still shows it. That is why the reconnect below is loud rather than

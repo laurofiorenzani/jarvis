@@ -1,5 +1,4 @@
 import { BACKEND } from '../config'
-import * as direct from './anthropic'
 import * as bridge from './bridge'
 import type { AskHandlers, Msg } from './anthropic'
 import type { Blade, Panel } from '../store'
@@ -26,20 +25,15 @@ export type { ConnectionState } from './bridge'
  * Picks the brain. Both backends answer a question and stream text and tool
  * events back; they differ in where they run and what they can reach.
  *
- *   bridge — a local Node process running the Claude Agent SDK. Uses your
- *            existing Claude Code login, so no API key, and every MCP server
- *            you have configured is available, including local stdio ones.
- *
- *   direct — the browser calls the Claude API itself. No process to run and it
- *            deploys as a static site, but it needs an API key in the bundle
- *            and can only use remote HTTP MCP servers.
+ *   bridge — a local Node process running the Agent SDK through FreeLLMAPI.
+ *            Model inference is loopback-routed; only explicitly allowlisted MCP
+ *            servers are exposed. No Claude account fallback is permitted.
  */
 
 export const usingBridge = BACKEND === 'bridge'
-export const usingDirect = BACKEND === 'direct'
 
 /** Bridge and cloud keep conversation state server-side; only direct demo mode
- *  needs the browser to thread the transcript history through each request. */
+ *  keeps its own session state; history remains available to the cloud API adapter. */
 export async function ask(
   prompt: string,
   history: Msg[],
@@ -49,9 +43,8 @@ export async function ask(
   if (BACKEND === 'cloud') {
     throw new Error('Cloud sign-in required. Open CLOUD BRAIN and authenticate before speaking to JARVIS.')
   }
-  return usingBridge
-    ? bridge.ask(prompt, handlers)
-    : direct.ask([...history, { role: 'user', content: prompt }], handlers)
+  if (usingBridge) return bridge.ask(prompt, handlers)
+  throw new Error('Cloud sign-in required. Open CLOUD BRAIN and authenticate before speaking to JARVIS.')
 }
 
 export async function warm(): Promise<void> {
@@ -114,7 +107,6 @@ export function watchCapture(
 export function cancel(): void {
   if (activeCloudBrain) activeCloudBrain.cancel()
   else if (usingBridge) bridge.cancel()
-  else if (usingDirect) direct.cancel()
 }
 
 /** The older name for `cancel()`. */
@@ -171,5 +163,5 @@ export function decideMemoryConfirmation(
 export function connectedLabels(): string[] {
   // Cloud auth state is shown separately in Command Center. Do not present a
   // stateless HTTPS backend as a live connection before a request succeeds.
-  return usingBridge ? bridge.bridgeServers() : BACKEND === 'cloud' ? [] : direct.connectedLabels()
+  return usingBridge ? bridge.bridgeServers() : []
 }

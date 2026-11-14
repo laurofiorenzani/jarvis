@@ -18,10 +18,11 @@ function bannerWith(overrides) {
       mcpServers: {
         search: { command: 'true' },
         mailer: { command: 'true' },
+        elevenlabs: { command: 'true' },
       },
     }),
   )
-  const env = { ...process.env, HOME: home, USERPROFILE: home, JARVIS_BRIDGE_PORT: '0' }
+  const env = { ...process.env, HOME: home, USERPROFILE: home, JARVIS_PROVIDER: 'freellmapi', FREELLMAPI_API_KEY: 'ci-local-test-key', JARVIS_BRIDGE_PORT: '0' }
   delete env.JARVIS_MCP_SERVERS
   delete env.JARVIS_ACCOUNT_CONNECTORS
   Object.assign(env, overrides)
@@ -52,17 +53,17 @@ test('unset passes no configured server by default (fail closed)', async () => {
   assert.match(await bannerWith({}), /config: none ·/)
 })
 
-test('JARVIS_MCP_SERVERS passes only the named servers', async () => {
-  const line = await bannerWith({ JARVIS_MCP_SERVERS: 'search' })
+test('JARVIS_MCP_SERVERS passes only named non-metered servers', async () => {
+  const line = await bannerWith({ JARVIS_MCP_SERVERS: 'search,elevenlabs' })
   assert.match(line, /config: search ·/)
-  assert.doesNotMatch(line, /mailer/)
+  assert.doesNotMatch(line, /mailer|elevenlabs/)
 })
 
 test('an empty JARVIS_MCP_SERVERS passes none', async () => {
   assert.match(await bannerWith({ JARVIS_MCP_SERVERS: '' }), /config: none/)
 })
 
-test('account connectors are off unless asked for', async () => {
+test('subscription-backed account connectors remain disabled even when requested', async () => {
   assert.match(await bannerWith({}), /account connectors off/)
-  assert.match(await bannerWith({ JARVIS_ACCOUNT_CONNECTORS: '1' }), /account connectors ON/)
+  assert.match(await bannerWith({ JARVIS_ACCOUNT_CONNECTORS: '1' }), /account connectors off/)
 })

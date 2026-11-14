@@ -2,18 +2,36 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import { resolveBridgeProvider } from '../bridge/provider-config.mjs'
 
-test('Claude Code remains the default local provider', () => {
-  const result = resolveBridgeProvider({})
-  assert.equal(result.provider, 'claude')
-  assert.equal(result.model, 'claude-opus-5')
-  assert.equal(result.effort, 'high')
-  assert.equal(result.sdkEnv, undefined)
+test('FreeLLMAPI is the only default local provider and requires an explicit key', () => {
+  assert.throws(() => resolveBridgeProvider({}), /FREELLMAPI_API_KEY is required/)
+  const result = resolveBridgeProvider({ FREELLMAPI_API_KEY: 'local-test-key' })
+  assert.equal(result.provider, 'freellmapi')
+  assert.equal(result.model, 'auto')
+  assert.equal(result.effort, undefined)
+  assert.equal(result.sdkEnv.ANTHROPIC_BASE_URL, 'http://127.0.0.1:3001')
+  assert.equal(result.sdkEnv.ANTHROPIC_API_KEY, 'local-test-key')
+  assert.equal(result.sdkEnv.ANTHROPIC_MODEL, 'auto')
+  assert.equal(result.sdkEnv.ANTHROPIC_AUTH_TOKEN, undefined)
+  assert.equal(result.sdkEnv.CLAUDE_CODE_OAUTH_TOKEN, undefined)
+  assert.equal(result.sdkEnv.ANTHROPIC_BEDROCK_BASE_URL, undefined)
+  assert.equal(result.sdkEnv.CLAUDE_CODE_USE_VERTEX, undefined)
+})
+
+test('Claude/Anthropic direct billing fallback is explicitly rejected', () => {
+  assert.throws(
+    () => resolveBridgeProvider({ JARVIS_PROVIDER: 'claude' }),
+    /paid direct providers are disabled/,
+  )
 })
 
 test('FreeLLMAPI uses its Anthropic-compatible local endpoint and auto model', () => {
   const result = resolveBridgeProvider({
     JARVIS_PROVIDER: 'freellmapi',
     FREELLMAPI_API_KEY: 'freellmapi-test-key',
+    ANTHROPIC_AUTH_TOKEN: 'paid-auth-token-must-not-pass',
+    CLAUDE_CODE_OAUTH_TOKEN: 'claude-oauth-must-not-pass',
+    ANTHROPIC_BEDROCK_BASE_URL: 'https://bedrock.example.com',
+    CLAUDE_CODE_USE_VERTEX: '1',
   })
   assert.equal(result.provider, 'freellmapi')
   assert.equal(result.model, 'auto')
@@ -73,6 +91,6 @@ test('FreeLLMAPI refuses URL credentials, paths, queries and fragments', () => {
 test('unknown provider fails closed', () => {
   assert.throws(
     () => resolveBridgeProvider({ JARVIS_PROVIDER: 'some-provider' }),
-    /must be either/,
+    /must be "freellmapi"/,
   )
 })
