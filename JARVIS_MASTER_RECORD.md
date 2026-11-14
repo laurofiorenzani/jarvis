@@ -1,5 +1,5 @@
 # JARVIS — MASTER PROJECT RECORD
-Last reconciled: 2026-11-13 (Europe/Dublin)
+Last reconciled: 2026-11-14 (Europe/Dublin)
 Record owner: project owner + maintainers
 Canonical application repository: https://github.com/laurofiorenzani/jarvis
 Canonical working branch for this record: `work/jarvis-canonical-integration`
