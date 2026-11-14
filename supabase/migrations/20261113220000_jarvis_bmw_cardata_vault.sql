@@ -134,6 +134,7 @@ create index if not exists jarvis_bmw_cardata_pending_auth_expiry_idx
 
 alter table public.jarvis_bmw_cardata_pending_auth enable row level security;
 revoke all on table public.jarvis_bmw_cardata_pending_auth from public, anon, authenticated, service_role;
+grant select, insert, delete on table public.jarvis_bmw_cardata_pending_auth to service_role;
 
 create or replace function public.jarvis_create_bmw_cardata_pending_auth(
   p_state_id uuid, p_user_id uuid, p_client_id text, p_device_code text,
