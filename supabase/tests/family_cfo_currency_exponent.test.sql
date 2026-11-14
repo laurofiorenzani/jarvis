@@ -1,6 +1,6 @@
 begin;
 
-select plan(11);
+select plan(12);
 
 -- Synthetic registry fixtures only. Production currency metadata remains unseeded
 -- until the official pinned SIX/ISO List One snapshot is reviewed and committed.
@@ -9,7 +9,9 @@ insert into public.jarvis_cfo_currency_registry
 values
   ('EUR', 'synthetic-test-v1', 2, '2020-01-01', 'synthetic fixture; not production metadata', now()),
   ('JPY', 'synthetic-test-v1', 0, '2020-01-01', 'synthetic fixture; not production metadata', now()),
-  ('KWD', 'synthetic-test-v1', 3, '2020-01-01', 'synthetic fixture; not production metadata', now());
+  ('KWD', 'synthetic-test-v1', 3, '2020-01-01', 'synthetic fixture; not production metadata', now()),
+  -- Deliberately overlapping EUR interval to prove ambiguous metadata fails closed.
+  ('EUR', 'synthetic-test-v1', 3, '2025-01-01', 'synthetic overlapping fixture', now());
 
 select ok(public.jarvis_cfo_amount_matches_currency_exponent(12.34, 'EUR', '2026-11-13', 'synthetic-test-v1'), 'EUR accepts two fractional digits');
 select ok(public.jarvis_cfo_amount_matches_currency_exponent(1200, 'JPY', '2026-11-13', 'synthetic-test-v1'), 'JPY accepts zero fractional digits');
@@ -22,6 +24,7 @@ select ok(not public.jarvis_cfo_amount_matches_currency_exponent(1.2345, 'KWD', 
 select ok(not public.jarvis_cfo_amount_matches_currency_exponent(1.00, 'XXX', '2026-11-13', 'synthetic-test-v1'), 'unknown currency is rejected');
 select ok(not public.jarvis_cfo_amount_matches_currency_exponent(1.00, 'EUR', '2019-12-31', 'synthetic-test-v1'), 'currency before effective date is rejected');
 select ok(not public.jarvis_cfo_amount_matches_currency_exponent(1.00, 'EUR', '2026-11-13', 'unapproved-version'), 'unknown registry version is rejected');
+select ok(not public.jarvis_cfo_amount_matches_currency_exponent(12.34, 'EUR', '2026-11-13', 'synthetic-test-v1'), 'overlapping effective-dated registry rows are rejected as ambiguous');
 
 select * from finish();
 rollback;
