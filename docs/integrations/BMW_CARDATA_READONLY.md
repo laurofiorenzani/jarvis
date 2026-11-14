@@ -38,7 +38,7 @@ Before connecting the vehicle:
 2. Owner authorizes the device-code flow and explicitly grants only `openid`, `authenticate_user` and `cardata:api:read` initially.
 3. Wire `bmw-cardata-budget.ts` into the authenticated BMW API route. It adapts the existing atomic per-user `jarvis_consume_rate_limit` RPC to a strict 50-request rolling 24-hour window. No BMW API route instantiates it yet.
 4. Review and apply the Vault token migration only after CI/review; the migration and service-role helper are in source but not deployed. Do not store refresh tokens in ordinary plaintext tables, logs, browser storage or source control.
-5. Add authenticated OAuth device-consent, disconnect/revocation and token deletion routes. The server-side Vault helper is ready but no user route or token exists.
+5. Authenticated OAuth device-consent start/complete and local disconnect/token-deletion routes are implemented in source. They have not been deployed or exercised with a real BMW account. Remote BMW token revocation is not claimed.
 6. Validate the available telematics keys for the actual iX1 in the BMW catalogue; do not assume every vehicle exposes the same data.
 7. Keep polling conservative. The API limit is 50/day; no aggressive refresh loops.
 
@@ -64,4 +64,4 @@ Remote actions remain unavailable unless BMW publishes a supported official comm
 
 ## Validation
 
-Unit tests use mocked HTTP responses and fake budget/RPC clients; the SQL test uses only a synthetic refresh token in the isolated CI Vault. No BMW account, real client ID, VIN, token, vehicle data or external network request is used by tests. Production activation is blocked until persistent daily budget, migration review/deployment, authenticated consent routes and explicit owner authorization exist.
+Unit tests use mocked HTTP responses and fake budget/RPC clients; the SQL test uses only a synthetic refresh token in the isolated CI Vault. No BMW account, real client ID, VIN, token, vehicle data or external network request is used by tests. Production activation remains blocked until human review, controlled migration deployment, BMW client registration and explicit owner device consent. The persistent 50-request/day budget, Vault token storage and pending OAuth state are source/isolated-CI validated only; no real token or vehicle data exists.
