@@ -80,7 +80,7 @@ test('rejects mismatched, approval-gated and oversized result envelopes', async 
 })
 
 test('aborts an agent at its declared runtime deadline', async () => {
-  const shortAgent = { ...agent, limits: { ...agent.limits, maxRuntimeMs: 5 } }
+  const shortAgent = { ...agent, limits: { ...agent.limits, maxRuntimeMs: 100 } }
   const results = await executeReadOnlyAgentTasks([task('task-a')], [shortAgent], async () => new Promise(() => undefined))
   assert.equal(results[0].reason, 'timeout')
   assert.equal(results[0].status, 'failed')
