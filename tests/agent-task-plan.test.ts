@@ -12,7 +12,10 @@ test('plans independent read-only tasks in one deterministic wave', () => {
 })
 
 test('orders dependent tasks into sequential waves', () => {
-  const plan = buildReadOnlyTaskPlan([node('final', ['middle']), node('middle', ['start']), node('start')])
+  const plan = buildReadOnlyTaskPlan(
+    [node('final', ['middle']), node('middle', ['start']), node('start')],
+    { maxTasks: 8, maxFanOut: 4, maxDepth: 3 },
+  )
   assert.deepEqual(plan?.waves, [['start'], ['middle'], ['final']])
 })
 
