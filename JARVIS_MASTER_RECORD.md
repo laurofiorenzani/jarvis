@@ -2145,3 +2145,9 @@ J. Next conversation: Continue from this checkpoint. PR #31 exact-head CI #1014 
 - Repository `laurofiorenzani/jarvis`; canonical branch `work/jarvis-canonical-integration`.
 - Current work remains isolated in #37 and #39. Both PRs are Draft/open. New code changes are implemented but awaiting exact-head CI; no PR merge or production action occurred.
 - Next: secure exact-head workflow execution for #37 `f0a4105` and #39 `4f16236`; then conflict-aware canonical reconciliation and integration planning. Preserve all earlier green runs as evidence for their exact heads only.
+
+
+### CI follow-up — latest feature heads now running
+- GitHub Actions CI #1175 (run `43596482426`) is IN_PROGRESS on PR #37 head `f0a4105520f79f1b991f86ae5bd4e9349986455a`. Typecheck/build, unit tests and lint have passed; the remaining Deno and isolated Supabase/SQL/two-user/CORS steps had not yet completed at the last check.
+- GitHub Actions CI #1173 (run `43596386227`) is IN_PROGRESS on PR #39 head `4f162369d4c9e307857a8b5cff23a9b75895c243`. Typecheck/build/tests/lint, provider/privacy checks, Edge Function typecheck and speech tests passed; isolated Supabase startup was still running, with migration/SQL/two-user/CORS steps pending.
+- These exact-head runs supersede the earlier statement that no workflow run existed. They are not yet passes; keep both PRs Draft/open until complete and review any failures.
