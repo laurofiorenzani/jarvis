@@ -145,6 +145,7 @@ declare
   v_secret_id uuid;
   v_secret_name text;
   v_payload text;
+  v_expired record;
 begin
   if p_state_id is null or p_user_id is null
     or p_client_id is null or length(btrim(p_client_id)) not between 1 and 200
@@ -154,6 +155,17 @@ begin
     or p_expires_at > pg_catalog.now() + interval '15 minutes' then
     raise exception 'invalid BMW pending authorization envelope' using errcode = '22023';
   end if;
+
+  -- Remove expired pending states and their Vault secrets when a new flow starts.
+  for v_expired in
+    select pending.state_id, pending.vault_secret_id
+    from public.jarvis_bmw_cardata_pending_auth as pending
+    where pending.expires_at <= pg_catalog.now()
+    for update
+  loop
+    delete from public.jarvis_bmw_cardata_pending_auth as pending where pending.state_id = v_expired.state_id;
+    delete from vault.secrets as secret where secret.id = v_expired.vault_secret_id;
+  end loop;
 
   v_secret_name := 'jarvis_bmw_cardata_pending_' || p_state_id::text;
   v_payload := pg_catalog.jsonb_build_object(
@@ -195,10 +207,15 @@ begin
   join vault.decrypted_secrets as decrypted on decrypted.id = pending.vault_secret_id
   where pending.state_id = p_state_id
     and pending.user_id = p_user_id
-    and pending.expires_at > pg_catalog.now()
   for update of pending;
 
   if not found then return; end if;
+
+  if v_expires_at <= pg_catalog.now() then
+    delete from public.jarvis_bmw_cardata_pending_auth as pending where pending.state_id = p_state_id;
+    delete from vault.secrets as secret where secret.id = v_secret_id;
+    return;
+  end if;
 
   begin
     v_payload := v_secret::jsonb;
