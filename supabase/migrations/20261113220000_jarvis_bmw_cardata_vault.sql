@@ -115,3 +115,67 @@ revoke all on function public.jarvis_delete_bmw_cardata_credentials(uuid) from p
 grant execute on function public.jarvis_store_bmw_cardata_refresh_token(uuid, text, text, timestamptz) to service_role;
 grant execute on function public.jarvis_get_bmw_cardata_refresh_token(uuid) to service_role;
 grant execute on function public.jarvis_delete_bmw_cardata_credentials(uuid) to service_role;
+
+-- Pending device authorization stays server-side and is consumed atomically once.
+-- The browser receives only an opaque state UUID plus BMW's user-facing code/URL.
+create table if not exists public.jarvis_bmw_cardata_pending_auth (
+  state_id uuid primary key,
+  user_id uuid not null references auth.users(id) on delete cascade,
+  client_id text not null check (length(btrim(client_id)) between 1 and 200),
+  device_code text not null check (length(device_code) between 8 and 2048),
+  code_verifier text not null check (length(code_verifier) between 40 and 128),
+  expires_at timestamptz not null,
+  created_at timestamptz not null default pg_catalog.now(),
+  check (expires_at > created_at and expires_at <= created_at + interval '15 minutes')
+);
+
+create index if not exists jarvis_bmw_cardata_pending_auth_expiry_idx
+  on public.jarvis_bmw_cardata_pending_auth (expires_at);
+
+alter table public.jarvis_bmw_cardata_pending_auth enable row level security;
+revoke all on table public.jarvis_bmw_cardata_pending_auth from public, anon, authenticated, service_role;
+
+create or replace function public.jarvis_create_bmw_cardata_pending_auth(
+  p_state_id uuid, p_user_id uuid, p_client_id text, p_device_code text,
+  p_code_verifier text, p_expires_at timestamptz
+) returns boolean
+language plpgsql security invoker set search_path = ''
+as $function$
+begin
+  if p_state_id is null or p_user_id is null
+    or p_client_id is null or length(btrim(p_client_id)) not between 1 and 200
+    or p_device_code is null or length(p_device_code) not between 8 and 2048
+    or p_code_verifier is null or length(p_code_verifier) not between 40 and 128
+    or p_expires_at is null or p_expires_at <= pg_catalog.now()
+    or p_expires_at > pg_catalog.now() + interval '15 minutes' then
+    raise exception 'invalid BMW pending authorization envelope' using errcode = '22023';
+  end if;
+  insert into public.jarvis_bmw_cardata_pending_auth
+    (state_id, user_id, client_id, device_code, code_verifier, expires_at)
+  values (p_state_id, p_user_id, p_client_id, p_device_code, p_code_verifier, p_expires_at);
+  return true;
+end;
+$function$;
+
+create or replace function public.jarvis_consume_bmw_cardata_pending_auth(
+  p_state_id uuid, p_user_id uuid
+) returns table (client_id text, device_code text, code_verifier text, expires_at timestamptz)
+language plpgsql security invoker set search_path = ''
+as $function$
+begin
+  if p_state_id is null or p_user_id is null then
+    raise exception 'invalid BMW pending authorization identity' using errcode = '22023';
+  end if;
+  return query
+    delete from public.jarvis_bmw_cardata_pending_auth as pending
+    where pending.state_id = p_state_id
+      and pending.user_id = p_user_id
+      and pending.expires_at > pg_catalog.now()
+    returning pending.client_id, pending.device_code, pending.code_verifier, pending.expires_at;
+end;
+$function$;
+
+revoke all on function public.jarvis_create_bmw_cardata_pending_auth(uuid, uuid, text, text, text, timestamptz) from public, anon, authenticated;
+revoke all on function public.jarvis_consume_bmw_cardata_pending_auth(uuid, uuid) from public, anon, authenticated;
+grant execute on function public.jarvis_create_bmw_cardata_pending_auth(uuid, uuid, text, text, text, timestamptz) to service_role;
+grant execute on function public.jarvis_consume_bmw_cardata_pending_auth(uuid, uuid) to service_role;
