@@ -1945,3 +1945,23 @@ J. Next conversation: Continue from this checkpoint. PR #31 exact-head CI #1014 
 - PR #32 screenshot-reported CI #1023 uses a SHA not matching the currently reported PR head. The current PR head remains `dfea9b296647ed257915932998700ce0fbe4ac39`, whose GitHub Actions CI #1039 is SUCCESS; Vercel reports a build-rate-limit failure, so do not claim a Preview deployment for that commit.
 - No merge, production migration/deployment, account change, billing change, provider activation or external action occurred.
 
+
+
+## 2026-11-14 — follow-up execution checkpoint (10:12 Europe/Dublin)
+
+### Multi-agent implementation — bounded read-only task planner
+- Extended Draft PR #36 on isolated branch `work/agent-contracts-20261114`.
+- Added `src/lib/agent-task-plan.ts`: deterministic dependency validation and topological waves; rejects duplicate/unsafe IDs, missing/self/duplicate dependencies, cycles, non-allowlisted or write capabilities, malformed limits, excessive task count/fan-out/depth. Planner is pure and does not dispatch tasks or call tools.
+- Added `tests/agent-task-plan.test.ts`: independent and dependent task ordering, cycle/missing dependency rejection, duplicate/unsafe IDs, write-capability rejection and budget-boundary tests.
+- Commits: planner `fcc49255071750ced9ef501ad56ae318611c979b`; tests `23f3a878b894312bea2f72ce5b2af9793584b2b1`.
+- PR #36 exact current head `23f3a878b894312bea2f72ce5b2af9793584b2b1`, OPEN/Draft/mergeable. CI run #43584097854 is PENDING; earlier run #43583956996 was IN_PROGRESS on the previous head. No exact-head pass yet.
+- This remains a planning/validation layer only. No dispatch, authenticated owner binding, tool authorization, model call, memory access, approval consumption or production behavior is implemented.
+
+### Multi-agent architecture PR #35
+- Current head `6b21c3b568b15ad1d61611b272d3aa879ea9454f`, OPEN/Draft. CI run #43583884937 is IN_PROGRESS. Prior run #43583637976 was CANCELLED after a later commit; do not count it as a pass.
+
+### Current boundaries and next work
+- No PR merged, no production deployment/migration, no provider inference, no paid service, no account/secret access, and no external action.
+- Continue with a security review of agent contract/result-envelope edge cases and task-plan tests once CI returns; inspect any failures before adding runtime behavior.
+- In parallel, continue BMW OAuth state binding/replay/expiry review in PR #34 and CFO currency-schema reconciliation. Keep provider pools off pending independent provider-policy evidence.
+- Update this same master record for each material change; no duplicate handoff/status files.
