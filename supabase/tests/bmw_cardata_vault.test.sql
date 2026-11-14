@@ -86,6 +86,7 @@ select ok(
   and not has_table_privilege('authenticated', 'public.jarvis_bmw_cardata_pending_auth', 'SELECT')
   and has_table_privilege('service_role', 'public.jarvis_bmw_cardata_pending_auth', 'SELECT')
   and has_table_privilege('service_role', 'public.jarvis_bmw_cardata_pending_auth', 'INSERT')
+  and has_table_privilege('service_role', 'public.jarvis_bmw_cardata_pending_auth', 'UPDATE')
   and has_table_privilege('service_role', 'public.jarvis_bmw_cardata_pending_auth', 'DELETE'),
   'only service_role can access pending BMW device credentials'
 );
