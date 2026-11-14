@@ -27,15 +27,16 @@ stable
 security invoker
 set search_path = ''
 as $$
-  select exists (
-    select 1
-    from public.jarvis_cfo_currency_registry as r
-    where r.currency_code = p_currency
-      and r.registry_version = p_registry_version
-      and p_effective_at >= r.effective_from
-      and (r.effective_to is null or p_effective_at < r.effective_to)
-      and p_amount = pg_catalog.trunc(p_amount, r.minor_unit)
-  );
+  select count(*) = 1
+    and coalesce(
+      pg_catalog.bool_and(p_amount = pg_catalog.trunc(p_amount, r.minor_unit)),
+      false
+    )
+  from public.jarvis_cfo_currency_registry as r
+  where r.currency_code = p_currency
+    and r.registry_version = p_registry_version
+    and p_effective_at >= r.effective_from
+    and (r.effective_to is null or p_effective_at < r.effective_to);
 $$;
 
 revoke all on function public.jarvis_cfo_amount_matches_currency_exponent(numeric, varchar, date, text) from public, anon, authenticated;
