@@ -23,6 +23,11 @@ const READ_ONLY_ACTION_CAPABILITIES = new Set([
   'research.public', 'tests.run',
 ])
 
+const READ_ONLY_TOOLS = new Set([
+  'conversation', 'memory', 'calendar', 'family_cfo', 'bmw_cardata',
+  'smart_home', 'communications', 'web_research', 'ci',
+])
+
 function terminal(taskId: string, status: AgentTaskExecution['status'], reason: NonNullable<AgentTaskExecution['reason']>): AgentTaskExecution {
   return { taskId, status, envelope: null, reason }
 }
@@ -78,7 +83,12 @@ export async function executeReadOnlyAgentTasks(
       }
       const agent = agents.get(task.agentId)
       if (!agent) return terminal(taskId, 'denied', 'agent_unavailable')
-      if (!agent.capabilities.includes(task.capability)) return terminal(taskId, 'denied', 'capability_denied')
+      if (!agent.capabilities.includes(task.capability) ||
+          agent.approvalMode !== 'never_write' ||
+          agent.capabilities.some((capability) => !READ_ONLY_ACTION_CAPABILITIES.has(capability)) ||
+          agent.tools.some((tool) => !READ_ONLY_TOOLS.has(tool))) {
+        return terminal(taskId, 'denied', 'capability_denied')
+      }
 
       const controller = new AbortController()
       let callCount = 0
