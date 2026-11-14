@@ -120,6 +120,24 @@ test('does not dispatch tasks after caller cancellation', async () => {
   assert.equal(results[0].status, 'cancelled')
 })
 
+
+test('reports cancellation during an active handler as cancelled', async () => {
+  const controller = new AbortController()
+  let started = false
+  const execution = executeReadOnlyAgentTasks([task('task-a')], [agent], async (_a, _t, context) => {
+    started = true
+    return new Promise((resolve) => {
+      context.signal.addEventListener('abort', () => resolve(envelope({ taskId: 'task-a' })), { once: true })
+    })
+  }, { signal: controller.signal })
+  while (!started) await Promise.resolve()
+  controller.abort()
+  const results = await execution
+  assert.equal(results[0].status, 'cancelled')
+  assert.equal(results[0].reason, 'aborted')
+  assert.equal(results[0].envelope, null)
+})
+
 test('enforces the declared per-task tool-call budget', async () => {
   const results = await executeReadOnlyAgentTasks([task('task-a')], [agent], async (_a, _t, context) => {
     context.consumeCall()
