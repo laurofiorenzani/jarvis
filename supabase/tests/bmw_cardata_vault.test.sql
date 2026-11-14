@@ -84,11 +84,11 @@ select ok(
 select ok(
   not has_table_privilege('anon', 'public.jarvis_bmw_cardata_pending_auth', 'SELECT')
   and not has_table_privilege('authenticated', 'public.jarvis_bmw_cardata_pending_auth', 'SELECT')
-  and has_table_privilege('service_role', 'public.jarvis_bmw_cardata_pending_auth', 'SELECT')
-  and has_table_privilege('service_role', 'public.jarvis_bmw_cardata_pending_auth', 'INSERT')
-  and has_table_privilege('service_role', 'public.jarvis_bmw_cardata_pending_auth', 'UPDATE')
-  and has_table_privilege('service_role', 'public.jarvis_bmw_cardata_pending_auth', 'DELETE'),
-  'only service_role can access pending BMW device credentials'
+  and not has_table_privilege('service_role', 'public.jarvis_bmw_cardata_pending_auth', 'SELECT')
+  and not has_table_privilege('service_role', 'public.jarvis_bmw_cardata_pending_auth', 'INSERT')
+  and not has_table_privilege('service_role', 'public.jarvis_bmw_cardata_pending_auth', 'UPDATE')
+  and not has_table_privilege('service_role', 'public.jarvis_bmw_cardata_pending_auth', 'DELETE'),
+  'pending BMW credentials table is inaccessible directly, including to service_role'
 );
 select ok(
   not has_function_privilege('anon', 'public.jarvis_create_bmw_cardata_pending_auth(uuid,uuid,text,text,text,timestamptz)', 'EXECUTE')
