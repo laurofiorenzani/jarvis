@@ -1878,3 +1878,82 @@ J. Next conversation: Continue from this checkpoint. PR #31 exact-head CI #1014 
 ### Follow-up review — CFO schema compatibility and BMW CI (2026-11-14)
 - Reviewed PR #22's current migration and PR #29's currency contract. Confirmed the incompatibility is material: PR #22's proposed `NUMERIC(20,2)` columns do not by themselves enforce the currency-specific exponent/precision rules described by PR #29. PR #32 adds a versioned exponent migration and domain validation, but its branch comparison against canonical is diverged (27 commits ahead, 1 behind) and includes edits to the same migration, CFO domain, tests and master record. Do not merge PR #22/#29/#32 independently or apply any CFO migration. Next work must reconcile one exact schema/domain/test set and validate it in isolated CI.
 - Rechecked PR #34 documentation-fix CI for commit `bfdf4d38d41aea52b8339622f84b0be39c203c66`; workflow remained IN_PROGRESS at this check. The no-Shortcuts correction is committed but not yet CI-validated.
+
+## 2026-11-14 — parallel continuation and exact-head release checkpoint
+
+### A. Canonical state and preservation
+- Continued in the existing repository `laurofiorenzani/jarvis`; no duplicate project, database, auth system or memory store was created.
+- Canonical development branch before this ledger update: `work/jarvis-canonical-integration` at `15b647ba59c42781a90d266a49e75c6f039685db`. PR #12 remains open; it has not been merged to default branch `main`.
+- Live Supabase project `undmhmdwhxvjgvezvucy` remains ACTIVE_HEALTHY in `eu-west-3`; production `jarvis-api` v32 and Preview `jarvis-preview-api` v23 remain ACTIVE. Production migration history remains through `20261113125437`. No experimental BMW, CFO or approval migration was applied.
+- No production deployment, migration, Auth/security setting change, provider secret read, provider inference, financial import, BMW account connection, vehicle command or external action occurred.
+
+### B. Work completed and exact evidence
+
+**Multi-agent contracts and read-only executor — PR #36**
+- Added `src/lib/agent-task-executor.ts` on `work/agent-contracts-20261114`: bounded dependency waves, concurrent independent tasks, caller cancellation, runtime timeout, explicit per-task call budget, output-size limit, evidence-bearing result validation, and rejection of write-capability result actions.
+- Executor accepts injected handlers only. It does not authenticate, access memory, call model providers, execute integrations or register production agents. The trusted caller must bind account scope and enforce provider/tool policy.
+- Exact code-head CI #1125 (run `43585615976`) SUCCESS on `52ea20a8334c83ad6df75fb0c7bf259c57c8fc89`, including build/typecheck, tests, lint, Deno, Edge Function typecheck, isolated Supabase migrations/SQL isolation, two-user API integration and CORS smoke checks.
+- Branch master-ledger conflict was removed by restoring the canonical ledger. New head `e2b438233be9f04a13edc0b7488804ed56524efa`; exact-head CI #1136 is running. PR remains Draft/open.
+
+**Multi-agent architecture — PR #35**
+- Architecture proposal remains documentation-only; it defines the chief orchestrator/specialist model, shared account/memory/provider controls and bounded delegation. No runtime agent service is shipped by this PR.
+- Restored the canonical master ledger on its feature branch to avoid a duplicate/conflicting handoff. New head `ae69831c8ee36e50fe2b30cb6f299327068c22b1`; exact-head CI #1137 is running. PR remains Draft/open.
+
+**BMW CarData OAuth hardening — PR #34**
+- OAuth device code and PKCE verifier are now stored together in an encrypted Supabase Vault secret. The application table contains only owner/state/client/expiry metadata and the Vault secret UUID.
+- The consume RPC locks the owner-bound state, validates the decrypted payload, atomically deletes the pending row and Vault secret, and returns credentials only to the trusted server caller. Expired states are cleaned during a new authorization start or an expired completion attempt.
+- Added owner-mismatch, replay, plaintext-column absence, Vault ciphertext and expiry/deletion SQL assertions; current pgTAP plan is 41 assertions. Deno route/token-store/budget tests cover opaque state handling.
+- Previous exact-head CI #1117 SUCCESS validated the earlier server-side pending-state table version, not the newer Vault-encrypted state. Latest head `1a6c5fec7b65b7db73c35fcb68c5b824bc09d661`; CI #1139 is running. PR #34 remains Draft/open. No production migration or BMW account/vehicle request occurred.
+- CarData remains read-only; it cannot command climate, doors, locks, windows or trunk.
+
+**Family CFO — PR #32**
+- Reconciled branch ancestry by restoring the canonical ledger on the feature branch; GitHub now reports it mergeable.
+- Exact-head CI #1126 (run `43585834890`) SUCCESS on `967742e17c46e9e547f04d9ad204058dac84c03b`, including build/typecheck/tests/lint, isolated Supabase migration reset, currency exponent/owner-isolation SQL, two-user integration and CORS smoke checks.
+- Currency registry remains unseeded and no financial records were imported. No CFO migration is applied to production. PR remains Draft/open; older conflicting CFO proposals must not be merged independently.
+
+**Zero-cost provider lockout — PR #33**
+- Exact-head CI #1133 (run `43586014607`) SUCCESS on `6659d21823e6f43c2046ba29dd9a0def7e240391` after restoring the canonical ledger. FreeLLMAPI-only default, paid Claude/ElevenLabs rejection, browser credential removal and fail-closed speech tests passed.
+- Actual local FreeLLMAPI configuration/key was not inspected; no inference was sent. PR remains Draft/open.
+
+**Provider consent, Cloudflare free tier and quota diagnostics — PR #23**
+- Official Cloudflare docs were rechecked: Workers Free includes 100,000 requests/day, 10 ms CPU per invocation and 50 external subrequests/request; Workers AI includes 10,000 Neurons/day. Workers Paid starts at $5/month and charges usage above the daily free allocation at $0.011/1,000 Neurons. Error 3036 / HTTP 429 identifies exhausted daily free Neurons.
+- Read-only Cloudflare account audit found one standard account, zero zones, zero tunnels and zero deployed Worker scripts. Account entitlements returned empty. Subscription/billing endpoint returned 403 because the connected OAuth session lacks Billing Read; account plan, payment method and overage settings are unverified. No Worker, provider, secret, billing change or inference was created.
+- Added source diagnostics to distinguish Cloudflare error 3036 from generic HTTP 429. A durable cross-instance cooldown until the next UTC reset is NOT implemented and remains a release gate. Provider pools and operator billing attestation remain disabled.
+- Latest branch head `243b1a398aabc6ac19fb4c15db7ea3af8cfd14e9`; exact-head CI #1143 is running. PR remains Draft/open.
+- Official docs: https://developers.cloudflare.com/workers/platform/limits/ ; https://developers.cloudflare.com/workers-ai/platform/pricing/ ; https://developers.cloudflare.com/workers-ai/platform/errors/ ; https://developers.cloudflare.com/workers-ai/platform/data-usage/ ; https://developers.cloudflare.com/workers/platform/spend-management/ .
+
+**Native iOS secure storage — PR #28**
+- Restored canonical ledger and resolved the ledger-only merge conflict.
+- Exact-head CI #1134 (run `43586033053`) SUCCESS on `f2ee62ea87941f016cae9330e4caac5f0e041bd4`, including build/typecheck/tests/lint, Deno, isolated Supabase migrations/SQL isolation, two-user API integration and CORS smoke checks.
+- This validates the secure-storage adapter only. No Capacitor dependency, native iOS target, Xcode signing, physical-device Keychain test or TestFlight exists. Paid Apple Developer distribution remains excluded.
+
+**Self-Evolution / Observer — PR #31**
+- Restored canonical ledger on the Observer branch. Observer Validation #179 (run `43586173627`) SUCCESS on exact head `cdf5d21342e526e0e07b3a2b4d6018ec466969ec`; full CI #1138 is running. PR remains Draft/open; read-only monitoring only, no automated production remediation.
+
+### C. Branch and PR integration state
+- Canonical-ledger conflicts were removed from active feature branches #23, #28, #31, #32, #33, #35 and #36 by restoring the canonical ledger; #34 and #26 do not modify that ledger. GitHub reported these feature PRs mergeable after reconciliation. This does NOT mean approved, merged or released.
+- Exact-head workflows still running at this checkpoint: #1136 (agent executor), #1137 (architecture), #1138 (Observer CI; Observer #179 already green), #1139 (BMW Vault state), #1143 (provider quota classifier). #1133, #1134 and #1126 are completed SUCCESS; #1125 is the previous agent code-head SUCCESS.
+- PR #22 is an older conflicting CFO proposal and remains superseded; do not merge it independently of the reconciled #32 schema. No open PR was merged during this session.
+
+### D. Platform and release gates
+- Vercel project `jarvis` continues to generate previews; exact agent and CFO previews were READY. Some branches have no new Preview due deployment quota. No production alias was changed and no paid upgrade was attempted.
+- Cloudflare account currently has no Worker runtime. Billing Read is unavailable, so Workers plan/overage cannot be attested. Do not activate Workers AI or set the operator billing attestation.
+- Supabase production/Preview route parity remains unresolved; production v32 and Preview v23 are not feature-identical. Do not deploy Preview wholesale to production.
+- Oracle Cloud account access was not available among the connected tools in this session; no Oracle instance or infrastructure change is claimed.
+- €0 recurring cost, account isolation, owner consent, official API limits and fail-closed behavior remain hard release gates.
+
+### E. Next actions
+1. Finish exact-head CI #1139; resolve any SQL/Vault failure before claiming BMW pending-state security validated. Keep the migration isolated.
+2. Finish #1136/#1137/#1138/#1143 and record exact conclusions; do not rerun successful workflows unless code changes.
+3. Implement a durable cross-instance Cloudflare 3036 cooldown only if the provider remains eligible after billing/EEA/privacy verification; otherwise keep the route disabled.
+4. Connect the read-only executor to the trusted cloud agent registry, authenticated owner scope, provider policy and approval controls; do not expose arbitrary handlers or write capabilities.
+5. Reconcile production/Preview route parity and cloud gateway availability without changing production or reading secrets.
+6. Continue native iOS shell/Keychain work only with the existing zero-recurring-cost route; physical iPhone validation remains a user-device gate.
+7. Keep Family CFO synthetic-only until the one canonical schema is reviewed; never import or move money without explicit authorization.
+
+### F. Handoff
+- Repository: `laurofiorenzani/jarvis`.
+- Canonical branch: `work/jarvis-canonical-integration`.
+- Canonical master ledger remains the sole continuity ledger; no duplicate status/handoff documents created.
+- No PR merged, no production deployment/migration, no Auth or billing change, no provider inference, no BMW connection, no financial import and no external action.
+- Next session: check exact CI #1136/#1137/#1138/#1139/#1143 first; prioritize any concrete failures. Preserve all green exact-head results and continue the independent fronts.
