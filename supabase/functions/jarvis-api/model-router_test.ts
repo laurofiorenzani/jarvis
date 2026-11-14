@@ -106,6 +106,12 @@ Deno.test('provider errors distinguish missing model from quota exhaustion', () 
       throw new Error(`HTTP ${status} was not classified as ${expected}`)
     }
   }
+  if (classifyProviderFailure(429, '{"code":3036,"message":"daily neuron limit exceeded"}') !== 'daily_neuron_quota_exhausted') {
+    throw new Error('Cloudflare daily Neurons exhaustion was not distinguished from generic rate limiting')
+  }
+  if (classifyProviderFailure(429, '{"code":10000,"message":"rate limited"}') !== 'rate_limit_or_quota') {
+    throw new Error('generic HTTP 429 was misclassified as daily Neurons exhaustion')
+  }
 })
 
 Deno.test('provider diagnostics redact common API key and bearer token patterns', () => {
