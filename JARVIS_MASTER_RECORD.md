@@ -2001,3 +2001,36 @@ J. Next conversation: Continue from this checkpoint. PR #31 exact-head CI #1014 
 - Updated this single master ledger only; no duplicate status/handoff documents created.
 - No PR merged, no production migration/deployment, no Auth/billing change, no provider inference, no BMW connection, no CFO data import, and no external action.
 - Next conversation: start with current status of BMW CI #1160 (`43587548093`), then continue provider parity, CFO schema integration, agent runtime and native iOS independently.
+
+
+## 2026-11-14 — continued parallel delivery checkpoint
+
+### A. Completed and validated
+- BMW CarData PR #34 latest head `c1024ce253537474989a5dd5024e9ad5f60e7f44`: exact-head CI #1160 (`43587548093`) COMPLETED SUCCESS, all 33 steps passed. PR remains Draft/open and based on provider-consent branch #23. No BMW migration or function deployed to production; no vehicle access or commands.
+- Observer PR #31 latest head `7ba6435a6cf8300a329f47465f36446ad94e739d`: Observer Validation #182 and exact-head CI #1159 (`43587476240`) SUCCESS. The Mailpit exclusion correction is validated. PR remains Draft/open and diverged from canonical.
+- iOS Keychain PR #38: branch `work/ios-keychain-canonical-20261114`, latest head `8dbe4f8084c9e306768e330e756fa4be05ce857f`; CI #? (`43593900571`) COMPLETED SUCCESS. Adapter refuses web/localStorage before any plugin call; iOS setup disables iCloud synchronization and applies device-only when-unlocked Keychain access. Package/API contract for `@aparajita/capacitor-secure-storage@8.0.1` was checked against its official definitions/changelog. No Capacitor package, native target, app signing or physical iPhone test has been performed.
+- Agent foundation PR #37: branch `work/agent-contracts-canonical-20261114`. Initial CI #? (`43593680893`) SUCCESS on earlier head `ce782147...`; hardening commit `10eba71d...` / test commit `f012cc6a...` added pre-dispatch rejection for write-capable capabilities, approval-required agents and write-capable tools. CI #? (`43594160364`) failed one test because the old assertion expected post-handler rejection; test was corrected to assert pre-dispatch denial. Latest exact-head CI #? (`43594255372`) was IN_PROGRESS on `bceb9d7120dc5eb4cb3461888761b76f6b13a33d` at checkpoint. Do not mark latest head validated until it passes.
+- Family CFO PR #39: branch `work/cfo-currency-canonical-20261114`, latest head `67af52fcbc715eac19948e10ca30062f469e08db`. Ported owner-scoped read-only account/transaction/balance schema, effective-dated currency registry, SQL isolation/exponent tests and TypeScript domain. Added explicit registry-version fields and validation that rejects unknown, stale, overlapping or exponent-incompatible currency rows. Exact-head CI #? (`43594106243`) was IN_PROGRESS at checkpoint. No migration applied to production, no registry seeded, no real financial data imported.
+- PRs #37, #38 and #39 are isolated against canonical base `6f17c684...`, all Draft/open. No merge or runtime activation.
+
+### B. Current blockers and policy
+- Vercel Hobby returned `Deployment rate limited — retry in 24 hours` for recent preview checks on #37/#38/#39. This is a Vercel status failure, not GitHub CI evidence. Do not retry builds, bypass quota or upgrade. Existing preview deployments remain older commits; no production alias changed.
+- Provider consent / Cloud Brain remains a production blocker: deployed `jarvis-api` v32 and Preview v23 are not feature-identical. Production still contains direct Gemini STT/TTS calls; the stricter EEA and free-billing-attestation policy exists only in source branches. No provider secrets or billing values were read; no production change was made.
+- User has not explicitly approved temporarily disabling production Gemini STT/TTS; do not make that high-impact production change. Keep all provider activation default-off pending verified account billing, no-overage, EEA processing, retention and per-account consent evidence.
+- Cloudflare billing/overage access remains unavailable; no Workers scripts currently found in account inventory.
+- CFO data remains synthetic-only; account sharing between Lauro and Isabelle remains off by default.
+
+### C. Branch/PR state and next actions
+1. Finish exact-head agent CI #43594255372 on `bceb9d7120dc5eb4cb3461888761b76f6b13a33d`; fix only concrete failures.
+2. Finish exact-head CFO CI #43594106243 on `67af52fcbc715eac19948e10ca30062f469e08db`; do not apply its migrations to production.
+3. Preserve iOS PR #38 CI success; native plugin install and physical-device verification remain a separate gate requiring macOS/Xcode and user-device access.
+4. Keep PR #37 as a tested read-only executor foundation only. It is not wired to an authenticated trusted agent registry or live tools.
+5. Continue provider-consent parity in isolated source only; do not change production Gemini STT/TTS without explicit user approval.
+6. Avoid new Vercel deployments until the Hobby limit naturally resets; do not pay or bypass.
+7. Reconcile branch drift selectively; do not merge Draft PRs or overwrite this canonical ledger from feature branches.
+
+### D. Session handoff
+- Repository: `laurofiorenzani/jarvis`; canonical branch: `work/jarvis-canonical-integration`.
+- This single `JARVIS_MASTER_RECORD.md` remains the continuity ledger; no duplicate handoff/status files created.
+- No PR merged; no production deployment/migration; no secrets read; no auth/billing/security setting changed; no BMW access; no CFO data import; no external actions.
+- Next session: check #37 CI #43594255372 and #39 CI #43594106243 first, then continue provider-consent parity and authenticated agent runtime work. Preserve all existing green exact-head results.
