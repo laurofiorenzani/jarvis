@@ -11,9 +11,10 @@ export type AgentTaskExecution = {
   taskId: string
   status: 'succeeded' | 'partial' | 'failed' | 'denied' | 'cancelled'
   envelope: AgentResultEnvelope | null
-  reason?: 'agent_unavailable' | 'capability_denied' | 'dependency_failed' | 'timeout' | 'aborted' | 'invalid_result' | 'output_limit' | 'handler_failed'
+  reason?: 'agent_unavailable' | 'capability_denied' | 'dependency_failed' | 'timeout' | 'aborted' | 'call_limit' | 'invalid_result' | 'output_limit' | 'handler_failed'
 }
-export type ReadOnlyAgentHandler = (agent: AgentDefinition, task: ReadOnlyAgentTask, signal: AbortSignal) => Promise<unknown>
+export type ReadOnlyAgentExecutionContext = { signal: AbortSignal; consumeCall: () => void }
+export type ReadOnlyAgentHandler = (agent: AgentDefinition, task: ReadOnlyAgentTask, context: ReadOnlyAgentExecutionContext) => Promise<unknown>
 export type ReadOnlyExecutionOptions = { limits?: TaskPlanLimits; signal?: AbortSignal }
 
 function terminal(taskId: string, status: AgentTaskExecution['status'], reason: NonNullable<AgentTaskExecution['reason']>): AgentTaskExecution {
@@ -74,6 +75,11 @@ export async function executeReadOnlyAgentTasks(
       if (!agent.capabilities.includes(task.capability)) return terminal(taskId, 'denied', 'capability_denied')
 
       const controller = new AbortController()
+      let callCount = 0
+      const consumeCall = () => {
+        if (callCount >= agent.limits.maxCalls) throw new Error('agent_call_limit')
+        callCount += 1
+      }
       let timer: ReturnType<typeof setTimeout> | undefined
       let abortListener: (() => void) | undefined
       const timeout = new Promise<never>((_, reject) => {
@@ -86,7 +92,7 @@ export async function executeReadOnlyAgentTasks(
       })
 
       try {
-        const raw = await Promise.race([handler(agent, task, controller.signal), timeout, aborted])
+        const raw = await Promise.race([handler(agent, task, { signal: controller.signal, consumeCall }), timeout, aborted])
         if (!isAgentResultEnvelope(raw) || raw.taskId !== task.id ||
             raw.agentId !== agent.id || raw.agentVersion !== agent.version ||
             raw.approvalRequired || raw.actions.length > agent.limits.maxCalls ||
@@ -97,10 +103,12 @@ export async function executeReadOnlyAgentTasks(
         return { taskId, status: raw.status, envelope: raw }
       } catch (cause) {
         const reason = cause instanceof Error && cause.message === 'agent_timeout' ? 'timeout'
-          : cause instanceof Error && cause.message === 'agent_aborted' ? 'aborted' : 'handler_failed'
+          : cause instanceof Error && cause.message === 'agent_aborted' ? 'aborted'
+            : cause instanceof Error && cause.message === 'agent_call_limit' ? 'call_limit' : 'handler_failed'
         const detail = reason === 'timeout' ? 'Agent exceeded its declared runtime limit.'
           : reason === 'aborted' ? 'Task was cancelled by the caller.'
-            : 'Agent handler failed; error details were redacted.'
+            : reason === 'call_limit' ? 'Agent exceeded its declared call budget.'
+              : 'Agent handler failed; error details were redacted.'
         const envelope = failedEnvelope(task, agent, detail)
         return { taskId, status: 'failed', envelope, reason }
       } finally {
