@@ -104,7 +104,14 @@ export async function executeReadOnlyAgentTasks(
       const aborted = new Promise<never>((_, reject) => {
         if (!options.signal) return
         abortListener = () => { controller.abort(); reject(new Error('agent_aborted')) }
+        if (options.signal.aborted) {
+          abortListener()
+          return
+        }
         options.signal.addEventListener('abort', abortListener, { once: true })
+        // Close the race where cancellation occurs between the first check and
+        // listener registration; AbortSignal does not replay past abort events.
+        if (options.signal.aborted) abortListener()
       })
 
       try {
@@ -121,10 +128,10 @@ export async function executeReadOnlyAgentTasks(
         const reason = cause instanceof Error && cause.message === 'agent_timeout' ? 'timeout'
           : cause instanceof Error && cause.message === 'agent_aborted' ? 'aborted'
             : cause instanceof Error && cause.message === 'agent_call_limit' ? 'call_limit' : 'handler_failed'
+        if (reason === 'aborted') return terminal(taskId, 'cancelled', 'aborted')
         const detail = reason === 'timeout' ? 'Agent exceeded its declared runtime limit.'
-          : reason === 'aborted' ? 'Task was cancelled by the caller.'
-            : reason === 'call_limit' ? 'Agent exceeded its declared call budget.'
-              : 'Agent handler failed; error details were redacted.'
+          : reason === 'call_limit' ? 'Agent exceeded its declared call budget.'
+            : 'Agent handler failed; error details were redacted.'
         const envelope = failedEnvelope(task, agent, detail)
         return { taskId, status: 'failed', envelope, reason }
       } finally {
