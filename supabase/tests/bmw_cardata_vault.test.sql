@@ -1,6 +1,6 @@
 begin;
 
-select plan(35);
+select plan(39);
 
 insert into auth.users (id, aud, role, email, encrypted_password, email_confirmed_at, created_at, updated_at)
 values
@@ -104,6 +104,14 @@ select ok(
 
 set local role service_role;
 
+select ok(
+  not exists (
+    select 1 from information_schema.columns
+    where table_schema = 'public' and table_name = 'jarvis_bmw_cardata_pending_auth'
+      and column_name in ('device_code', 'code_verifier')
+  ),
+  'pending authorization table contains no plaintext device code or PKCE verifier columns'
+);
 select is(
   public.jarvis_create_bmw_cardata_pending_auth(
     '10000000-0000-4000-8000-000000000051',
@@ -113,6 +121,15 @@ select is(
   ),
   true,
   'creates an owner-bound pending authorization'
+);
+select ok(
+  (select secret <> pg_catalog.jsonb_build_object(
+      'device_code', 'synthetic-device-code',
+      'code_verifier', repeat('v', 48)
+    )::text
+   from vault.secrets
+   where name = 'jarvis_bmw_cardata_pending_10000000-0000-4000-8000-000000000051'),
+  'pending device code and PKCE verifier are stored encrypted in Vault'
 );
 select is(
   (select count(*)::int from public.jarvis_consume_bmw_cardata_pending_auth(
@@ -131,12 +148,26 @@ select is(
   'the initiating owner can consume the pending device authorization'
 );
 select is(
+  (select code_verifier from public.jarvis_consume_bmw_cardata_pending_auth(
+    '10000000-0000-4000-8000-000000000051',
+    '00000000-0000-4000-8000-000000000051'
+  )),
+  repeat('v', 48),
+  'the initiating owner receives the PKCE verifier only through the server-side consume RPC'
+);
+select is(
   (select count(*)::int from public.jarvis_consume_bmw_cardata_pending_auth(
     '10000000-0000-4000-8000-000000000051',
     '00000000-0000-4000-8000-000000000051'
   )),
   0,
   'a consumed authorization state cannot be replayed'
+);
+select is(
+  (select count(*)::int from vault.secrets
+   where name = 'jarvis_bmw_cardata_pending_10000000-0000-4000-8000-000000000051'),
+  0,
+  'consuming the state deletes its short-lived Vault secret'
 );
 
 select is(
