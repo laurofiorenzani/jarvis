@@ -118,6 +118,7 @@ export function validateCfoMoneyAgainstRegistry(
       typeof registryVersion !== 'string' || !registryVersion.trim() || registryVersion.length > 80 ||
       !Array.isArray(registry)) return false
 
+  const effectiveDate = effectiveAt as string
   const relevant = registry.filter((entry) =>
     entry.currencyCode === parsed.data.currency && entry.registryVersion === registryVersion,
   )
@@ -131,8 +132,8 @@ export function validateCfoMoneyAgainstRegistry(
   )) return false
 
   const matching = relevant.filter((entry) =>
-    effectiveAt >= entry.effectiveFrom &&
-    (entry.effectiveTo == null || effectiveAt < entry.effectiveTo),
+    effectiveDate >= entry.effectiveFrom &&
+    (entry.effectiveTo == null || effectiveDate < entry.effectiveTo),
   )
   return matching.length === 1 && amountMatchesMinorUnit(parsed.data.amount, matching[0].minorUnit)
 }
