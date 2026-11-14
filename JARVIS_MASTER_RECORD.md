@@ -1873,3 +1873,8 @@ J. Next conversation: Continue from this checkpoint. PR #31 exact-head CI #1014 
 - Latest BMW documentation commit: `bfdf4d38d41aea52b8339622f84b0be39c203c66`; CI was still running when this entry was written.
 - No PR merged and no production deployment performed.
 - Next conversation: resume by checking the exact CI result for the BMW documentation commit, then continue the independent CFO, provider-policy, cloud-approval, iOS and infrastructure workstreams. Preserve the no-Shortcuts rule, €0 recurring cost, one canonical repository and this single master handoff record.
+
+
+### Follow-up review — CFO schema compatibility and BMW CI (2026-11-14)
+- Reviewed PR #22's current migration and PR #29's currency contract. Confirmed the incompatibility is material: PR #22's proposed `NUMERIC(20,2)` columns do not by themselves enforce the currency-specific exponent/precision rules described by PR #29. PR #32 adds a versioned exponent migration and domain validation, but its branch comparison against canonical is diverged (27 commits ahead, 1 behind) and includes edits to the same migration, CFO domain, tests and master record. Do not merge PR #22/#29/#32 independently or apply any CFO migration. Next work must reconcile one exact schema/domain/test set and validate it in isolated CI.
+- Rechecked PR #34 documentation-fix CI for commit `bfdf4d38d41aea52b8339622f84b0be39c203c66`; workflow remained IN_PROGRESS at this check. The no-Shortcuts correction is committed but not yet CI-validated.
