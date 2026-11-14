@@ -116,14 +116,13 @@ grant execute on function public.jarvis_store_bmw_cardata_refresh_token(uuid, te
 grant execute on function public.jarvis_get_bmw_cardata_refresh_token(uuid) to service_role;
 grant execute on function public.jarvis_delete_bmw_cardata_credentials(uuid) to service_role;
 
--- Pending device authorization stays server-side and is consumed atomically once.
+-- Pending device authorization stays server-side in Vault and is consumed atomically once.
 -- The browser receives only an opaque state UUID plus BMW's user-facing code/URL.
 create table if not exists public.jarvis_bmw_cardata_pending_auth (
   state_id uuid primary key,
   user_id uuid not null references auth.users(id) on delete cascade,
+  vault_secret_id uuid not null unique references vault.secrets(id) on delete cascade,
   client_id text not null check (length(btrim(client_id)) between 1 and 200),
-  device_code text not null check (length(device_code) between 8 and 2048),
-  code_verifier text not null check (length(code_verifier) between 40 and 128),
   expires_at timestamptz not null,
   created_at timestamptz not null default pg_catalog.now(),
   check (expires_at > created_at and expires_at <= created_at + interval '15 minutes')
@@ -142,6 +141,10 @@ create or replace function public.jarvis_create_bmw_cardata_pending_auth(
 ) returns boolean
 language plpgsql security invoker set search_path = ''
 as $function$
+declare
+  v_secret_id uuid;
+  v_secret_name text;
+  v_payload text;
 begin
   if p_state_id is null or p_user_id is null
     or p_client_id is null or length(btrim(p_client_id)) not between 1 and 200
@@ -151,9 +154,21 @@ begin
     or p_expires_at > pg_catalog.now() + interval '15 minutes' then
     raise exception 'invalid BMW pending authorization envelope' using errcode = '22023';
   end if;
+
+  v_secret_name := 'jarvis_bmw_cardata_pending_' || p_state_id::text;
+  v_payload := pg_catalog.jsonb_build_object(
+    'device_code', p_device_code,
+    'code_verifier', p_code_verifier
+  )::text;
+  v_secret_id := vault.create_secret(
+    v_payload, v_secret_name,
+    'JARVIS BMW CarData short-lived pending device authorization; user-scoped; do not expose',
+    null
+  );
   insert into public.jarvis_bmw_cardata_pending_auth
-    (state_id, user_id, client_id, device_code, code_verifier, expires_at)
-  values (p_state_id, p_user_id, p_client_id, p_device_code, p_code_verifier, p_expires_at);
+    (state_id, user_id, vault_secret_id, client_id, expires_at)
+  values
+    (p_state_id, p_user_id, v_secret_id, p_client_id, p_expires_at);
   return true;
 end;
 $function$;
@@ -163,16 +178,51 @@ create or replace function public.jarvis_consume_bmw_cardata_pending_auth(
 ) returns table (client_id text, device_code text, code_verifier text, expires_at timestamptz)
 language plpgsql security invoker set search_path = ''
 as $function$
+declare
+  v_client_id text;
+  v_secret_id uuid;
+  v_secret text;
+  v_payload jsonb;
+  v_expires_at timestamptz;
 begin
   if p_state_id is null or p_user_id is null then
     raise exception 'invalid BMW pending authorization identity' using errcode = '22023';
   end if;
-  return query
-    delete from public.jarvis_bmw_cardata_pending_auth as pending
-    where pending.state_id = p_state_id
-      and pending.user_id = p_user_id
-      and pending.expires_at > pg_catalog.now()
-    returning pending.client_id, pending.device_code, pending.code_verifier, pending.expires_at;
+
+  select pending.client_id, pending.vault_secret_id, decrypted.decrypted_secret, pending.expires_at
+    into v_client_id, v_secret_id, v_secret, v_expires_at
+  from public.jarvis_bmw_cardata_pending_auth as pending
+  join vault.decrypted_secrets as decrypted on decrypted.id = pending.vault_secret_id
+  where pending.state_id = p_state_id
+    and pending.user_id = p_user_id
+    and pending.expires_at > pg_catalog.now()
+  for update of pending;
+
+  if not found then return; end if;
+
+  begin
+    v_payload := v_secret::jsonb;
+  exception when others then
+    raise exception 'invalid BMW pending authorization secret' using errcode = '22000';
+  end;
+
+  if pg_catalog.jsonb_typeof(v_payload) <> 'object'
+    or pg_catalog.jsonb_typeof(v_payload->'device_code') <> 'string'
+    or pg_catalog.length(v_payload->>'device_code') not between 8 and 2048
+    or pg_catalog.jsonb_typeof(v_payload->'code_verifier') <> 'string'
+    or pg_catalog.length(v_payload->>'code_verifier') not between 40 and 128 then
+    raise exception 'invalid BMW pending authorization secret' using errcode = '22000';
+  end if;
+
+  delete from public.jarvis_bmw_cardata_pending_auth as pending
+  where pending.state_id = p_state_id and pending.user_id = p_user_id;
+  delete from vault.secrets as secret where secret.id = v_secret_id;
+
+  return query select
+    v_client_id,
+    v_payload->>'device_code',
+    v_payload->>'code_verifier',
+    v_expires_at;
 end;
 $function$;
 
