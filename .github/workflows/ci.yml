@@ -71,6 +71,9 @@ jobs:
       - name: Test provider privacy routing
         run: deno test supabase/functions/jarvis-api/model-router_test.ts
 
+      - name: Test per-account ZDR speech consent enforcement
+        run: deno test supabase/functions/jarvis-api/provider-consent_test.ts
+
       - name: Test semantic-memory validation and auto-capture policy
         run: deno test supabase/functions/jarvis-api/semantic-memory.deno.ts
 
@@ -79,6 +82,9 @@ jobs:
 
       - name: Test speech transcript extraction and empty-response handling
         run: deno test supabase/functions/jarvis-api/speech-transcript_test.ts
+
+      - name: Public health CORS regression tests
+        run: deno test supabase/functions/jarvis-api/cors_test.ts
 
       - name: Set up Supabase CLI
         id: setup_supabase_cli

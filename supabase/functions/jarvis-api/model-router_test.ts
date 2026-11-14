@@ -1,15 +1,41 @@
 import {
   assertConsistentProviderPrivacy,
+  buildProviderRouteDiagnostics,
   assertZdrProviderConfig,
   assertEeaProviderEligibility,
   assertProviderPrivacyMode,
+  classifyFreeLlmTask,
   classifyProviderFailure,
+  freeLlmApiTaskHeaders,
+  FREE_PROVIDER_BILLING_ATTESTATION_VERSION,
+  hasFreeProviderBillingAttestation,
+  assertFreeProviderBillingAttestation,
+  isFreeLlmApiModel,
+  isAllowedStandardProvider,
   redactProviderDiagnostic,
   rotateProviderOrder,
   ProviderUnavailableError,
   providerRoutingOptions,
   toChatCompletionsUrl,
 } from './model-router.ts'
+
+Deno.test('cloud inference requires an exact, current free-plan billing attestation', () => {
+  if (hasFreeProviderBillingAttestation(undefined)) throw new Error('missing attestation was accepted')
+  if (hasFreeProviderBillingAttestation('true')) throw new Error('boolean attestation was accepted')
+  if (hasFreeProviderBillingAttestation('2026-11-13-v0')) throw new Error('stale attestation was accepted')
+  if (hasFreeProviderBillingAttestation('paid-plan')) throw new Error('paid plan was accepted')
+  if (!hasFreeProviderBillingAttestation(FREE_PROVIDER_BILLING_ATTESTATION_VERSION)) {
+    throw new Error('current free-plan attestation was rejected')
+  }
+  for (const invalid of [undefined, 'true', '2026-11-13-v0', 'paid-plan']) {
+    let caught: unknown
+    try { assertFreeProviderBillingAttestation(invalid) } catch (error) { caught = error }
+    if (!(caught instanceof ProviderUnavailableError)) {
+      throw new Error('cloud inference did not fail closed for an invalid billing attestation')
+    }
+  }
+  assertFreeProviderBillingAttestation(FREE_PROVIDER_BILLING_ATTESTATION_VERSION)
+})
 
 Deno.test('default provider routing does not add privacy overrides', () => {
   const options = providerRoutingOptions()
@@ -79,6 +105,12 @@ Deno.test('provider errors distinguish missing model from quota exhaustion', () 
     if (classifyProviderFailure(status) !== expected) {
       throw new Error(`HTTP ${status} was not classified as ${expected}`)
     }
+  }
+  if (classifyProviderFailure(429, '{"code":3036,"message":"daily neuron limit exceeded"}') !== 'daily_neuron_quota_exhausted') {
+    throw new Error('Cloudflare daily Neurons exhaustion was not distinguished from generic rate limiting')
+  }
+  if (classifyProviderFailure(429, '{"code":10000,"message":"rate limited"}') !== 'rate_limit_or_quota') {
+    throw new Error('generic HTTP 429 was misclassified as daily Neurons exhaustion')
   }
 })
 
@@ -153,4 +185,82 @@ Deno.test('Cloudflare Workers AI must declare its native ZDR privacy mode', () =
   try { assertProviderPrivacyMode('api.cloudflare.com', undefined) } catch (error) { caught = error }
   if (!(caught instanceof ProviderUnavailableError)) throw new Error('Cloudflare provider without ZDR was accepted')
   assertProviderPrivacyMode('api.groq.com', undefined)
+})
+
+
+Deno.test('FreeLLMAPI accepts only router strategies and named auto profiles', () => {
+  for (const model of ['auto:fast', 'auto:smart', 'auto:reliable', 'auto:jarvis-code', 'auto:jarvis-approved']) {
+    if (!isFreeLlmApiModel(model)) throw new Error('valid named FreeLLMAPI route rejected: ' + model)
+  }
+  for (const model of ['auto', 'fusion', 'auto:', 'auto:bad profile']) {
+    if (isFreeLlmApiModel(model)) throw new Error('unrestricted FreeLLMAPI route accepted: ' + model)
+  }
+  for (const model of ['gemini-2.5-flash', 'http://localhost:3001', 'auto:../admin', '', 'fusion:paid']) {
+    if (isFreeLlmApiModel(model)) throw new Error('invalid FreeLLMAPI route accepted: ' + model)
+  }
+})
+
+Deno.test('FreeLLMAPI task hints are explicit and OpenAI-compatible requests stay unchanged', () => {
+  const headers = freeLlmApiTaskHeaders('code')
+  if (headers['X-FreeLLM-Task-Type'] !== 'code') throw new Error('FreeLLMAPI code task hint missing')
+  if (Object.keys(freeLlmApiTaskHeaders()).length !== 1 ||
+      freeLlmApiTaskHeaders()['X-FreeLLM-Task-Type'] !== 'auto') {
+    throw new Error('FreeLLMAPI default task hint must be auto')
+  }
+})
+
+
+Deno.test('FreeLLMAPI task classification handles Brazilian Portuguese and English', () => {
+  if (classifyFreeLlmTask('Preciso corrigir esse código em TypeScript') !== 'code') {
+    throw new Error('Brazilian Portuguese coding request was not classified as code')
+  }
+  if (classifyFreeLlmTask('Debug this Python function') !== 'code') {
+    throw new Error('English coding request was not classified as code')
+  }
+  if (classifyFreeLlmTask('Oi, tudo bem?') !== 'chat') {
+    throw new Error('Short conversation should be classified as chat')
+  }
+  if (classifyFreeLlmTask('x'.repeat(700)) !== 'auto') {
+    throw new Error('Long unclassified request should use automatic routing')
+  }
+})
+
+
+Deno.test('standard provider pool accepts only the FreeLLMAPI gateway', () => {
+  if (!isAllowedStandardProvider('freellmapi')) {
+    throw new Error('FreeLLMAPI gateway should be accepted in the standard pool')
+  }
+  for (const gateway of [undefined, null, '', 'openrouter', 'cloudflare', 'other']) {
+    if (isAllowedStandardProvider(gateway)) {
+      throw new Error('non-FreeLLMAPI provider was accepted in the standard pool: ' + String(gateway))
+    }
+  }
+})
+
+
+Deno.test('provider route diagnostics expose only bounded safe labels and fallback counts', () => {
+  const response = new Response(null, { headers: {
+    'x-routed-via': 'openrouter/llama-3.1',
+    'x-fallback-attempts': '2',
+  } })
+  const diagnostics = buildProviderRouteDiagnostics(
+    { name: 'FreeLLMAPI Gateway', model: 'auto:jarvis-approved' },
+    response,
+  )
+  if (diagnostics.provider !== 'FreeLLMAPI-Gateway' ||
+      diagnostics.model !== 'auto:jarvis-approved' ||
+      diagnostics.routedVia !== 'openrouter/llama-3.1' ||
+      diagnostics.fallbackAttempts !== 2) {
+    throw new Error('safe provider diagnostics were not normalized correctly')
+  }
+  const unsafe = buildProviderRouteDiagnostics(
+    { name: 'sk-should-not-appear', model: 'auto:jarvis-approved' },
+    new Response(null, { headers: {
+      'x-routed-via': 'Bearer test-secret',
+      'x-fallback-attempts': '99',
+    } }),
+  )
+  if (unsafe.provider !== 'unknown' || unsafe.routedVia !== undefined || unsafe.fallbackAttempts !== 20) {
+    throw new Error('unsafe provider diagnostics were not rejected/bounded')
+  }
 })

@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { CloudApiError, createCloudApiClient } from '../src/lib/cloud-api.ts'
+import { CloudApiError, createCloudApiClient, portugueseApiMessage } from '../src/lib/cloud-api.ts'
 
 test('cloud client sends bearer auth and version without storing credentials', async () => {
   let captured: RequestInit | undefined
@@ -77,6 +77,29 @@ test('cloud event parser accepts a valid text delta and rejects malformed frames
   assert.equal(parseCloudAssistantEvent({ ...valid, version: 2 }), null)
   assert.equal(parseCloudAssistantEvent({ ...valid, turnId: '' }), null)
   assert.equal(parseCloudAssistantEvent({ ...valid, type: 'unknown.event' }), null)
+})
+
+test('cloud event parser accepts only bounded provider routing diagnostics', () => {
+  const base = { version: 1, type: 'turn.started', conversationId: 'c-1', turnId: 't-1' }
+  const valid = {
+    ...base,
+    providerDiagnostics: {
+      provider: 'FreeLLMAPI-Gateway',
+      model: 'auto:jarvis-approved',
+      routedVia: 'openrouter/llama-3.1',
+      fallbackAttempts: 2,
+    },
+  }
+  assert.deepEqual(parseCloudAssistantEvent(valid), valid)
+  assert.equal(parseCloudAssistantEvent({
+    ...base, providerDiagnostics: { ...valid.providerDiagnostics, fallbackAttempts: 21 },
+  }), null)
+  assert.equal(parseCloudAssistantEvent({
+    ...base, providerDiagnostics: { ...valid.providerDiagnostics, routedVia: 'Bearer test-secret' },
+  }), null)
+  assert.equal(parseCloudAssistantEvent({
+    ...base, providerDiagnostics: { ...valid.providerDiagnostics, provider: 'x'.repeat(81) },
+  }), null)
 })
 
 test('cloud event parser validates tool outcomes and memory approval challenges', () => {
@@ -579,5 +602,54 @@ test('speech client honours provider Retry-After on transcription throttling', a
       error.code === 'rate_limited' &&
       error.retryable &&
       error.retryAfterMs === 60_000,
+  )
+})
+
+
+test('cloud API user-facing errors use Brazilian Portuguese', () => {
+  assert.equal(portugueseApiMessage('x', 'rate_limited'), 'O JARVIS recebeu muitas solicitações em pouco tempo. Aguarde um instante e tente novamente.')
+  assert.equal(portugueseApiMessage('x', 'quota_exhausted'), 'A cota gratuita diária de IA foi atingida. Ela é renovada à meia-noite UTC.')
+  assert.equal(portugueseApiMessage('x', 'unauthenticated'), 'Sua sessão expirou. Entre novamente.')
+  assert.equal(portugueseApiMessage('x', 'forbidden'), 'Você não tem permissão para esta operação.')
+  assert.equal(portugueseApiMessage('x', 'invalid_request'), 'Não consegui processar esta mensagem. Verifique o conteúdo e tente novamente.')
+})
+
+
+test('cloud client reads and updates account-scoped provider preferences', async () => {
+  let captured: { input: RequestInfo | URL; init?: RequestInit } | undefined
+  const response = {
+    version: 1,
+    currentPolicyVersion: '2026-11-13-v2',
+    zdrPoolEnabled: true,
+    standardPoolEnabled: false,
+    acceptedAt: '2026-11-13T10:00:00.000Z',
+  }
+  const client = createCloudApiClient({
+    baseUrl: 'https://api.example.test',
+    publishableKey: 'test-publishable-key',
+    getAccessToken: async () => 'provider-preference-token',
+    fetchImpl: async (input, init) => {
+      captured = { input, init }
+      return new Response(JSON.stringify(response), { status: 200, headers: { 'Content-Type': 'application/json' } })
+    },
+  })
+  const updated = await client.setProviderPreferences({
+    zdrPoolEnabled: true,
+    standardPoolEnabled: false,
+    policyVersion: '2026-11-13-v2',
+  })
+  assert.equal(updated.zdrPoolEnabled, true)
+  assert.equal(updated.standardPoolEnabled, false)
+  assert.equal(String(captured?.input), 'https://api.example.test/v1/provider-preferences')
+  assert.equal(captured?.init?.method, 'PUT')
+  assert.equal(JSON.parse(String(captured?.init?.body)).version, 1)
+  assert.equal(new Headers(captured?.init?.headers).get('Authorization'), 'Bearer provider-preference-token')
+})
+
+
+test('provider consent errors explain the next step in Brazilian Portuguese', () => {
+  assert.equal(
+    portugueseApiMessage('Enable an AI provider pool for this account in Cloud Access.', 'forbidden'),
+    'Ative um pool de provedores de IA nas configurações do JARVIS para esta conta.',
   )
 })

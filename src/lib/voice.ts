@@ -477,7 +477,7 @@ async function startElevenVoice(h: VoiceHandlers, cloudTranscribe?: CloudTranscr
       // refreshes can replace the function while this long-lived voice loop runs.
       const activeCloudTranscriber = getCloudTranscriber?.() ?? cloudTranscribe
       if (BACKEND === 'cloud' && !activeCloudTranscriber) {
-        throw new Error('Cloud speech is not connected. Sign in to the Jarvis Cloud account, then try again.')
+        throw new Error('Cloud transcription is unavailable for this account. Enable the approved ZDR speech provider in Cloud Access; browser/device STT is not used.')
       }
       const said = activeCloudTranscriber
         ? await activeCloudTranscriber(blob)

@@ -16,6 +16,7 @@ import {
   type ListMemoriesResponse,
   type CreateMemoryResponse,
   type MemoryPreferenceResponse,
+  type ProviderPreferencesResponse,
   type SemanticMemoryCandidateListResponse,
   type SemanticMemoryCandidateDecisionResponse,
   type MemoryCategory,
@@ -26,13 +27,14 @@ export type CloudFetch = (input: RequestInfo | URL, init?: RequestInit) => Promi
 
 const API_ERROR_CODES = ['unauthenticated', 'forbidden', 'invalid_request', 'rate_limited', 'quota_exhausted', 'service_unavailable', 'internal_error'] as const
 
-function portugueseApiMessage(message: string, code: string): string {
+export function portugueseApiMessage(message: string, code: string): string {
   if (code === 'service_unavailable') return 'O serviço de IA está temporariamente indisponível. Vou tentar novamente em instantes.'
-  if (code === 'rate_limited') return 'O Jarvis recebeu muitos pedidos em pouco tempo. Aguarda um instante e tenta novamente.'
-  if (code === 'quota_exhausted') return 'A quota gratuita diária de IA foi atingida. Ela reinicia à meia-noite UTC.'
-  if (code === 'unauthenticated') return 'A tua sessão expirou. Inicia sessão novamente.'
-  if (code === 'forbidden') return 'Não tens autorização para esta operação.'
-  if (code === 'invalid_request') return 'Não consegui processar esta mensagem. Verifica o conteúdo e tenta novamente.'
+  if (code === 'rate_limited') return 'O JARVIS recebeu muitas solicitações em pouco tempo. Aguarde um instante e tente novamente.'
+  if (code === 'quota_exhausted') return 'A cota gratuita diária de IA foi atingida. Ela é renovada à meia-noite UTC.'
+  if (code === 'unauthenticated') return 'Sua sessão expirou. Entre novamente.'
+  if (code === 'forbidden' && /Enable an AI provider pool/i.test(message)) return 'Ative um pool de provedores de IA nas configurações do JARVIS para esta conta.'
+  if (code === 'forbidden') return 'Você não tem permissão para esta operação.'
+  if (code === 'invalid_request') return 'Não consegui processar esta mensagem. Verifique o conteúdo e tente novamente.'
   return message
 }
 
@@ -224,9 +226,15 @@ export function createCloudApiClient(options: CloudApiOptions) {
     getProviderStatus: () => request<{
       version: typeof CLOUD_API_VERSION
       configured: boolean
-      providers: { name: string; model: string; providerType?: string; privacyMode?: 'zdr' | 'standard' }[]
+      providers: { name: string; model: string; providerType?: string; privacyMode?: 'zdr' | 'standard'; pool?: 'default' | 'standard' }[]
       speechProvider?: 'cloudflare-whisper' | 'unconfigured'
     }>('/v1/provider-status'),
+    getProviderPreferences: () => request<ProviderPreferencesResponse>('/v1/provider-preferences'),
+    setProviderPreferences: (patch: { zdrPoolEnabled: boolean; standardPoolEnabled: boolean; policyVersion: string }) =>
+      request<ProviderPreferencesResponse>('/v1/provider-preferences', {
+        method: 'PUT',
+        body: JSON.stringify({ version: CLOUD_API_VERSION, ...patch }),
+      }),
     getMemoryPreference: () => request<MemoryPreferenceResponse>('/v1/memory-preferences'),
     setMemoryPreferences: (patch: Partial<Pick<MemoryPreferenceResponse, 'contextEnabled' | 'autoCaptureEnabled'>>) =>
       request<MemoryPreferenceResponse>('/v1/memory-preferences', {
