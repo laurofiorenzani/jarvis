@@ -2151,3 +2151,35 @@ J. Next conversation: Continue from this checkpoint. PR #31 exact-head CI #1014 
 - GitHub Actions CI #1175 (run `43596482426`) is IN_PROGRESS on PR #37 head `f0a4105520f79f1b991f86ae5bd4e9349986455a`. Typecheck/build, unit tests and lint have passed; the remaining Deno and isolated Supabase/SQL/two-user/CORS steps had not yet completed at the last check.
 - GitHub Actions CI #1173 (run `43596386227`) is IN_PROGRESS on PR #39 head `4f162369d4c9e307857a8b5cff23a9b75895c243`. Typecheck/build/tests/lint, provider/privacy checks, Edge Function typecheck and speech tests passed; isolated Supabase startup was still running, with migration/SQL/two-user/CORS steps pending.
 - These exact-head runs supersede the earlier statement that no workflow run existed. They are not yet passes; keep both PRs Draft/open until complete and review any failures.
+
+
+## 2026-11-14 — latest CI diagnosis and platform security review
+
+### Agent foundation
+- PR #37 exact-head CI #1175 / run `43596482426` completed SUCCESS on `f0a4105520f79f1b991f86ae5bd4e9349986455a`. The active-handler cancellation regression and AbortSignal race fix are included in that exact tested head.
+- GitHub currently reports PR #37 mergeable, but it remains Draft and separate from canonical. It is a bounded, injected read-only executor only; it is not wired to authenticated runtime tools or live agent orchestration.
+
+### Family CFO SQL follow-up
+- PR #39 CI #1173 / run `43596386227` FAILED at SQL isolation test 1 of 12. The exact cause was the synthetic overlapping EUR registry fixture beginning 2025-01-01, which also overlapped the earlier EUR positive test dated 2026-11-13. The SQL validator correctly rejected the ambiguous date; the test fixture accidentally made the positive case ambiguous.
+- Corrected only the test fixture: overlap now begins 2026-11-14; positive EUR case remains 2026-11-13; ambiguous overlap assertion uses 2026-11-14. No production SQL logic was weakened.
+- New PR #39 head: `76267c89fdbfdc380b394033e0ab49b7325fa144`. Re-fetched test file confirms pgTAP plan 12, the overlap starts on 2026-11-14 and the ambiguity assertion targets that date.
+- Exact-head CI #43596794456 is now IN_PROGRESS on this corrected head. Typecheck/build/tests/lint have passed; Deno/provider privacy and remaining isolated DB/SQL/two-user/CORS checks are still running. GitHub currently reports PR #39 mergeable, but it remains Draft. Do not merge or apply migrations until this exact run succeeds and review is complete.
+- The earlier failed CI is retained as evidence; the corrected head must pass independently.
+
+### Supabase production read-only review
+- Project `undmhmdwhxvjgvezvucy`: Edge Functions `jarvis-api` v32 and `jarvis-preview-api` v23 remain ACTIVE. The live migration list ends at provider-preferences migrations; Family CFO migrations have NOT been applied to production.
+- Security advisor: one INFO finding says `jarvis_rate_limits` has RLS enabled without policies. Inspection of the canonical hardening migration confirms this is intentional: all privileges are revoked from PUBLIC/anon/authenticated because rate-limit buckets are internal API state. No change required.
+- Security advisor also reports Supabase Auth leaked-password protection disabled (WARN). This is an account Auth security setting; it was not changed without owner approval. Enable it from Supabase Auth settings when the owner is ready.
+- Health advisor returned no lints. Performance advisor previously reported 18 unused indexes; do not drop these blindly because the database is new/low-usage and indexes may be required by upcoming workload.
+- A read-only logs query attempt used an unsupported `level` field and returned a schema error; no log rows or personal content were retrieved. Do not repeat without first establishing the available log schema.
+
+### Release / merge boundaries
+- Canonical branch remains `work/jarvis-canonical-integration`; exact canonical CI remains green on its validated head. Existing Vercel canonical preview remains READY on code commit `7098ff4`; latest docs-only canonical commits are not newly deployed because Vercel reports build-rate-limit. No paid upgrade or retry storm.
+- PR #37 and #39 remain Draft/open and not integrated into canonical. No production migration, Edge Function deployment, auth setting change, provider inference, billing, vehicle action or financial import occurred.
+
+### Next actions
+1. Wait for exact-head PR #39 CI #43596794456; if SQL test still fails, inspect the precise failing assertion and fix the fixture/function without production changes.
+2. After #39 exact CI passes, review branch diffs and integrate only through a deliberate, conflict-aware PR review; do not merge Draft PRs automatically.
+3. Keep provider pools disabled until actual billing/no-overage terms, EEA processing, retention/training and per-account consent are all verified.
+4. Continue separate iOS/BMW/Observer validation, but distinguish source/CI success from device/account integration tests.
+5. Ask the owner before changing Supabase Auth leaked-password protection.
