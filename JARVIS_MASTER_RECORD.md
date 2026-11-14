@@ -2071,3 +2071,51 @@ J. Next conversation: Continue from this checkpoint. PR #31 exact-head CI #1014 
 - Repository: `laurofiorenzani/jarvis`; canonical branch: `work/jarvis-canonical-integration`; canonical head at checkpoint: `87b1bdfd2160dba1c9a9da1f54a4067283a1d36d`.
 - This update appends to the existing `JARVIS_MASTER_RECORD.md`; no duplicate ledger/status files created.
 - This checkpoint verifies PR #37 and #39 exact-head CI success and read-only platform state. It does not claim PR approval, merge, deployment, production schema changes or runtime activation.
+
+
+## 2026-11-14 — continued parallel engineering checkpoint (13:05 UTC)
+
+### A. Canonical branch and deployment verification
+- Canonical branch `work/jarvis-canonical-integration` is at `0c1c9f54dddec3125b09acb3d926d1a454ec8f27`.
+- Exact-head GitHub CI runs #43596040162 and #43596040231 both COMPLETED SUCCESS on this canonical commit. The workflow jobs reported success.
+- Vercel Preview `jarvis-b87jc51vw-lauro-fiorenzani.vercel.app` is READY for canonical code commit `7098ff4fe340c6392368ebd546e14d4a4deb2956`. It is not the later documentation-only `0c1c9f5` commit. The Vercel status check for the latest canonical commit still reports `build-rate-limit`; do not retry or upgrade just to refresh a docs-only preview.
+- Supabase remains ACTIVE_HEALTHY in `eu-west-3`; Production `jarvis-api` v32 and Preview `jarvis-preview-api` v23. No function deployment or migration occurred.
+- Cloudflare inventory still shows zero Worker scripts. Billing Read is unavailable; no provider inference or Worker creation.
+
+### B. Exact-head feature validation refreshed
+- PR #37 agent foundation: head `bceb9d7120dc5eb4cb3461888761b76f6b13a33d`, CI #43594255372 SUCCESS.
+- PR #39 Family CFO: head `67af52fcbc715eac19948e10ca30062f469e08db`, CI #43594106243 SUCCESS before the follow-up SQL hardening below.
+- PR #23 provider consent / FreeLLMAPI routing: head `02c4901a9274844e2454899c59dcb7ea5bbd39c6`, CI #43586430295 SUCCESS. Its billing attestation is still unset, Cloudflare billing/no-overage remains unverified, provider pools remain disabled, and durable cross-instance quota cooldown is still outstanding.
+- PR #38 native Keychain adapter: head `8dbe4f8084c9e306768e330e756fa4be05ce857f`, CI #43593900571 SUCCESS. No native target, plugin installation, signing or physical-device test.
+- PR #34 BMW CarData adapter: head `c1024ce253537474989a5dd5024e9ad5f60e7f44`, CI #43587548093 SUCCESS. Read-only personal CarData only; no vehicle account access or command.
+- PR #31 Observer: head `7ba6435a6cf8300a329f47465f36446ad94e739d`, CI #43587476240 SUCCESS. Observer Validation #43587476231 SUCCESS.
+- All above PRs remain separate/open and no merge or production release was performed.
+
+### C. CFO SQL correctness hardening — implemented, validation pending
+- Code review found a real ambiguity gap in PR #39's SQL currency validator: it used `EXISTS`, so two overlapping effective-dated rows for the same currency/version could pass if either row's minor-unit precision matched. The TypeScript validator already required exactly one matching row, but SQL did not.
+- Updated `supabase/migrations/20261113190000_jarvis_cfo_currency_exponent.sql` on branch `work/cfo-currency-canonical-20261114` to require exactly one matching effective-dated registry row and then verify the amount against that row's exponent.
+- Added a synthetic overlapping EUR registry fixture and a regression assertion to `supabase/tests/family_cfo_currency_exponent.test.sql`; pgTAP plan increased from 11 to 12.
+- Migration commit: `de9097bb76e843bfc579402abbbeb105b9c5d822`. Test commit / current PR #39 head: `4f162369d4c9e307857a8b5cff23a9b75895c243`.
+- Verified by fetching both files from the live PR branch: the function uses `count(*) = 1`, the overlap fixture/assertion is present, and the test plan is 12.
+- This follow-up has NOT yet received exact-head CI or isolated database execution. The previous green CI on `67af52f` does not validate the new SQL/test commits. Do not merge or apply the migration until exact-head CI and isolated SQL tests pass.
+- No production CFO migration, registry seed, real financial import or bank connection.
+
+### D. Branch ancestry and merge control
+- Compared current canonical head to #37/#39: both feature branches are diverged from merge base `6f17c684a481512cc295d1c34350e0cf735aac7`; #37 is 9 ahead / 3 behind and #39 is 10 ahead / 3 behind. GitHub reports clean mergeability metadata, but branch ancestry is not current. Do not force-push or blindly merge; reconcile the canonical ledger and inspect the three canonical commits before integration.
+- PR #23 is more substantially diverged (20 ahead / 10 behind from its recorded merge base) and currently reports not mergeable. BMW PR #34 is stacked on #23. Do not merge either independently or rewrite their history without a file-level reconciliation.
+- Vercel build-rate limit remains an external release/preview constraint; no paid upgrade or quota bypass.
+
+### E. Safety and next actions
+1. Obtain exact-head CI/isolated SQL validation for PR #39 head `4f162369d4c9e307857a8b5cff23a9b75895c243`; if the connector cannot trigger workflows, leave it explicitly pending rather than calling the previous CI green.
+2. Reconcile #37/#39 with current canonical ancestry only after a conflict-aware review; preserve their separate tested source changes and the sole master ledger.
+3. Continue provider-consent parity and zero-cost route investigation, keeping all providers disabled until no-overage billing, cross-border processing disclosures and each account's separate consent are verified.
+4. Keep the agent executor read-only and injected; do not claim a live multi-agent runtime.
+5. Keep CFO synthetic-only; no production migration or real records until the schema, registry snapshot and RLS review are approved.
+6. Continue iOS and BMW adapter work within official API and €0 boundaries; physical-device/account consent gates remain.
+7. Preserve the existing READY Preview and avoid repeated Vercel builds while the rate-limit status is active.
+
+### F. Handoff
+- Repository: `laurofiorenzani/jarvis`; canonical branch `work/jarvis-canonical-integration`; current canonical head `0c1c9f54dddec3125b09acb3d926d1a454ec8f27`.
+- Existing `JARVIS_MASTER_RECORD.md` updated; no duplicate ledger created.
+- Validated this session: canonical CI, earlier exact-head feature CI listed above, and live read-only platform state. CFO SQL ambiguity fix is implemented but not yet validated.
+- No PR merged; no production migration/deployment; no account, secret, auth, billing, vehicle or financial data mutation.
