@@ -168,7 +168,7 @@ select is(
     '10000000-0000-4000-8000-000000000052',
     '00000000-0000-4000-8000-000000000051',
     'bmw-client-test', 'synthetic-expired-device-code', repeat('e', 48),
-    now() + interval '1 second'
+    pg_catalog.clock_timestamp() + interval '1 second'
   ),
   true,
   'creates a short-lived authorization for expiry testing'
