@@ -1898,3 +1898,37 @@ J. Next conversation: Continue from this checkpoint. PR #31 exact-head CI #1014 
 ### Current safety boundary
 - No merge, production deployment, live schema migration, account change, secret access, provider inference, billing change or external vehicle action in this work.
 - Vercel free deployment quota remains a constraint; use GitHub CI and avoid unnecessary Preview deployments.
+
+
+## 2026-11-14 — live continuity checkpoint (10:05 Europe/Dublin)
+
+### Exact-head CI recheck
+- PR #35 multi-agent architecture proposal: exact head `8fb382eb3962d710ef96dbd0fe3c7ee8cd585f0d`; GitHub Actions run #43582207396 completed SUCCESS. The complete job passed typecheck/build, tests, lint, provider privacy, semantic-memory policy, Edge Function typecheck, speech tests, isolated Supabase migrations, SQL isolation, two-user semantic-memory API integration and deployed API/Preview CORS smoke tests. Scope remains documentation-only; this does not implement a runtime orchestrator.
+- PR #34 BMW CarData: exact head `68dade670cb49a652cebcc0bc842aab92c50503b`; CI #43582303959 completed SUCCESS. Includes PKCE/device-flow client, Vault-backed refresh-token storage, the shared atomic 50-per-24h budget adapter, authenticated route handlers and route tests; isolated migration/SQL and two-user/CORS checks passed. No production migration, BMW account/client registration, OAuth consent or vehicle request occurred.
+- PR #26 action approvals: exact head `ec286b6b835609f45d018d1d6d490c1e605582fb`; CI #43523028466 completed SUCCESS. This is persistent approval metadata/API/UI only; no general-purpose tool executor is wired.
+- PR #31 Observer: exact head `7849419dfeef11984cdac4be0458678623d199ac`; CI #43509077137 and Observer validation #43509076704 completed SUCCESS.
+- PR #32 CFO currency exponent: exact head `dfea9b296647ed257915932998700ce0fbe4ac39`; CI #43505906597 completed SUCCESS. Keep the competing CFO schema branches reconciled before any merge or production migration.
+- PR #23 provider consent/routing: exact head `ead81317ba70c9a88a61cf7bc477540eb44e7763`; CI #43508404232 completed SUCCESS. Provider activation remains gated by verified account billing/overage and per-account privacy consent.
+- PR #33 no-paid-provider guard: exact head `ff2aa270765723ca45a0e272760ae3558f098c09`; CI #43523154130 completed SUCCESS. Its branch is currently reported non-mergeable; do not merge until ancestry is reconciled.
+
+### Live Supabase production snapshot (read-only)
+- The single Supabase project `Jarvis` is ACTIVE_HEALTHY in `eu-west-3`, PostgreSQL 17.
+- Deployed functions: `jarvis-api` v32 and `jarvis-preview-api` v23, both ACTIVE.
+- Latest production migration is `20261113125437 provider_preferences_rls_initplan`. The BMW Vault migration and action-approval/CFO migrations are not in production migration history.
+- Security advisors: INFO `jarvis_rate_limits` has RLS enabled with no policies (consistent with the service-role-only access design; verify grants separately rather than adding a user policy); WARN leaked-password protection is disabled. No Auth security setting was changed. Enabling breached-password protection requires owner review of the Auth policy impact.
+- Performance advisor reports 18 currently unused indexes. Do not remove them based on low/early traffic; collect representative query usage first.
+
+### Review findings and release boundaries
+- PR #34 now contains authenticated BMW connect/start, connect/complete, vehicle-read and disconnect routes. Before treating the OAuth flow as production-ready, review binding of the device-flow `device_code` and PKCE verifier to the initiating user/session, short-lived state expiry/replay handling, refresh-token rotation edge cases, and per-user disconnect/revocation. Route tests currently prove owner-scoped Vault calls and the REST budget, but should explicitly cover cross-session/mismatched-flow rejection and expiry.
+- BMW CarData remains read-only telematics; it does not support remote climate, lock, window, door or trunk commands.
+- All reviewed PRs remain open/Draft. No merge, production deployment, production migration, billing change, provider inference or external device action was performed.
+- Vercel deployment quota and the €0 recurring-cost rule remain hard gates; use GitHub CI for validation when a new Preview deployment is not necessary.
+
+### Next execution order
+1. Add focused BMW device-flow state/expiry/replay tests and harden the route in its isolated branch; keep production untouched.
+2. Reconcile the CFO currency/schema/domain contract into one branch and one migration/test set.
+3. Convert the multi-agent proposal into typed registry/task/result contracts, then a bounded read-only orchestrator behind existing auth, memory, provider and approval controls.
+4. Continue approval-executor design without executing external actions until capability registry and one-time approval binding are validated.
+5. Continue iOS/web integration and preserve current PWA/HUD; physical iPhone/Keychain verification remains a user-device validation step.
+6. Recheck Observer and provider-policy exact heads incrementally; avoid repeating successful CI.
+
