@@ -140,7 +140,7 @@ export function parseAgentDefinition(input: unknown): AgentDefinition | null {
 
   const limits = input.limits
   const integerInRange = (value: unknown, min: number, max: number): value is number =>
-    Number.isSafeInteger(value) && (value as number) >= min && (value as number) <= max
+    typeof value === 'number' && Number.isSafeInteger(value) && value >= min && value <= max
 
   if (!integerInRange(limits.maxRuntimeMs, 100, 120_000) ||
       !integerInRange(limits.maxCalls, 1, 32) ||
