@@ -43,7 +43,7 @@ export async function executeReadOnlyAgentTasks(
   handler: ReadOnlyAgentHandler,
   options: ReadOnlyExecutionOptions = {},
 ): Promise<AgentTaskExecution[]> {
-  if (typeof handler !== 'function' || !Array.isArray(input)) return []
+  if (typeof handler !== 'function' || !Array.isArray(input) || !Array.isArray(definitions)) return []
   const plan = buildReadOnlyTaskPlan(input, options.limits)
   if (!plan) return []
 
