@@ -1,5 +1,7 @@
 import {
   BMWVaultTokenStoreError,
+  consumeBMWPendingAuthorization,
+  createBMWPendingAuthorization,
   deleteBMWCredentials,
   getBMWRefreshToken,
   storeBMWRefreshToken,
@@ -91,4 +93,46 @@ Deno.test('maps Vault RPC errors to safe errors without exposing secret details'
   if (!(caught instanceof BMWVaultTokenStoreError) || caught.code !== 'token_retrieval_unavailable') {
     throw new Error('Vault error was not mapped to a safe error')
   }
+})
+
+
+Deno.test('persists BMW pending device authorization without returning device secrets to the caller', async () => {
+  const rpc = new FakeRpc(true)
+  await createBMWPendingAuthorization(rpc, userA, '10000000-0000-4000-8000-000000000051', {
+    clientId: 'bmw-client-id',
+    deviceCode: 'synthetic-device-code',
+    codeVerifier: 'a'.repeat(48),
+    expiresAt: '2026-11-14T09:10:00.000Z',
+  })
+  assertEquals(rpc.calls[0].name, 'jarvis_create_bmw_cardata_pending_auth')
+  assertEquals(rpc.calls[0].params.p_user_id, userA)
+  assertEquals(rpc.calls[0].params.p_device_code, 'synthetic-device-code')
+})
+
+Deno.test('consumes BMW pending authorization once for the verified owner', async () => {
+  const rpc = new FakeRpc([{
+    client_id: 'bmw-client-id',
+    device_code: 'synthetic-device-code',
+    code_verifier: 'a'.repeat(48),
+    expires_at: '2026-11-14T09:10:00.000Z',
+  }])
+  const pending = await consumeBMWPendingAuthorization(
+    rpc, userA, '10000000-0000-4000-8000-000000000051',
+  )
+  assertEquals(rpc.calls[0].name, 'jarvis_consume_bmw_cardata_pending_auth')
+  assertEquals(rpc.calls[0].params.p_user_id, userA)
+  assertEquals(pending?.deviceCode, 'synthetic-device-code')
+  assertEquals(pending?.codeVerifier, 'a'.repeat(48))
+})
+
+Deno.test('rejects malformed BMW pending authorization identity before RPC', async () => {
+  const rpc = new FakeRpc(true)
+  let caught: unknown
+  try {
+    await consumeBMWPendingAuthorization(rpc, userA, 'not-a-state-id')
+  } catch (error) { caught = error }
+  if (!(caught instanceof BMWVaultTokenStoreError) || caught.code !== 'invalid_request') {
+    throw new Error('invalid pending authorization state was not rejected')
+  }
+  assertEquals(rpc.calls.length, 0)
 })
