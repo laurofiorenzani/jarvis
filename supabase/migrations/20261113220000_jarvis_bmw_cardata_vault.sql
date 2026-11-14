@@ -124,7 +124,7 @@ create table if not exists public.jarvis_bmw_cardata_pending_auth (
   vault_secret_id uuid not null unique references vault.secrets(id) on delete cascade,
   client_id text not null check (length(btrim(client_id)) between 1 and 200),
   expires_at timestamptz not null,
-  created_at timestamptz not null default pg_catalog.now(),
+  created_at timestamptz not null default pg_catalog.clock_timestamp(),
   check (expires_at > created_at and expires_at <= created_at + interval '15 minutes')
 );
 
@@ -159,7 +159,7 @@ begin
   for v_expired in
     select pending.state_id, pending.vault_secret_id
     from public.jarvis_bmw_cardata_pending_auth as pending
-    where pending.expires_at <= pg_catalog.now()
+    where pending.expires_at <= pg_catalog.clock_timestamp()
     for update
   loop
     delete from public.jarvis_bmw_cardata_pending_auth as pending where pending.state_id = v_expired.state_id;
