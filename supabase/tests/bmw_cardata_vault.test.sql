@@ -1,6 +1,6 @@
 begin;
 
-select plan(42);
+select plan(41);
 
 insert into auth.users (id, aud, role, email, encrypted_password, email_confirmed_at, created_at, updated_at)
 values
@@ -140,20 +140,13 @@ select is(
   'a different owner cannot consume the pending authorization'
 );
 select is(
-  (select device_code from public.jarvis_consume_bmw_cardata_pending_auth(
-    '10000000-0000-4000-8000-000000000051',
-    '00000000-0000-4000-8000-000000000051'
-  )),
-  'synthetic-device-code',
-  'the initiating owner can consume the pending device authorization'
-);
-select is(
-  (select code_verifier from public.jarvis_consume_bmw_cardata_pending_auth(
-    '10000000-0000-4000-8000-000000000051',
-    '00000000-0000-4000-8000-000000000051'
-  )),
-  repeat('v', 48),
-  'the initiating owner receives the PKCE verifier only through the server-side consume RPC'
+  (select device_code || ':' || code_verifier
+   from public.jarvis_consume_bmw_cardata_pending_auth(
+     '10000000-0000-4000-8000-000000000051',
+     '00000000-0000-4000-8000-000000000051'
+   )),
+  'synthetic-device-code:' || repeat('v', 48),
+  'the initiating owner receives both pending secrets through one server-side consume RPC'
 );
 select is(
   (select count(*)::int from public.jarvis_consume_bmw_cardata_pending_auth(
