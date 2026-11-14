@@ -5,6 +5,7 @@ import {
   createBMWPKCE,
   exchangeBMWDeviceCode,
   refreshBMWAccessToken,
+  startBMWDeviceAuthorization,
 } from '../../../src/lib/integrations/bmw-cardata.ts'
 import {
   deleteBMWCredentials,
@@ -124,7 +125,7 @@ export async function handleBMWCarDataRoute(
     if (!isRecord(body) || !validClientId(body.clientId)) return failure('invalid_request', 'A valid BMW client ID is required.', 400)
     try {
       const pkce = await createBMWPKCE()
-      const device = await (await import('../../../src/lib/integrations/bmw-cardata.ts')).startBMWDeviceAuthorization(
+      const device = await startBMWDeviceAuthorization(
         body.clientId, pkce.codeChallenge, fetchImpl, BMW_CARDATA_DEFAULT_SCOPES,
       )
       return json({
