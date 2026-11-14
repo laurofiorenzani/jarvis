@@ -1842,122 +1842,39 @@ I. GitHub: `laurofiorenzani/jarvis`; canonical `work/jarvis-canonical-integratio
 J. Next conversation: Continue from this checkpoint. PR #31 exact-head CI #1014 and Observer #172 both SUCCESS; PR remains Draft/non-mergeable. Supabase prod v32 lacks Preview's /provider-preferences route; route parity review required. PR #22 numeric(20,2) conflicts with PR #29 currency exponent registry; no live CFO migration. PR #23 provider pools remain disabled pending per-provider EEA/free-quota/retention/no-overage evidence. Vercel Hobby daily deployment cap reached; do not upgrade/bypass. Continue multitask under €0 recurring cost.
 
 
-## 2026-11-13 — multi-front continuation: CFO currency schema and cloud route parity
+## 22. Session handoff — 2026-11-14 (Europe/Dublin)
 
-### Family CFO — implementation proposal in isolated branch
-- Created branch `work/cfo-currency-exponent-schema-20261113` from the current canonical ledger head `2512258b08ca684fd48206fee274524f8a6f1919`.
-- Ported the owner-scoped CFO schema and its synthetic two-user RLS/least-privilege tests from PR #22 into this current-ancestry branch.
-- Added versioned/effective-dated `jarvis_cfo_currency_registry`, exact `NUMERIC(30,9)` amount storage, and a fail-closed precision validator that rejects amounts beyond each currency's minor-unit exponent, unknown currency codes, unsupported registry versions and out-of-date records.
-- Account currency also requires an explicitly seeded and effective registry entry. The registry intentionally has no production seed data. EUR/JPY/KWD test values are explicitly synthetic only.
-- Added nine focused currency tests and updated isolation fixtures to use a synthetic EUR registry row.
-- Opened Draft PR #32: https://github.com/laurofiorenzani/jarvis/pull/32. Head `ef658432986da1cd561b25dc5618288ed98b0d61`; GitHub currently reports mergeable=true, but no exact-head CI run was returned yet. Keep Draft; no merge or live migration.
-- Important pre-validation caveat: inspect SQL test ordering and run full `supabase test db` before considering the schema validated. This is an implementation proposal, not an approved migration.
+### Work completed in this session
+- Re-fetched current metadata for PRs #23, #31, #32, #26, #33 and #34. All six remain OPEN and Draft; none was merged. Exact heads at inspection: #23 `ead81317ba70c9a88a61cf7bc477540eb44e7763`; #31 `7849419dfeef11984cdac4be0458678623d199ac`; #32 `dfea9b296647ed257915932998700ce0fbe4ac39`; #26 `ec286b6b835609f45d018d1d6d490c1e605582fb`; #33 `ff2aa270765723ca45a0e272760ae3558f098c09`; #34 `9846edb396250e9e5f1810d03fa631ca1395b593` before the documentation correction below.
+- Re-queried workflow runs for those six exact heads: each returned a completed CI SUCCESS. PR #31 additionally returned Observer Validation SUCCESS. This is CI evidence only, not production readiness or device/integration E2E.
+- Found a policy contradiction in PR #34's BMW CarData integration document: its final paragraph suggested My BMW app Shortcuts as a user-triggered handoff, contrary to the no-Shortcuts product decision in this master record.
+- Corrected `docs/integrations/BMW_CARDATA_READONLY.md` on the existing isolated branch `work/bmw-cardata-readonly-20261113`, replacing the Shortcut handoff suggestion with an explicit rule that JARVIS must not rely on Apple/Siri Shortcuts and must report unsupported BMW commands honestly.
+- Documentation commit: `bfdf4d38d41aea52b8339622f84b0be39c203c66`. PR #34 remains open/Draft; CI for this new exact head was observed IN_PROGRESS at handoff time. Do not mark this correction validated until the run completes successfully.
 
-### Currency source research
-- ISO confirms currency codes include minor-unit information and that SIX Financial Information AG maintains ISO 4217 on ISO's behalf. SIX amendment 180 (22 Sep 2025) records Bulgaria's EUR transition effective 1 Jan 2026. Sources: ISO overview https://www.iso.org/standard/64758.html (see also https://www.iso.org/cms/%20render/live/en/sites/isoorg/home/standards/popular-standards/iso-4217--currency-codes.html); SIX amendment 180 https://www.six-group.com/dam/download/financial-information/data-center/iso-currrency/amendments/dl-currency-iso-amendment-180.pdf.
-- Current production allowlist and registry version are deliberately not populated from secondary copies. Obtain/pin the authoritative SIX List One snapshot, record retrieval date and review the allowed code set before seeding.
+### Current state and boundaries
+- No merge, production deployment, live database migration, provider inference, billing change, secret access, account change, or external vehicle action occurred.
+- BMW CarData remains a read-only adapter. It cannot control climate, locks, windows or trunk. Its Vault migration and authenticated consent/revocation routes remain prerequisites, not deployed features.
+- PR #26 approvals are records/UI/API only; no real action executor is available yet.
+- Native iOS/Keychain and physical-device validation remain outstanding. Do not claim a native app is ready.
+- Vercel Hobby deployment cap and the €0 recurring-cost rule remain hard constraints; do not upgrade or bypass limits.
 
-### Cloud Brain — route/auth comparison
-- Re-read live Supabase Edge Function source: production `jarvis-api` ACTIVE v32; Preview `jarvis-preview-api` ACTIVE v23. Both set `verify_jwt=false`, but the source places bearer token validation (`auth.getUser`) before the authenticated route handlers. Public health is intentionally pre-auth.
-- Preview has authenticated GET/PUT `/provider-preferences`; production v32 does not. Preview also has POST `/semantic-memory/candidates`; production route inventory shows GET only. Production and Preview are therefore not functionally equivalent.
-- Both versions expose STT/TTS, provider status, semantic-memory search/list, memory preferences, memories, conversations, turn cancellation and turns. Preview additionally packages dedicated CORS, route-path and speech-transcript modules and a broader Preview-origin policy. Do not promote Preview wholesale; implement a reviewed route-by-route patch and regression tests first.
-- Live migrations remain through `20261113125437_provider_preferences_rls_initplan`; CFO tables are still absent in production.
+### Next actions
+1. Recheck CI on commit `bfdf4d38d41aea52b8339622f84b0be39c203c66`; fix only if a concrete failure is returned.
+2. Review PR #34 OAuth lifecycle and SQL/Vault tests, then add the authenticated device-consent, disconnect/revocation and route-level daily-budget wiring only in isolated code with exact-head tests; do not deploy its migration.
+3. Continue CFO currency exponent reconciliation across PRs #22/#29/#32 without importing real financial data.
+4. Review PR #23 provider fallback-before-dispatch and free-tier/EEA/privacy attestations; keep provider pools default-off until evidence is complete.
+5. Continue the native iOS shell/Keychain investigation and the cloud approval executor design as separate workstreams; preserve the amber HUD and existing accounts.
+6. Reconcile every material change back into this single master record. No duplicate status ledger.
 
-### Multi-AI — release gate
-- PR #23 provider preferences/FreeLLMAPI routing remains non-released. Per-account pools remain disabled. Gateway metadata and routing headers are not proof of the downstream fallback provider's privacy, retention, geography or cost.
-- Before enabling any pool, verify the active FreeLLMAPI fallback chain before dispatch (not only after response), current no-cost quotas, no payment method/overage, Ireland/EEA eligibility, personal-use terms and retention/training per provider. No inference was sent.
-
-### Session safety
-- No production deployment, live migration, secret/auth/billing change, provider activation, personal financial data access, external financial action or paid service.
-- Vercel Hobby daily deployment cap remains active; no deployment retry, upgrade or bypass.
-
-### Handoff
-A. State: Observer CI PR #31 validated; CFO exponent schema now proposed in PR #32; cloud production/Preview route gaps confirmed. JARVIS remains in development.
-B. Completed: PR #32 branch/PR created with schema + synthetic tests; production/Preview auth ordering and missing routes inspected; official ISO/SIX currency-source context checked.
-C. In progress: PR #32 exact-head CI and SQL test validation; production/Preview route parity; downstream provider policy attestation; persistent atomic action approvals; iOS native target/device path.
-D. Evidence: repo `laurofiorenzani/jarvis`; canonical base `2512258b08ca684fd48206fee274524f8a6f1919`; PR #32 head `ef658432986da1cd561b25dc5618288ed98b0d61`; Supabase production v32 / Preview v23; live migrations through `20261113125437`.
-E. Decisions: no CFO registry seed until pinned official SIX List One reviewed; no live migration; no Preview promotion; no provider activation; no paid Vercel tier.
-F. Pending: CFO—validate test ordering, function/constraint behavior, migration reset and SQL isolation; Cloud—implement missing production routes only after parity contract review; Multi-AI—prove provider fallback chain pre-dispatch and no-cost/privacy; iOS—native build/device acceptance; action approvals—persistent one-time state machine.
-G. User action: none now. Mac/Xcode and physical iPhone will eventually be required for native acceptance.
-H. Next: inspect PR #32 CI once available; fix any SQL/test failures on the isolated branch; continue source-level route diff and provider fallback review.
-I. GitHub: `laurofiorenzani/jarvis`; canonical `work/jarvis-canonical-integration`; PR #31 Observer validated; PR #32 CFO currency exponent Draft.
-J. Next conversation: Continue from this checkpoint. PR #31 exact-head CI #1014 + Observer #172 SUCCESS. PR #32 adds currency exponent registry and synthetic tests, head `ef658432986da1cd561b25dc5618288ed98b0d61`; exact-head CI not yet confirmed. Prod Supabase v32 lacks Preview's GET/PUT /provider-preferences and POST /semantic-memory/candidates; both handler sources validate bearer auth before authenticated handlers. CFO registry empty until official SIX list review; no live migration. Provider pools off; Vercel free cap respected. Continue multitask under €0 recurring cost.
+### GitHub and handoff
+- Repository: `laurofiorenzani/jarvis`.
+- Canonical record branch: `work/jarvis-canonical-integration`.
+- BMW documentation branch: `work/bmw-cardata-readonly-20261113`.
+- Latest BMW documentation commit: `bfdf4d38d41aea52b8339622f84b0be39c203c66`; CI was still running when this entry was written.
+- No PR merged and no production deployment performed.
+- Next conversation: resume by checking the exact CI result for the BMW documentation commit, then continue the independent CFO, provider-policy, cloud-approval, iOS and infrastructure workstreams. Preserve the no-Shortcuts rule, €0 recurring cost, one canonical repository and this single master handoff record.
 
 
-## 2026-11-13 — CFO precision correction and exact-head validation checkpoint
-
-### Family CFO / PR #32
-- Exact-head CI run #1019 (`43479276756`) completed SUCCESS on the previous PR head `fc7bc197c7ad052ed648cbf5e5039c323aac1918`. All 28 job steps succeeded, including typecheck/build, Node tests, lint, provider privacy, semantic-memory tests, Edge Function typecheck, isolated Supabase migrations, SQL isolation regression, authenticated two-user API test, and Production/Preview CORS smoke tests. This does not validate the subsequent precision correction.
-- Source review found a correctness gap: `NUMERIC(30,9)` coerces/rounds input to nine fractional places before the CHECK constraint can inspect it. A value such as EUR 1.2300000001 could therefore be rounded to 1.230000000 and incorrectly pass a 2-digit exponent check.
-- Corrected the isolated PR #32 migration to use unconstrained PostgreSQL `numeric` for transaction and balance amounts, preserving the supplied decimal scale until the currency exponent constraint runs. Added two regression assertions for excess precision beyond 9 places and a high-precision decimal input. Currency validation still compares the original exact numeric value against `trunc(amount, minor_unit)`.
-- Correction commits: migration `70c84723cc46db0e787c58d8b42e64184cb5804a`; test `c45b97b1ff3ead9ba57136e8e516d8c5bfc6db7b`. Current PR #32 head is `c45b97b1ff3ead9ba57136e8e516d8c5bfc6db7b`; GitHub reports mergeable=true and Draft=true. No exact-head CI run was visible at checkpoint; must rerun and validate before review.
-- The nine prior exponent assertions plus two new high-precision regressions are now 11 planned assertions. EUR/JPY/KWD fixtures remain synthetic; production registry remains empty. No live migration or financial data.
-- Keep PR #32 Draft. Do not merge or deploy based on prior-head CI.
-
-### Supabase / security recheck
-- Live migrations still end at `20261113125437_provider_preferences_rls_initplan`; no CFO schema is live.
-- Security advisor findings unchanged: INFO `public.jarvis_rate_limits` has RLS enabled with no policies (verify service-role-only access in source); WARN leaked-password protection disabled (remediation link: https://supabase.com/docs/guides/auth/password-security#password-strength-and-leaked-password-protection). No production auth/security settings changed.
-
-### Handoff
-A. State: PR #31 Observer remains validated from its exact head; PR #32 has a corrected exact-decimal implementation proposal and needs new exact-head CI.
-B. Completed: PR #32 previous head CI #1019 fully green (28/28 steps); source-level numeric-coercion flaw found and corrected in isolated branch; two high-precision regression assertions added.
-C. In progress: validate corrected PR #32 head; route-by-route production/Preview parity; FreeLLMAPI downstream pre-dispatch attestation; persistent atomic action approval design; native iOS project/device path.
-D. Evidence: repo `laurofiorenzani/jarvis`; PR #32 branch `work/cfo-currency-exponent-schema-20261113`; current head `c45b97b1ff3ead9ba57136e8e516d8c5bfc6db7b`; prior CI run #1019 `43479276756` SUCCESS on previous head only; live Supabase production v32 / Preview v23; migrations through `20261113125437`.
-E. Decisions: keep PR #32 Draft; exact decimal scale must remain uncoerced until exponent validation; no production seed, migration, provider activation, paid tier or deployment churn.
-F. Pending: CFO—exact-head CI and review of account currency effective-date semantics; Cloud—route parity patch after auth/RLS/CORS contract; Multi-AI—attested provider chain before inference; Actions—persistent one-time approval lifecycle; iOS—Mac/Xcode and device validation.
-G. User action: none immediately; Mac/Xcode and physical iPhone will be required for native acceptance.
-H. Next: query CI for head `c45b97b1...`; inspect failure logs if any; only then continue CFO review. Continue safe parallel source-level work without touching production.
-I. GitHub: `laurofiorenzani/jarvis`; PR #32 https://github.com/laurofiorenzani/jarvis/pull/32; branch above; no merge/deploy.
-J. Next conversation: Resume from this ledger. PR #32 prior head CI #1019 passed, but a post-CI correctness fix changed amount columns from NUMERIC(30,9) to unconstrained numeric and added two tests because typmod rounding could bypass the exponent validator. Current head c45b97b1ff3ead9ba57136e8e516d8c5bfc6db7b needs new exact-head CI. Keep Draft; no live migration. PR #31 Observer CI #1014 + Observer #172 validated. Continue multitask under €0 recurring cost.
-
-
-## 2026-11-13 — CI infrastructure failure and CFO SQL hardening
-
-- PR #32 run #1022 (`43480174308`) failed before executing the SQL tests. Logs show the migrations (including both CFO migrations) applied successfully to the ephemeral local database, but Supabase CLI then failed to start the optional Inbucket container because host port 54324 was already in use. This is a CI container-startup collision, not evidence of a SQL assertion failure. No production resource was touched.
-- Corrected CI startup to exclude both Inbucket and Mailpit: `supabase start --exclude inbucket,mailpit`, following the earlier verified CLI setup fix that excluded Mailpit alone. Commit `d07b3e857589eb44b81dfe36e3e4b337e6419c5e`.
-- Source hardening: currency registry now grants SELECT only to service_role, not authenticated; this matches the function's service-role-only precision check and avoids exposing unreviewed registry metadata before a pinned snapshot exists. Commit `f00808bd516a5935b7b9763a4108633899648083`.
-- Current PR #32 exact head must be queried after these commits; earlier CI #1022 failure must not be represented as an SQL test failure or as validation success. The migration application itself did complete before the optional container collision.
-- Vercel Hobby cap is still active; no deployment retries/upgrades. Existing bot note showed a preview ready for the previous commit but no new deployment should be triggered by manual action.
-- Next: wait for exact-head CI after these two isolated commits; if startup succeeds, inspect SQL test assertions and two-user isolation result. Keep PR Draft; no merge, live migration, registry seed or financial data.
-
-
-## 2026-11-13 — CFO validator privilege hardening follow-up
-
-- Reviewed PR #32 migration `20261113190000_jarvis_cfo_currency_exponent.sql` against the Supabase security guidance. The amount-validation function reads the private currency registry and was initially declared `SECURITY DEFINER` in the exposed `public` schema.
-- Changed the function to `SECURITY INVOKER`. The registry grants SELECT only to `service_role`; the function's EXECUTE privilege is revoked from PUBLIC, anon and authenticated and granted only to service_role. This avoids an unnecessary RLS-bypass execution context while preserving the intended service-role-only check.
-- Commit: `125aa9e881c833ec086c3fb7ee3813d169b7a36e` on `work/cfo-currency-exponent-schema-20261113`; PR #32 remains Draft and open. The updated migration was re-fetched from the branch and confirmed to contain `SECURITY INVOKER` and no `SECURITY DEFINER`.
-- Validation status: source-level verification only. No local Supabase CLI/database is available in this connector session, and GitHub Actions run details were not returned by the connected workflow-runs endpoint. GitHub combined status for this new commit currently reports only Vercel pending. Do not claim SQL/CI success until exact-head CI and SQL tests complete.
-- Safety: no production migration, deployment, registry seed, financial data, account access or provider activation. No paid upgrade or deployment-limit bypass.
-- Next: confirm exact-head GitHub Actions CI for commit `125aa9e881c833ec086c3fb7ee3813d169b7a36e`; verify SQL tests and two-user RLS isolation; then review any new security-advisor findings. Keep PR #32 Draft until human review.
-
-
-## 2026-11-13 — Family CFO exact-decimal and SQL test corrections
-
-### Source review and changes
-- Continued PR #32 on isolated branch `work/cfo-currency-exponent-schema-20261113`; no merge or production operation.
-- Reviewed the currency exponent validator against current Supabase database-function guidance. Changed it to `SECURITY INVOKER`, pinned `search_path = ''`, schema-qualified the registry relation and `pg_catalog.trunc`, and retained EXECUTE only for `service_role`. This avoids an exposed-schema SECURITY DEFINER function and mutable lookup path.
-- Re-read the final migration from GitHub: blob `7c3dc5e8da12a207d607c61eaea868f3e11ef742`; source confirms SECURITY INVOKER, empty search_path, qualified relation/function, and no SECURITY DEFINER.
-- Reviewed the table CHECK constraints for finite numeric amounts. The test expected SQLSTATE 22003 for Infinity values, but the declared CHECK constraint rejects them with check_violation (23514). Corrected all four Infinity assertions to expect 23514. Re-read test file: plan=31 and exactly 31 pgTAP assertions; no 22003 expectations remain. Blob `78861cff0a06032c601718823c3b17ada9a8aecc`.
-- Updated PR #32 description to document unconstrained exact PostgreSQL numeric storage, invoker/search_path hardening, corrected SQLSTATE expectations and the still-pending exact-head validation. PR remains Draft/open.
-
-### Validation status — not yet executed
-- Source-level checks passed: migration/test files re-fetched from GitHub and structural invariants verified; PR description updated.
-- No local Supabase CLI/database runtime is available through this connector session, so `supabase db reset` and `supabase test db` have NOT been run here.
-- GitHub Actions exact-head CI has NOT yet been confirmed. Previous CI #1022 failed during optional Inbucket startup before SQL tests; its migration application completed, but it is not a pass. The CI workflow now excludes both Inbucket and Mailpit.
-- Do not claim the SQLSTATE correction or currency migration is runtime-tested until the exact-head workflow runs and all SQL/two-user isolation assertions pass.
-
-### Release and safety
-- PR #32 remains Draft; no merge, live migration, registry seed, bank connection, personal financial data, production deployment or money movement.
-- Currency registry remains empty in production. EUR/JPY/KWD rows are synthetic test fixtures only. No provider activation or paid service.
-
-### Handoff
-A. State: PR #32 source hardened; exact-decimal currency schema remains unvalidated at runtime pending exact-head CI.
-B. Completed: invoker-only validator, empty search_path and schema-qualified lookup; corrected four Infinity SQLSTATE assertions; verified 31/31 assertion declarations; updated PR description and master record.
-C. In progress: exact-head GitHub Actions, local/isolated SQL migration validation, two-user RLS checks, route parity review, provider fallback attestation.
-D. Evidence: repository `laurofiorenzani/jarvis`; PR #32 https://github.com/laurofiorenzani/jarvis/pull/32; branch `work/cfo-currency-exponent-schema-20261113`; latest code commit `0bdad03d7b055013a58992b15c101a1eafdbff8a`; migration blob `7c3dc5e8da12a207d607c61eaea868f3e11ef742`; isolation test blob `78861cff0a06032c601718823c3b17ada9a8aecc`.
-E. Decisions: no production registry seed until pinned official SIX/ISO snapshot is reviewed; no production migration; keep Draft; no paid deployment/quota bypass.
-F. Pending: CFO—exact-head CI and SQL run; Cloud—review and implement route parity only with tests; Multi-AI—prove downstream route, privacy, EEA and no-cost chain before inference; iOS—native target/device acceptance; action approvals—persistent one-time state machine.
-G. User action: none immediately. Physical iPhone and Mac/Xcode remain later acceptance dependencies.
-H. Next: query exact-head CI/status for `0bdad03...`; if absent, investigate GitHub Actions trigger/permissions rather than treating Vercel pending as CI; inspect full job logs on any failure. Continue safe source-only route/provider work in parallel.
-I. GitHub: `laurofiorenzani/jarvis`; PR #32 Draft; branch above; no merge/deploy.
-J. Next conversation: Resume from this entry. PR #32 has exact PostgreSQL numeric (unconstrained) and currency exponent validation, invoker-only service-role function with empty search_path, and corrected Infinity SQLSTATE expectations (23514). Source checks only; no runtime SQL or exact-head CI confirmation yet. Do not merge or touch production. Continue parallel work under €0 recurring cost.
+### Follow-up review — CFO schema compatibility and BMW CI (2026-11-14)
+- Reviewed PR #22's current migration and PR #29's currency contract. Confirmed the incompatibility is material: PR #22's proposed `NUMERIC(20,2)` columns do not by themselves enforce the currency-specific exponent/precision rules described by PR #29. PR #32 adds a versioned exponent migration and domain validation, but its branch comparison against canonical is diverged (27 commits ahead, 1 behind) and includes edits to the same migration, CFO domain, tests and master record. Do not merge PR #22/#29/#32 independently or apply any CFO migration. Next work must reconcile one exact schema/domain/test set and validate it in isolated CI.
+- Rechecked PR #34 documentation-fix CI for commit `bfdf4d38d41aea52b8339622f84b0be39c203c66`; workflow remained IN_PROGRESS at this check. The no-Shortcuts correction is committed but not yet CI-validated.
