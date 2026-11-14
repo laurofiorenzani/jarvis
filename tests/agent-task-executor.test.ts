@@ -106,3 +106,14 @@ test('enforces the declared per-task tool-call budget', async () => {
   assert.equal(results[0].reason, 'call_limit')
   assert.equal(results[0].status, 'failed')
 })
+
+test('rejects write-capability actions even when the agent contract lists them', async () => {
+  const writeAgent = {
+    ...agent,
+    capabilities: ['research.public', 'memory.propose'] as AgentDefinition['capabilities'],
+  }
+  const results = await executeReadOnlyAgentTasks([task('task-a')], [writeAgent], async () =>
+    envelope({ taskId: 'task-a', actions: [{ capability: 'memory.propose', outcome: 'succeeded' }] }),
+  )
+  assert.equal(results[0].reason, 'invalid_result')
+})
