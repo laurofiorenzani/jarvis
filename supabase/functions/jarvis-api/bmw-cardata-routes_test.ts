@@ -22,6 +22,9 @@ class FakeRpc implements BMWVaultRpcClient {
     if (name === 'jarvis_get_bmw_cardata_refresh_token') {
       return { data: [{ client_id: 'bmw-client-test', refresh_token: 'synthetic-refresh-token-123', refresh_expires_at: '2026-11-28T00:00:00.000Z' }], error: null }
     }
+    if (name === 'jarvis_consume_bmw_cardata_pending_auth') {
+      return { data: [{ client_id: 'bmw-client-test', device_code: 'synthetic-device-code', code_verifier: 'a'.repeat(48), expires_at: '2026-11-14T09:10:00.000Z' }], error: null }
+    }
     return { data: true, error: null }
   }
 }
@@ -54,17 +57,19 @@ Deno.test('BMW connect start returns short-lived device-flow data and PKCE verif
   assertEquals(response?.status, 200)
   const payload = await response!.json()
   assertEquals(payload.userCode, 'ABCD-EFGH')
-  assertEquals(typeof payload.codeVerifier, 'string')
-  assertEquals(db.calls.length, 0)
+  assertEquals(typeof payload.stateId, 'string')
+  assertEquals(payload.deviceCode, undefined)
+  assertEquals(payload.codeVerifier, undefined)
+  assertEquals(db.calls[0].name, 'jarvis_create_bmw_cardata_pending_auth')
+  assertEquals(db.calls[0].params.p_user_id, owner)
+  assertEquals(db.calls[0].params.p_device_code, 'synthetic-device-code')
 })
 
 Deno.test('BMW connect completion stores refresh token only through owner-scoped Vault RPC', async () => {
   const db = new FakeRpc()
   const response = await handleBMWCarDataRoute(
     request('POST', '/bmw/connect/complete', {
-      clientId: 'bmw-client-test',
-      deviceCode: 'synthetic-device-code',
-      codeVerifier: 'a'.repeat(48),
+      stateId: '10000000-0000-4000-8000-000000000051',
     }),
     new URL('https://jarvis.example/v1/bmw/connect/complete'),
     ['/bmw/connect/complete'],
@@ -77,9 +82,12 @@ Deno.test('BMW connect completion stores refresh token only through owner-scoped
   assertEquals(response?.status, 200)
   const payload = await response!.json()
   assertEquals(payload.connected, true)
-  assertEquals(db.calls[0].name, 'jarvis_store_bmw_cardata_refresh_token')
+  assertEquals(db.calls[0].name, 'jarvis_consume_bmw_cardata_pending_auth')
   assertEquals(db.calls[0].params.p_user_id, owner)
-  assertEquals(db.calls[0].params.p_refresh_token, token.refresh_token)
+  assertEquals(db.calls[0].params.p_state_id, '10000000-0000-4000-8000-000000000051')
+  assertEquals(db.calls[1].name, 'jarvis_store_bmw_cardata_refresh_token')
+  assertEquals(db.calls[1].params.p_user_id, owner)
+  assertEquals(db.calls[1].params.p_refresh_token, token.refresh_token)
 })
 
 Deno.test('BMW vehicle mappings refreshes credentials server-side and uses the atomic per-user REST budget', async () => {
