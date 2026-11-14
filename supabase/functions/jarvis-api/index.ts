@@ -1,6 +1,7 @@
 import { createClient } from '@supabase/supabase-js'
 import { getPublicHealthPreflightHeaders } from './cors.ts'
 import { isApprovedZdrSpeechRoute } from './provider-consent.ts'
+import { handleBMWCarDataRoute } from './bmw-cardata-routes.ts'
 import { getApiRoutePathCandidates } from './route-path.ts'
 import { extractSpeechTranscript, isCloudflareDailyQuotaExhausted } from './speech-transcript.ts'
 import { classifyFreeLlmTask, getFreeProviderStatus, startFreeModelStream, type ProviderRouteDiagnostics } from './model-router.ts'
@@ -288,6 +289,17 @@ Deno.serve(async (request) => {
       // Extraction is best-effort and must never fail or delay the completed chat turn.
       console.warn('[jarvis] automatic memory candidate extraction failed')
     }
+  }
+
+  const bmwResponse = await handleBMWCarDataRoute(request, url, pathCandidates, {
+    userId,
+    db,
+    consumeLimit,
+  })
+  if (bmwResponse) {
+    const headers = new Headers(bmwResponse.headers)
+    new Headers(cors).forEach((value, key) => headers.set(key, value))
+    return new Response(bmwResponse.body, { status: bmwResponse.status, headers })
   }
 
   if (request.method === 'POST' && matchesPath('/stt')) {
