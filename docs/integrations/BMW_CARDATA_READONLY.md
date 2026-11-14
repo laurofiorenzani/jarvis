@@ -53,7 +53,7 @@ The migration `20261113220000_jarvis_bmw_cardata_vault.sql` and server helper `b
 - Any unofficial My BMW/ConnectedDrive private endpoint
 - MQTT streaming until a long-lived cloud worker and token lifecycle are validated
 
-Remote actions remain unavailable unless BMW publishes a supported official command API for the required operation. My BMW app shortcuts may be considered separately as a user-triggered local handoff, not as a JARVIS cloud API.
+Remote actions remain unavailable unless BMW publishes a supported official command API for the required operation. JARVIS must not rely on Apple Shortcuts, Siri Shortcuts, or user-triggered shortcut handoffs as an integration path. If BMW does not expose a supported command API for a requested operation, JARVIS must report that limitation rather than redirecting the user to a shortcut workflow.
 
 ## Official references
 
