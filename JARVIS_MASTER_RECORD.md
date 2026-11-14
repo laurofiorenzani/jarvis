@@ -2034,3 +2034,40 @@ J. Next conversation: Continue from this checkpoint. PR #31 exact-head CI #1014 
 - This single `JARVIS_MASTER_RECORD.md` remains the continuity ledger; no duplicate handoff/status files created.
 - No PR merged; no production deployment/migration; no secrets read; no auth/billing/security setting changed; no BMW access; no CFO data import; no external actions.
 - Next session: check #37 CI #43594255372 and #39 CI #43594106243 first, then continue provider-consent parity and authenticated agent runtime work. Preserve all existing green exact-head results.
+
+
+## 2026-11-14 — resumed multi-front verification (12:45 UTC)
+
+### A. GitHub exact-head validation
+- PR #37 bounded read-only agent contracts: latest head `bceb9d7120dc5eb4cb3461888761b76f6b13a33d`; GitHub Actions run #43594255372 COMPLETED SUCCESS. Job `Typecheck, build, tests and lint` passed all steps: dependency/security checks, TypeScript build/tests/lint, provider privacy and semantic-memory policy tests, Edge Function typecheck, speech tests, isolated Supabase startup/migrations, SQL isolation, authenticated two-user semantic-memory API integration, and Production/Preview CORS smoke tests.
+- PR #39 Family CFO currency registry: latest head `67af52fcbc715eac19948e10ca30062f469e08db`; GitHub Actions run #43594106243 COMPLETED SUCCESS with the same full validation sequence, including isolated SQL/RLS and two-user integration.
+- Both PRs remain open/Draft; green CI is validation, not human approval, merge, production migration or activation.
+- Compare against canonical `work/jarvis-canonical-integration` at `87b1bdfd2160dba1c9a9da1f54a4067283a1d36d`: #37 is 9 commits ahead / 1 behind (diverged); #39 is 10 ahead / 1 behind (diverged). Their merge base is `6f17c684a481512cc295d1c34350e0cf735aac7`. Do not merge blindly or force-push; inspect/reconcile ancestry and preserve the canonical ledger before any integration.
+- PR #37 contributes six isolated files: typed agent contract, bounded task planner/executor and focused tests. It remains an injected-handler, read-only primitive; no authenticated registry, live tools or runtime activation.
+- PR #39 contributes the owner-scoped read-only CFO schema, versioned/effective-dated currency registry, exact currency-exponent validation and synthetic SQL/TypeScript tests. No production migration, registry seed, financial import or bank connector.
+
+### B. Live platform spot checks (read-only)
+- Supabase project `undmhmdwhxvjgvezvucy` is listed ACTIVE_HEALTHY in `eu-west-3`.
+- Live Edge Functions remain Production `jarvis-api` v32 and Preview `jarvis-preview-api` v23; no deployment was performed.
+- Live migration history remains at the 13 previously recorded migrations, ending with `20261113125437 provider_preferences_rls_initplan`. No CFO or BMW migration is applied.
+- Security advisor returned one INFO finding for backend-only `public.jarvis_rate_limits` with RLS/no client policy and one WARN for disabled leaked-password protection. Health advisor returned no findings. No Auth/security setting was changed.
+- Cloudflare account inventory again returned zero Worker scripts. No Worker, secret, provider inference, billing change or overage setting was created or enabled. Account billing/overage eligibility remains unverified.
+
+### C. Decisions and safety
+- Preserve #37 and #39 as validated isolated feature branches; do not merge Draft PRs merely because CI is green.
+- Continue provider-consent and production/Preview parity work without changing Production v32 or activating any model/provider. The EEA/privacy/consent and hard-zero-billing gates remain unresolved.
+- Keep CFO synthetic-only and owner-isolated. Keep agent executor read-only and bounded until trusted server-side owner scope, registry and approval controls are integrated.
+- No production deployment, migration, data import, auth/billing/security change, BMW connection, external action or paid service occurred in this checkpoint.
+
+### D. Immediate next actions
+1. Reconcile the one-commit ancestry drift on #37/#39 with a conflict-aware, non-force update that preserves their validated source changes and the canonical `JARVIS_MASTER_RECORD.md`; rerun exact-head CI after any source/merge commit.
+2. Continue provider-consent parity and investigate a zero-cost, policy-eligible model route; keep production and Preview provider activation blocked until billing, EEA processing and separate per-account consent are verified.
+3. Integrate the agent primitive only behind authenticated owner scope, trusted registry and read-only capability allowlists; keep all writes approval-gated.
+4. Keep CFO schema synthetic-only until registry snapshot/version, human review and migration release gates are satisfied.
+5. Continue native iOS work without claiming a native app, Keychain device test or TestFlight build; these still require macOS/Xcode and physical-device validation.
+6. Avoid Vercel deployment retries while the Hobby daily deployment cap is active; do not upgrade or bypass the quota.
+
+### E. Handoff
+- Repository: `laurofiorenzani/jarvis`; canonical branch: `work/jarvis-canonical-integration`; canonical head at checkpoint: `87b1bdfd2160dba1c9a9da1f54a4067283a1d36d`.
+- This update appends to the existing `JARVIS_MASTER_RECORD.md`; no duplicate ledger/status files created.
+- This checkpoint verifies PR #37 and #39 exact-head CI success and read-only platform state. It does not claim PR approval, merge, deployment, production schema changes or runtime activation.
