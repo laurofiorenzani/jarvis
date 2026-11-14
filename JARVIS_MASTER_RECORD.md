@@ -2119,3 +2119,29 @@ J. Next conversation: Continue from this checkpoint. PR #31 exact-head CI #1014 
 - Existing `JARVIS_MASTER_RECORD.md` updated; no duplicate ledger created.
 - Validated this session: canonical CI, earlier exact-head feature CI listed above, and live read-only platform state. CFO SQL ambiguity fix is implemented but not yet validated.
 - No PR merged; no production migration/deployment; no account, secret, auth, billing, vehicle or financial data mutation.
+
+
+## 2026-11-14 — agent cancellation hardening and CFO ambiguity guard
+
+### A. Agent executor correction — implemented, CI pending
+- Code review found that cancellation arriving after a read-only handler had started was caught as a generic failure and returned with `status: failed`, even though the task reason was `aborted`. The pre-dispatch cancellation path already returned `cancelled`; the in-flight path was inconsistent.
+- Updated `src/lib/agent-task-executor.ts` on `work/agent-contracts-canonical-20261114` so caller abort returns a terminal `cancelled/aborted` result with no failed envelope. Also closed the AbortSignal race between checking `signal.aborted` and registering the listener.
+- Added an active-handler cancellation regression test to `tests/agent-task-executor.test.ts`.
+- Fix commit `64cca37fd9efdb9b7f8aa71b841554632aa86b8c`; test commit/current PR #37 head `f0a4105520f79f1b991f86ae5bd4e9349986455a`.
+- Re-fetched both files from the branch and confirmed the fix and test are present. Exact-head workflow lookup currently returns no CI run for `f0a4105`; previous CI #43594255372 validates the earlier head only. Do not call this new change CI-validated.
+- The handler receives an AbortSignal and should cooperate with it; Promise.race cannot forcibly terminate arbitrary injected handler code that ignores cancellation. Keep this executor as a trusted, bounded primitive, not a sandbox.
+
+### B. CFO SQL ambiguity guard — implemented, CI pending
+- PR #39 current head `4f162369d4c9e307857a8b5cff23a9b75895c243` includes a SQL validator requiring exactly one effective-dated currency registry match, plus a synthetic overlap regression test (pgTAP plan 12).
+- Previous CI #43594106243 validates only prior head `67af52f`; no workflow run exists for the new SQL/test head yet. Do not merge or apply the migration until isolated SQL and exact-head CI pass.
+
+### C. Release and platform boundaries
+- No production schema, Edge Function, auth, provider, billing, BMW or CFO data was changed.
+- Production/Preview provider parity remains unresolved: live Production v32 contains Gemini references and no operator billing attestation/Cloudflare Whisper route; live Preview v23 contains Cloudflare Whisper and EEA checks but still lacks the latest billing-attestation implementation. Neither is approved for personal inference. Provider branch PR #23 is CI-green on its own head but diverged/non-mergeable against current canonical; no deployment or secret update.
+- Current canonical CI #43596040162/#43596040231 passed on `0c1c9f5`; Vercel's current status still reports build-rate-limit. The latest READY canonical preview remains commit `7098ff4`, not the newest documentation commit.
+- Cloudflare has zero Worker scripts and Billing Read remains unavailable; no inference request was made.
+
+### D. Handoff
+- Repository `laurofiorenzani/jarvis`; canonical branch `work/jarvis-canonical-integration`.
+- Current work remains isolated in #37 and #39. Both PRs are Draft/open. New code changes are implemented but awaiting exact-head CI; no PR merge or production action occurred.
+- Next: secure exact-head workflow execution for #37 `f0a4105` and #39 `4f16236`; then conflict-aware canonical reconciliation and integration planning. Preserve all earlier green runs as evidence for their exact heads only.
