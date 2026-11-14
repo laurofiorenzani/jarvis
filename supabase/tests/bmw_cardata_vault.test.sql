@@ -1,6 +1,6 @@
 begin;
 
-select plan(28);
+select plan(35);
 
 insert into auth.users (id, aud, role, email, encrypted_password, email_confirmed_at, created_at, updated_at)
 values
@@ -81,7 +81,61 @@ select ok(
   'application metadata table contains no plaintext OAuth token columns'
 );
 
+select ok(
+  not has_table_privilege('anon', 'public.jarvis_bmw_cardata_pending_auth', 'SELECT')
+  and not has_table_privilege('authenticated', 'public.jarvis_bmw_cardata_pending_auth', 'SELECT')
+  and not has_table_privilege('service_role', 'public.jarvis_bmw_cardata_pending_auth', 'SELECT'),
+  'pending BMW device credentials are inaccessible through table grants'
+);
+select ok(
+  not has_function_privilege('anon', 'public.jarvis_create_bmw_cardata_pending_auth(uuid,uuid,text,text,text,timestamptz)', 'EXECUTE')
+  and not has_function_privilege('authenticated', 'public.jarvis_create_bmw_cardata_pending_auth(uuid,uuid,text,text,text,timestamptz)', 'EXECUTE')
+  and not has_function_privilege('anon', 'public.jarvis_consume_bmw_cardata_pending_auth(uuid,uuid)', 'EXECUTE')
+  and not has_function_privilege('authenticated', 'public.jarvis_consume_bmw_cardata_pending_auth(uuid,uuid)', 'EXECUTE'),
+  'only service_role can invoke pending BMW authorization RPCs'
+);
+select ok(
+  has_function_privilege('service_role', 'public.jarvis_create_bmw_cardata_pending_auth(uuid,uuid,text,text,text,timestamptz)', 'EXECUTE')
+  and has_function_privilege('service_role', 'public.jarvis_consume_bmw_cardata_pending_auth(uuid,uuid)', 'EXECUTE'),
+  'service_role can create and atomically consume pending authorization states'
+);
+
 set local role service_role;
+
+select is(
+  public.jarvis_create_bmw_cardata_pending_auth(
+    '10000000-0000-4000-8000-000000000051',
+    '00000000-0000-4000-8000-000000000051',
+    'bmw-client-test', 'synthetic-device-code', repeat('v', 48),
+    now() + interval '5 minutes'
+  ),
+  true,
+  'creates an owner-bound pending authorization'
+);
+select is(
+  (select count(*)::int from public.jarvis_consume_bmw_cardata_pending_auth(
+    '10000000-0000-4000-8000-000000000051',
+    '00000000-0000-4000-8000-000000000052'
+  )),
+  0,
+  'a different owner cannot consume the pending authorization'
+);
+select is(
+  (select device_code from public.jarvis_consume_bmw_cardata_pending_auth(
+    '10000000-0000-4000-8000-000000000051',
+    '00000000-0000-4000-8000-000000000051'
+  )),
+  'synthetic-device-code',
+  'the initiating owner can consume the pending device authorization'
+);
+select is(
+  (select count(*)::int from public.jarvis_consume_bmw_cardata_pending_auth(
+    '10000000-0000-4000-8000-000000000051',
+    '00000000-0000-4000-8000-000000000051'
+  )),
+  0,
+  'a consumed authorization state cannot be replayed'
+);
 
 select is(
   public.jarvis_store_bmw_cardata_refresh_token(
