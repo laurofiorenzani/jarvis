@@ -4,6 +4,9 @@ import {
   CfoBalanceSnapshotSchema,
   CfoTransactionSchema,
   amountMatchesMinorUnit,
+  validateCfoMoneyAgainstRegistry,
+  validateCfoTransactionCurrency,
+  validateCfoBalanceSnapshotCurrency,
   decimalToScaledUnits,
   scaledUnitsToDecimal,
   sumMoney,
@@ -26,6 +29,7 @@ const validTransaction = {
   description: 'Synthetic grocery transaction',
   merchant: 'Example Market',
   money: { amount: '-12.34', currency: 'EUR' },
+  currencyRegistryVersion: 'synthetic-test-v1',
   status: 'posted',
   confidence: 'user_confirmed',
   recordStatus: 'confirmed',
@@ -53,6 +57,7 @@ test('validates dated balance snapshots and rejects missing provenance', () => {
     accountId: validTransaction.accountId,
     observedAt: '2026-11-13T12:00:00Z',
     money: { amount: '1234.56', currency: 'EUR' },
+    currencyRegistryVersion: 'synthetic-test-v1',
     confidence: 'verified',
     provenance,
   }
@@ -80,6 +85,40 @@ test('validates amounts against currency exponents without rounding', () => {
   assert.equal(amountMatchesMinorUnit('1.0000', 0), true)
   assert.equal(amountMatchesMinorUnit('1.0001', 0), false)
   assert.equal(amountMatchesMinorUnit('1.00', 5), false)
+})
+
+test('validates transaction and balance amounts against an effective-dated currency registry', () => {
+  const registry = [
+    { currencyCode: 'EUR', registryVersion: 'synthetic-test-v1', minorUnit: 2, effectiveFrom: '2020-01-01', effectiveTo: null },
+    { currencyCode: 'JPY', registryVersion: 'synthetic-test-v1', minorUnit: 0, effectiveFrom: '2020-01-01', effectiveTo: null },
+    { currencyCode: 'KWD', registryVersion: 'synthetic-test-v1', minorUnit: 3, effectiveFrom: '2020-01-01', effectiveTo: null },
+  ]
+  assert.equal(validateCfoMoneyAgainstRegistry({ amount: '12.34', currency: 'EUR' }, '2026-11-13', 'synthetic-test-v1', registry), true)
+  assert.equal(validateCfoMoneyAgainstRegistry({ amount: '12.345', currency: 'EUR' }, '2026-11-13', 'synthetic-test-v1', registry), false)
+  assert.equal(validateCfoMoneyAgainstRegistry({ amount: '1200.01', currency: 'JPY' }, '2026-11-13', 'synthetic-test-v1', registry), false)
+  assert.equal(validateCfoMoneyAgainstRegistry({ amount: '1.234', currency: 'KWD' }, '2026-11-13', 'synthetic-test-v1', registry), true)
+  assert.equal(validateCfoMoneyAgainstRegistry({ amount: '1.00', currency: 'XXX' }, '2026-11-13', 'synthetic-test-v1', registry), false)
+  assert.equal(validateCfoMoneyAgainstRegistry({ amount: '1.00', currency: 'EUR' }, '2019-12-31', 'synthetic-test-v1', registry), false)
+  assert.equal(validateCfoMoneyAgainstRegistry({ amount: '1.00', currency: 'EUR' }, '2026-11-13', 'unknown-version', registry), false)
+  assert.equal(validateCfoMoneyAgainstRegistry({ amount: '1.00', currency: 'EUR' }, '2026-11-13', 'synthetic-test-v1', [
+    ...registry,
+    { currencyCode: 'EUR', registryVersion: 'synthetic-test-v1', minorUnit: 2, effectiveFrom: '2025-01-01', effectiveTo: null },
+  ]), false, 'overlapping registry entries are ambiguous and rejected')
+  assert.equal(validateCfoTransactionCurrency(validTransaction, registry), true)
+  assert.equal(validateCfoTransactionCurrency({
+    ...validTransaction, money: { amount: '-12.345', currency: 'EUR' },
+  }, registry), false)
+  const snapshot = {
+    id: '40000000-0000-4000-8000-000000000001',
+    ownerUserId: validTransaction.ownerUserId,
+    accountId: validTransaction.accountId,
+    observedAt: '2026-11-13T12:00:00Z',
+    money: { amount: '1234.56', currency: 'EUR' },
+    currencyRegistryVersion: 'synthetic-test-v1',
+    confidence: 'verified',
+    provenance,
+  }
+  assert.equal(validateCfoBalanceSnapshotCurrency(snapshot, registry), true)
 })
 
 test('sums only matching currencies and never performs implicit FX', () => {
