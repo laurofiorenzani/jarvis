@@ -1878,3 +1878,23 @@ J. Next conversation: Continue from this checkpoint. PR #31 exact-head CI #1014 
 ### Follow-up review — CFO schema compatibility and BMW CI (2026-11-14)
 - Reviewed PR #22's current migration and PR #29's currency contract. Confirmed the incompatibility is material: PR #22's proposed `NUMERIC(20,2)` columns do not by themselves enforce the currency-specific exponent/precision rules described by PR #29. PR #32 adds a versioned exponent migration and domain validation, but its branch comparison against canonical is diverged (27 commits ahead, 1 behind) and includes edits to the same migration, CFO domain, tests and master record. Do not merge PR #22/#29/#32 independently or apply any CFO migration. Next work must reconcile one exact schema/domain/test set and validate it in isolated CI.
 - Rechecked PR #34 documentation-fix CI for commit `bfdf4d38d41aea52b8339622f84b0be39c203c66`; workflow remained IN_PROGRESS at this check. The no-Shortcuts correction is committed but not yet CI-validated.
+
+
+## 2026-11-14 — multi-agent architecture proposal and BMW validation
+
+### Multi-agent architecture proposal
+- Added `docs/architecture/multi-agent-orchestration.md` on isolated branch `work/multi-agent-orchestration-20261114` (documentation-only commit `129205eba76cf25e57251bbe3bbb32635993a18f`).
+- Defines JARVIS Core as the sole user-facing chief orchestrator, with typed specialist capabilities, shared auth/database/memory/provider infrastructure, bounded concurrent delegation, evidence-bearing result envelopes, strict per-account scopes, no-cost quotas, and a separate engineering-agent workflow.
+- Explicitly distinguishes proposed architecture from implemented runtime. No agent service, schema, production configuration, provider, deployment or external integration was activated.
+- Next: open Draft PR and review the architecture against existing provider, approval, memory and Observer contracts before implementing runtime types.
+
+### BMW CarData — exact-head documentation correction validated
+- Rechecked PR #34 current head `bfdf4d38d41aea52b8339622f84b0be39c203c66`.
+- GitHub Actions CI completed SUCCESS on that exact head; Vercel commit status is SUCCESS. The change removes the prior Shortcut handoff suggestion and restores consistency with the no-Shortcuts product invariant.
+- PR #34 remains Draft/open. BMW source now includes PKCE device authorization, read-only vehicle mappings/basic data/telematics/charging history, Vault-backed refresh-token RPC helpers and an adapter over the existing atomic per-user rate limiter (50 requests per rolling 24 hours).
+- Still not implemented: authenticated connect/complete/data/disconnect routes that instantiate these helpers. No BMW account/client ID/VIN/token/data was accessed; no live migration or vehicle request occurred.
+- Next BMW implementation must remain isolated, add route-level authorization and consent/revocation, use the existing atomic limiter and Vault, and validate actual iX1-supported telematics keys. Remote commands remain unsupported by CarData.
+
+### Current safety boundary
+- No merge, production deployment, live schema migration, account change, secret access, provider inference, billing change or external vehicle action in this work.
+- Vercel free deployment quota remains a constraint; use GitHub CI and avoid unnecessary Preview deployments.
