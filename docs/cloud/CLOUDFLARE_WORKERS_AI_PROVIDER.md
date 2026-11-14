@@ -85,3 +85,23 @@ After the owner confirms Workers Free, the per-account notice/acceptance gate is
 5. Inspect Cloudflare usage to confirm requests consume only the free daily allocation.
 
 Do not use personal messages, memories or recordings for the first smoke test.
+
+## Current quota and account audit — 2026-11-14
+
+The official Cloudflare documentation was rechecked on 2026-11-14:
+
+- Workers Free includes **100,000 Worker requests/day**, **10 ms CPU per invocation**, and **50 external subrequests per invocation**. The daily request quota resets at 00:00 UTC. This is sufficient for a small private adapter only if each request is bounded and the Worker fails closed when the free quota is exhausted.
+- Workers AI includes **10,000 Neurons/day at no charge** on both Workers Free and Workers Paid. Workers AI usage beyond that free daily allocation is billed at **$0.011 per 1,000 Neurons** on Workers Paid. The Workers Paid plan has a $5/month subscription. JARVIS must remain on Workers Free and must stop at the daily allocation; never upgrade to Workers Paid.
+- Cloudflare documents error **3036 / HTTP 429** for exhausted daily free Neurons. The router must classify this as quota exhaustion and cool down until the next UTC reset; it must not retry repeatedly or switch to a paid route.
+- Standard stateless Workers AI inference has zero data retention and Cloudflare says Customer Content is not used to train AI models. Stateful features, AI Gateway content logging/caching, or writing content to application logs can retain content and are prohibited for personal prompts.
+- Cloudflare's spend-limit documentation explicitly warns that a spending limit does **not** guarantee a maximum invoice and excludes subscription fees. It is not a substitute for staying on Workers Free and refusing paid upgrades.
+
+Account audit through the connected Cloudflare API on 2026-11-14 found one account, but **zero zones, zero tunnels, and zero deployed Workers scripts**. The account's Workers plan and billing/overage settings could not be read with the current permissions. Therefore no Worker or AI provider is activated, and the operator billing attestation remains unset.
+
+Official references revalidated:
+- https://developers.cloudflare.com/workers/platform/limits/
+- https://developers.cloudflare.com/workers-ai/platform/pricing/
+- https://developers.cloudflare.com/workers-ai/platform/errors/
+- https://developers.cloudflare.com/workers-ai/platform/data-usage/
+- https://developers.cloudflare.com/workers/platform/spend-management/
+- https://developers.cloudflare.com/billing/manage/spend-management/
