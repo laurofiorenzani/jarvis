@@ -1,6 +1,6 @@
 # BMW CarData — read-only personal integration
 
-**Status:** read-only adapter and Vault token-storage source implemented; not deployed, not connected, no credentials stored.
+**Status:** read-only adapter and Vault token-storage source implemented; pending OAuth state is server-side and single-use in source; not deployed, not connected, no credentials stored.
 
 ## Official capability boundary
 
@@ -19,7 +19,7 @@ Personal-use CarData must not be confused with the BMW third-party service-provi
 
 `src/lib/integrations/bmw-cardata.ts` currently provides:
 - PKCE S256 verifier/challenge generation
-- Device-code authorization request
+- Device-code authorization request with opaque, owner-bound server-side pending state
 - Device-code token exchange
 - Refresh-token exchange
 - Read-only vehicle mappings
