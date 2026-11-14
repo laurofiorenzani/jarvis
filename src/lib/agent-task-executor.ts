@@ -17,6 +17,12 @@ export type ReadOnlyAgentExecutionContext = { signal: AbortSignal; consumeCall: 
 export type ReadOnlyAgentHandler = (agent: AgentDefinition, task: ReadOnlyAgentTask, context: ReadOnlyAgentExecutionContext) => Promise<unknown>
 export type ReadOnlyExecutionOptions = { limits?: TaskPlanLimits; signal?: AbortSignal }
 
+const READ_ONLY_ACTION_CAPABILITIES = new Set([
+  'conversation.read', 'memory.read', 'calendar.read', 'finance.read',
+  'vehicle.telemetry.read', 'smart_home.read', 'communications.read',
+  'research.public', 'tests.run',
+])
+
 function terminal(taskId: string, status: AgentTaskExecution['status'], reason: NonNullable<AgentTaskExecution['reason']>): AgentTaskExecution {
   return { taskId, status, envelope: null, reason }
 }
@@ -96,7 +102,7 @@ export async function executeReadOnlyAgentTasks(
         if (!isAgentResultEnvelope(raw) || raw.taskId !== task.id ||
             raw.agentId !== agent.id || raw.agentVersion !== agent.version ||
             raw.approvalRequired || raw.actions.length > agent.limits.maxCalls ||
-            raw.actions.some((action) => !agent.capabilities.includes(action.capability as never))) {
+            raw.actions.some((action) => !READ_ONLY_ACTION_CAPABILITIES.has(action.capability) || !agent.capabilities.includes(action.capability as never))) {
           return terminal(taskId, 'failed', 'invalid_result')
         }
         if (outputBytes(raw) > agent.limits.maxOutputBytes) return terminal(taskId, 'failed', 'output_limit')
