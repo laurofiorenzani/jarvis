@@ -1957,3 +1957,47 @@ J. Next conversation: Continue from this checkpoint. PR #31 exact-head CI #1014 
 - Canonical master ledger remains the sole continuity ledger; no duplicate status/handoff documents created.
 - No PR merged, no production deployment/migration, no Auth or billing change, no provider inference, no BMW connection, no financial import and no external action.
 - Next session: check exact CI #1136/#1137/#1138/#1139/#1143 first; prioritize any concrete failures. Preserve all green exact-head results and continue the independent fronts.
+
+
+## 2026-11-14 — resumed multi-front engineering checkpoint
+
+### A. Verified outcomes
+- BMW CarData PR #34 code head `03fce4d828cdb50de143072dc4858549e7058a2f`: CI run #1158 (`43587231985`) COMPLETED SUCCESS. All steps passed, including typecheck/build/tests/lint, BMW Vault token-store tests, daily request budget, authenticated BMW routes, isolated Supabase startup, migration reset, SQL isolation tests, two-user authenticated memory API, production health/CORS and canonical Preview CORS.
+- PR #34 then advanced by one documentation-only commit to `c1024ce253537474989a5dd5024e9ad5f60e7f44`. Its exact-head CI #1160 (`43587548093`) was still in progress at this checkpoint; do not mark the latest PR head fully validated until it completes. PR remains Draft/open. BMW migration remains unapplied to production; no BMW account, vehicle, or command was accessed.
+- Observer PR #31: corrected the isolated Supabase CI start command from `--exclude inbucket` to `--exclude mailpit`, commit `7ba6435a6cf8300a329f47465f36446ad94e739d`. Observer Validation #182 (`43587476231`) SUCCESS and exact-head CI #1159 (`43587476240`) SUCCESS. PR remains Draft/open. The prior failure was the incorrect container exclusion / port bind, not an application test regression.
+- Exact-head CI remains SUCCESS for PRs #23 (`02c4901a...`), #28 (`4dbf1787...`), #30 (`4e56733f...`), #32 (`da72395b...`), #33 (`4062887f...`), #35 (`5871c12d...`) and #36 (`59a9bc46...`). All remain Draft/open; green CI is not merge approval or deployment.
+
+### B. Production/Preview provider parity finding — release blocker
+- Live Supabase project `undmhmdwhxvjgvezvucy` is ACTIVE_HEALTHY in `eu-west-3`. Production Edge Function `jarvis-api` is v32; `jarvis-preview-api` is v23.
+- Deployed production v32 still calls Google Gemini endpoints directly for STT and TTS in `index.ts`. Its deployed `model-router.ts` does not contain the current EEA eligibility block or the operator billing-attestation gate.
+- Deployed Preview v23 routes STT through Cloudflare and model requests through Cloudflare/FreeLLMAPI; it includes an EEA Gemini rejection but predates the current operator billing-attestation implementation.
+- Current provider-consent branch / PR #23 contains the stricter `JARVIS_FREE_PROVIDER_BILLING_ATTESTATION` gate, rejects Gemini for this Ireland/EEA deployment, and keeps provider pools fail-closed until billing eligibility is independently verified. It is not yet merged or deployed.
+- Cloudflare account inventory previously showed zero Workers scripts and Billing Read is unavailable; account plan, overage and payment settings remain unverified. Do not set billing attestation, add provider secrets, activate inference or deploy provider changes until those gates are resolved.
+- No production function was changed, no secret values were read, and no model inference was initiated in this checkpoint.
+
+### C. Database and security observations
+- Live production migrations currently include auth, conversation/memory and provider-preference foundations. No BMW CarData or Family CFO tables/migrations are applied.
+- Memory schema exists, but semantic facts, topics and summaries currently contain zero rows; durable memory infrastructure is not equivalent to populated/validated personal memory.
+- All listed public JARVIS tables have RLS enabled. `jarvis_rate_limits` has no client grants; table access is limited to postgres/service_role. `jarvis_consume_rate_limit` is SECURITY DEFINER and EXECUTE is granted only to postgres/service_role; anon/authenticated have no CREATE on public. The RLS-without-policy advisor finding is consistent with this backend-only access model.
+- Supabase security advisor still warns that leaked-password protection is disabled; it was not changed. Performance advisor lists 18 unused indexes; do not remove indexes based only on a fresh/low-volume workload. Health advisor returned no findings.
+
+### D. Branch divergence / merge controls
+- Several feature branches have advanced independently while canonical `work/jarvis-canonical-integration` moved forward. Latest compares at this checkpoint: PR #23 20 ahead/4 behind; #32 29/4; #33 41/4; #35 6/2; #36 22/2; #22 3/21; #27 4/21. GitHub reported some as non-mergeable. Do not force-push, merge, or blindly reconcile; inspect actual conflicts and preserve the canonical ledger.
+- PR #22/#27 are stale Family CFO proposals and must not be merged independently of the newer currency-exponent contract in PR #32.
+- PR #30 CI is green but its branch currently diverges from canonical; PR #31's corrected branch is independently green. Draft status remains unchanged.
+- Vercel latest READY preview observed during this checkpoint was still an older BMW branch commit `e4690a6c...`; it is not evidence that the latest BMW PR head was deployed. No production alias change or paid upgrade was made.
+
+### E. Next actions
+1. Finish exact-head BMW CI #1160 on `c1024ce...`; preserve the prior #1158 success and keep migration/deploy blocked.
+2. Continue provider parity work on PR #23, but keep all pools disabled until Cloudflare billing, quota, cross-border processing and per-account consent are verified. Resolve production Gemini STT/TTS mismatch before any production promotion.
+3. Reconcile canonical branch drift on feature branches only after inspecting per-file conflicts; do not merge Draft PRs.
+4. Continue integrating the read-only agent executor with trusted registry, authenticated owner scope and bounded tool permissions; PR #35/#36 are tested components, not yet a live multi-agent runtime.
+5. Keep Family CFO synthetic-only; PR #32 is the current schema direction, with no live migration or real financial imports.
+6. Continue iOS native shell/Keychain work; physical iPhone/Xcode signing acceptance remains outstanding.
+7. Preserve the zero-recurring-cost requirement; no billing or provider changes without verified free-tier and no-overage conditions.
+
+### F. Session handoff
+- Repository: `laurofiorenzani/jarvis`; canonical branch: `work/jarvis-canonical-integration`.
+- Updated this single master ledger only; no duplicate status/handoff documents created.
+- No PR merged, no production migration/deployment, no Auth/billing change, no provider inference, no BMW connection, no CFO data import, and no external action.
+- Next conversation: start with current status of BMW CI #1160 (`43587548093`), then continue provider parity, CFO schema integration, agent runtime and native iOS independently.
