@@ -150,8 +150,8 @@ begin
     or p_client_id is null or length(btrim(p_client_id)) not between 1 and 200
     or p_device_code is null or length(p_device_code) not between 8 and 2048
     or p_code_verifier is null or length(p_code_verifier) not between 40 and 128
-    or p_expires_at is null or p_expires_at <= pg_catalog.now()
-    or p_expires_at > pg_catalog.now() + interval '15 minutes' then
+    or p_expires_at is null or p_expires_at <= pg_catalog.clock_timestamp()
+    or p_expires_at > pg_catalog.clock_timestamp() + interval '15 minutes' then
     raise exception 'invalid BMW pending authorization envelope' using errcode = '22023';
   end if;
 
