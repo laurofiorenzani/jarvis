@@ -1842,33 +1842,39 @@ I. GitHub: `laurofiorenzani/jarvis`; canonical `work/jarvis-canonical-integratio
 J. Next conversation: Continue from this checkpoint. PR #31 exact-head CI #1014 and Observer #172 both SUCCESS; PR remains Draft/non-mergeable. Supabase prod v32 lacks Preview's /provider-preferences route; route parity review required. PR #22 numeric(20,2) conflicts with PR #29 currency exponent registry; no live CFO migration. PR #23 provider pools remain disabled pending per-provider EEA/free-quota/retention/no-overage evidence. Vercel Hobby daily deployment cap reached; do not upgrade/bypass. Continue multitask under €0 recurring cost.
 
 
-## 2026-11-13 — provider-consent integration refresh and live route-parity review
+## 22. Session handoff — 2026-11-14 (Europe/Dublin)
 
-### PR #23 branch integration
-- Rebased the provider-consent code onto current canonical commit `2512258b08ca684fd48206fee274524f8a6f1919` using a two-parent merge commit, preserving the canonical `JARVIS_MASTER_RECORD.md` rather than replacing it with the older PR branch copy.
-- The branch now compares as 3 commits ahead / 0 behind `work/jarvis-canonical-integration`; PR #23 remains OPEN and non-draft. Mergeability is currently true. No merge to main and no production deployment.
-- Updated the FreeLLMAPI standard-pool parser: source review found that helper `isAllowedStandardProvider` was unit-tested but not applied by `configuredProviders`, allowing a standard-pool entry without an explicit gateway. The parser now requires `gateway === 'freellmapi'` for every standard-pool entry. Direct providers cannot enter that pool. Commit `11ac229874b334bf4203daa8314844fdfa037f4c`.
-- Existing model-router test already asserts that only the FreeLLMAPI gateway is accepted by the standard-provider helper. The new parser guard now uses that same tested helper. Exact-head CI remains pending; prior CI #982 was on old head `2e9f3de2ddc0cdf46464e3f385aff97e5e54fbc3` and does not validate the new commit.
+### Work completed in this session
+- Re-fetched current metadata for PRs #23, #31, #32, #26, #33 and #34. All six remain OPEN and Draft; none was merged. Exact heads at inspection: #23 `ead81317ba70c9a88a61cf7bc477540eb44e7763`; #31 `7849419dfeef11984cdac4be0458678623d199ac`; #32 `dfea9b296647ed257915932998700ce0fbe4ac39`; #26 `ec286b6b835609f45d018d1d6d490c1e605582fb`; #33 `ff2aa270765723ca45a0e272760ae3558f098c09`; #34 `9846edb396250e9e5f1810d03fa631ca1395b593` before the documentation correction below.
+- Re-queried workflow runs for those six exact heads: each returned a completed CI SUCCESS. PR #31 additionally returned Observer Validation SUCCESS. This is CI evidence only, not production readiness or device/integration E2E.
+- Found a policy contradiction in PR #34's BMW CarData integration document: its final paragraph suggested My BMW app Shortcuts as a user-triggered handoff, contrary to the no-Shortcuts product decision in this master record.
+- Corrected `docs/integrations/BMW_CARDATA_READONLY.md` on the existing isolated branch `work/bmw-cardata-readonly-20261113`, replacing the Shortcut handoff suggestion with an explicit rule that JARVIS must not rely on Apple/Siri Shortcuts and must report unsupported BMW commands honestly.
+- Documentation commit: `bfdf4d38d41aea52b8339622f84b0be39c203c66`. PR #34 remains open/Draft; CI for this new exact head was observed IN_PROGRESS at handoff time. Do not mark this correction validated until the run completes successfully.
 
-### Live Supabase read-only route audit
-- Supabase project `undmhmdwhxvjgvezvucy` is ACTIVE_HEALTHY in `eu-west-3`; database Postgres 17.11.0.018. Production `jarvis-api` is ACTIVE v32; `jarvis-preview-api` is ACTIVE v23. Both have gateway `verify_jwt=false`, but both source handlers validate the bearer token with `auth.getUser` before authenticated routes.
-- Corrected an earlier route-inventory note: production v32 contains both GET and POST `/semantic-memory/candidates`; it does not contain GET/PUT `/provider-preferences`. Preview v23 contains both candidate methods and the provider-preferences GET/PUT routes.
-- Production v32 still contains the Google AI Studio `generativelanguage.googleapis.com` speech path and its automatic-memory path does not check per-account `zdr_pool_enabled`/policy version. Preview v23 uses Cloudflare Whisper and requires the account's separately accepted ZDR pool/policy for automatic memory capture. This is a material production/Preview policy gap; do not describe production as having Preview's provider-consent gate.
-- The PR #23 source adds the account-scoped provider preferences, separate default-ZDR and standard-FreeLLMAPI pools, fail-closed consent, bounded provider diagnostics, Cloudflare speech handling and tests. This remains a proposed code change only; the deployed production function was not modified. Preview function was read only.
-- Live security advisors: INFO `public.jarvis_rate_limits` has RLS enabled without policies; verify service-role-only grants before changing it. WARN leaked-password protection is disabled; do not change Auth settings without explicit owner approval. Performance advisor reports 18 unused indexes; retain until workload evidence supports removal.
+### Current state and boundaries
+- No merge, production deployment, live database migration, provider inference, billing change, secret access, account change, or external vehicle action occurred.
+- BMW CarData remains a read-only adapter. It cannot control climate, locks, windows or trunk. Its Vault migration and authenticated consent/revocation routes remain prerequisites, not deployed features.
+- PR #26 approvals are records/UI/API only; no real action executor is available yet.
+- Native iOS/Keychain and physical-device validation remain outstanding. Do not claim a native app is ready.
+- Vercel Hobby deployment cap and the €0 recurring-cost rule remain hard constraints; do not upgrade or bypass limits.
 
-### Validation and safety
-- No production function, migration, secret, Auth setting, account, memory row or provider preference was changed. No secret values were read. No live inference request was initiated in this review.
-- No SQL/CI result is claimed for current PR #23 head. No Vercel deployment is claimed; its status is still pending. No paid upgrade or quota bypass.
+### Next actions
+1. Recheck CI on commit `bfdf4d38d41aea52b8339622f84b0be39c203c66`; fix only if a concrete failure is returned.
+2. Review PR #34 OAuth lifecycle and SQL/Vault tests, then add the authenticated device-consent, disconnect/revocation and route-level daily-budget wiring only in isolated code with exact-head tests; do not deploy its migration.
+3. Continue CFO currency exponent reconciliation across PRs #22/#29/#32 without importing real financial data.
+4. Review PR #23 provider fallback-before-dispatch and free-tier/EEA/privacy attestations; keep provider pools default-off until evidence is complete.
+5. Continue the native iOS shell/Keychain investigation and the cloud approval executor design as separate workstreams; preserve the amber HUD and existing accounts.
+6. Reconcile every material change back into this single master record. No duplicate status ledger.
 
-### Handoff
-A. State: PR #23 provider-consent code is now based on current canonical ancestry and has an additional standard-pool enforcement fix; exact-head CI still pending. Live production/Preview provider-policy mismatch documented.
-B. Completed: branch ancestry refresh (3 ahead/0 behind); FreeLLMAPI-only standard pool guard; live read-only audit of production v32 and Preview v23; corrected candidate route inventory; updated PR description.
-C. In progress: exact-head CI for PR #23 and PR #32; provider fallback-chain proof; route-by-route production parity plan.
-D. Evidence: repo `laurofiorenzani/jarvis`; PR #23 https://github.com/laurofiorenzani/jarvis/pull/23; current head `11ac229874b334bf4203daa8314844fdfa037f4c`; merge integration commit `df3bb9d57f089e86a0d5ea9ff91d33c5bd64e6fb`; Supabase production v32 / Preview v23; live migrations through `20261113125437`.
-E. Decisions: do not deploy Preview's provider route to production until full CI, provider policy and user-consent review; standard pool must be FreeLLMAPI-only; keep all provider pools off by default.
-F. Pending: CFO exact-head CI/SQL; provider route exact-head CI and fallback verification; production/Preview parity design; native iOS E2E; persistent action approval lifecycle.
-G. User action: none immediately. Provider policy acceptance must be explicit per account before enabling pools.
-H. Next: inspect PR #23 CI; review full provider router fallback-before-dispatch and free quota/no-overage/EEA/retention evidence; keep production unchanged; continue independent CFO validation.
-I. GitHub: `laurofiorenzani/jarvis`; PR #23 open/non-draft; branch `work/provider-consent-app-integration`; no merge/deploy.
-J. Next conversation: Continue from this entry. PR #23 now contains current canonical ancestry plus provider-consent integration; latest commit `11ac229...` enforces FreeLLMAPI-only standard pool. Exact-head CI not yet confirmed. Production Supabase v32 still lacks provider-preferences routes and Preview's per-account ZDR auto-memory gate; Preview v23 has them. No production changes, no inference request in this review, no secrets read. PR #32 CFO work is in its separate Draft branch and requires exact-head CI/SQL validation. Keep €0 recurring-cost rule.
+### GitHub and handoff
+- Repository: `laurofiorenzani/jarvis`.
+- Canonical record branch: `work/jarvis-canonical-integration`.
+- BMW documentation branch: `work/bmw-cardata-readonly-20261113`.
+- Latest BMW documentation commit: `bfdf4d38d41aea52b8339622f84b0be39c203c66`; CI was still running when this entry was written.
+- No PR merged and no production deployment performed.
+- Next conversation: resume by checking the exact CI result for the BMW documentation commit, then continue the independent CFO, provider-policy, cloud-approval, iOS and infrastructure workstreams. Preserve the no-Shortcuts rule, €0 recurring cost, one canonical repository and this single master handoff record.
+
+
+### Follow-up review — CFO schema compatibility and BMW CI (2026-11-14)
+- Reviewed PR #22's current migration and PR #29's currency contract. Confirmed the incompatibility is material: PR #22's proposed `NUMERIC(20,2)` columns do not by themselves enforce the currency-specific exponent/precision rules described by PR #29. PR #32 adds a versioned exponent migration and domain validation, but its branch comparison against canonical is diverged (27 commits ahead, 1 behind) and includes edits to the same migration, CFO domain, tests and master record. Do not merge PR #22/#29/#32 independently or apply any CFO migration. Next work must reconcile one exact schema/domain/test set and validate it in isolated CI.
+- Rechecked PR #34 documentation-fix CI for commit `bfdf4d38d41aea52b8339622f84b0be39c203c66`; workflow remained IN_PROGRESS at this check. The no-Shortcuts correction is committed but not yet CI-validated.
