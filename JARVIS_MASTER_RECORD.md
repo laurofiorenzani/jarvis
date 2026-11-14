@@ -1982,7 +1982,7 @@ J. Next conversation: Continue from this checkpoint. PR #31 exact-head CI #1014 
 - Supabase security advisor still warns that leaked-password protection is disabled; it was not changed. Performance advisor lists 18 unused indexes; do not remove indexes based only on a fresh/low-volume workload. Health advisor returned no findings.
 
 ### D. Branch divergence / merge controls
-- Several feature branches have advanced independently while canonical `work/jarvis-canonical-integration` moved forward. Latest compares at this checkpoint: PR #23 20 ahead/4 behind; #32 29/4; #33 41/4; #35 6/2; #36 22/2; #22 3/21; #27 4/21. GitHub reported some as non-mergeable. Do not force-push, merge, or blindly reconcile; inspect actual conflicts and preserve the canonical ledger.
+- Several feature branches have advanced independently while canonical `work/jarvis-canonical-integration` moved forward. Refreshed compares after the two canonical ledger commits: PR #22 3 ahead/24 behind; #23 20/6; #27 4/24; #28 10/6; #30 1/13; #31 8/6; #32 29/6; #33 41/6; #35 6/4; #36 22/4. These are diverged histories and several PRs are currently non-mergeable. Do not force-push, merge, or blindly reconcile; inspect actual conflicts and preserve the canonical ledger.
 - PR #22/#27 are stale Family CFO proposals and must not be merged independently of the newer currency-exponent contract in PR #32.
 - PR #30 CI is green but its branch currently diverges from canonical; PR #31's corrected branch is independently green. Draft status remains unchanged.
 - Vercel latest READY preview observed during this checkpoint was still an older BMW branch commit `e4690a6c...`; it is not evidence that the latest BMW PR head was deployed. No production alias change or paid upgrade was made.
