@@ -206,10 +206,10 @@ begin
     raise exception 'invalid BMW pending authorization secret' using errcode = '22000';
   end;
 
-  if pg_catalog.jsonb_typeof(v_payload) <> 'object'
-    or pg_catalog.jsonb_typeof(v_payload->'device_code') <> 'string'
+  if pg_catalog.jsonb_typeof(v_payload) is distinct from 'object'
+    or pg_catalog.jsonb_typeof(v_payload->'device_code') is distinct from 'string'
     or pg_catalog.length(v_payload->>'device_code') not between 8 and 2048
-    or pg_catalog.jsonb_typeof(v_payload->'code_verifier') <> 'string'
+    or pg_catalog.jsonb_typeof(v_payload->'code_verifier') is distinct from 'string'
     or pg_catalog.length(v_payload->>'code_verifier') not between 40 and 128 then
     raise exception 'invalid BMW pending authorization secret' using errcode = '22000';
   end if;
