@@ -133,13 +133,12 @@ create index if not exists jarvis_bmw_cardata_pending_auth_expiry_idx
 
 alter table public.jarvis_bmw_cardata_pending_auth enable row level security;
 revoke all on table public.jarvis_bmw_cardata_pending_auth from public, anon, authenticated, service_role;
-grant select, insert, update, delete on table public.jarvis_bmw_cardata_pending_auth to service_role;
 
 create or replace function public.jarvis_create_bmw_cardata_pending_auth(
   p_state_id uuid, p_user_id uuid, p_client_id text, p_device_code text,
   p_code_verifier text, p_expires_at timestamptz
 ) returns boolean
-language plpgsql security invoker set search_path = ''
+language plpgsql security definer set search_path = ''
 as $function$
 declare
   v_secret_id uuid;
@@ -188,7 +187,7 @@ $function$;
 create or replace function public.jarvis_consume_bmw_cardata_pending_auth(
   p_state_id uuid, p_user_id uuid
 ) returns table (client_id text, device_code text, code_verifier text, expires_at timestamptz)
-language plpgsql security invoker set search_path = ''
+language plpgsql security definer set search_path = ''
 as $function$
 declare
   v_client_id text;
