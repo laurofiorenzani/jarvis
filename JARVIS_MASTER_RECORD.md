@@ -1840,3 +1840,36 @@ G. User action: none immediately. Mac/Xcode and physical iPhone will eventually 
 H. Next: implement CFO schema compatibility in an isolated branch; inspect production/Preview handler route branches and compare auth; review PR #23 fallback-before-dispatch behavior and provider policy evidence.
 I. GitHub: `laurofiorenzani/jarvis`; canonical `work/jarvis-canonical-integration`; PR #31 `work/observer-ci-refresh-20261113`; no merge or deployment.
 J. Next conversation: Continue from this checkpoint. PR #31 exact-head CI #1014 and Observer #172 both SUCCESS; PR remains Draft/non-mergeable. Supabase prod v32 lacks Preview's /provider-preferences route; route parity review required. PR #22 numeric(20,2) conflicts with PR #29 currency exponent registry; no live CFO migration. PR #23 provider pools remain disabled pending per-provider EEA/free-quota/retention/no-overage evidence. Vercel Hobby daily deployment cap reached; do not upgrade/bypass. Continue multitask under €0 recurring cost.
+
+
+## 22. Session handoff — 2026-11-14 (Europe/Dublin)
+
+### Work completed in this session
+- Re-fetched current metadata for PRs #23, #31, #32, #26, #33 and #34. All six remain OPEN and Draft; none was merged. Exact heads at inspection: #23 `ead81317ba70c9a88a61cf7bc477540eb44e7763`; #31 `7849419dfeef11984cdac4be0458678623d199ac`; #32 `dfea9b296647ed257915932998700ce0fbe4ac39`; #26 `ec286b6b835609f45d018d1d6d490c1e605582fb`; #33 `ff2aa270765723ca45a0e272760ae3558f098c09`; #34 `9846edb396250e9e5f1810d03fa631ca1395b593` before the documentation correction below.
+- Re-queried workflow runs for those six exact heads: each returned a completed CI SUCCESS. PR #31 additionally returned Observer Validation SUCCESS. This is CI evidence only, not production readiness or device/integration E2E.
+- Found a policy contradiction in PR #34's BMW CarData integration document: its final paragraph suggested My BMW app Shortcuts as a user-triggered handoff, contrary to the no-Shortcuts product decision in this master record.
+- Corrected `docs/integrations/BMW_CARDATA_READONLY.md` on the existing isolated branch `work/bmw-cardata-readonly-20261113`, replacing the Shortcut handoff suggestion with an explicit rule that JARVIS must not rely on Apple/Siri Shortcuts and must report unsupported BMW commands honestly.
+- Documentation commit: `bfdf4d38d41aea52b8339622f84b0be39c203c66`. PR #34 remains open/Draft; CI for this new exact head was observed IN_PROGRESS at handoff time. Do not mark this correction validated until the run completes successfully.
+
+### Current state and boundaries
+- No merge, production deployment, live database migration, provider inference, billing change, secret access, account change, or external vehicle action occurred.
+- BMW CarData remains a read-only adapter. It cannot control climate, locks, windows or trunk. Its Vault migration and authenticated consent/revocation routes remain prerequisites, not deployed features.
+- PR #26 approvals are records/UI/API only; no real action executor is available yet.
+- Native iOS/Keychain and physical-device validation remain outstanding. Do not claim a native app is ready.
+- Vercel Hobby deployment cap and the €0 recurring-cost rule remain hard constraints; do not upgrade or bypass limits.
+
+### Next actions
+1. Recheck CI on commit `bfdf4d38d41aea52b8339622f84b0be39c203c66`; fix only if a concrete failure is returned.
+2. Review PR #34 OAuth lifecycle and SQL/Vault tests, then add the authenticated device-consent, disconnect/revocation and route-level daily-budget wiring only in isolated code with exact-head tests; do not deploy its migration.
+3. Continue CFO currency exponent reconciliation across PRs #22/#29/#32 without importing real financial data.
+4. Review PR #23 provider fallback-before-dispatch and free-tier/EEA/privacy attestations; keep provider pools default-off until evidence is complete.
+5. Continue the native iOS shell/Keychain investigation and the cloud approval executor design as separate workstreams; preserve the amber HUD and existing accounts.
+6. Reconcile every material change back into this single master record. No duplicate status ledger.
+
+### GitHub and handoff
+- Repository: `laurofiorenzani/jarvis`.
+- Canonical record branch: `work/jarvis-canonical-integration`.
+- BMW documentation branch: `work/bmw-cardata-readonly-20261113`.
+- Latest BMW documentation commit: `bfdf4d38d41aea52b8339622f84b0be39c203c66`; CI was still running when this entry was written.
+- No PR merged and no production deployment performed.
+- Next conversation: resume by checking the exact CI result for the BMW documentation commit, then continue the independent CFO, provider-policy, cloud-approval, iOS and infrastructure workstreams. Preserve the no-Shortcuts rule, €0 recurring cost, one canonical repository and this single master handoff record.
