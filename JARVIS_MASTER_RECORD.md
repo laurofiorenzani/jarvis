@@ -1932,3 +1932,16 @@ J. Next conversation: Continue from this checkpoint. PR #31 exact-head CI #1014 
 5. Continue iOS/web integration and preserve current PWA/HUD; physical iPhone/Keychain verification remains a user-device validation step.
 6. Recheck Observer and provider-policy exact heads incrementally; avoid repeating successful CI.
 
+
+
+## 2026-11-14 — specialist contract implementation started
+
+- Created isolated branch `work/agent-contracts-20261114` from the multi-agent architecture proposal head and opened Draft PR #36: https://github.com/laurofiorenzani/jarvis/pull/36.
+- Added `src/lib/agent-contract.ts` with versioned agent definitions, allowlisted capability/tool/memory-scope/provider/approval enums, bounded runtime/call/retry/output budgets, and evidence-bearing result envelopes.
+- Added `tests/agent-contract.test.ts` for valid definitions, rejection of unknown/duplicate/unsafe scopes, bounded limits, write-capability approval requirements, and malformed/oversized evidence.
+- Exact branch head: `6599ce6322e9fdf425aad3ec43657ce66c31303a`. PR #36 is open, Draft and currently reported mergeable. No workflow run/status has yet appeared for this head; exact-head validation is pending.
+- This is a contract-validation layer only. It does not yet dispatch agents, bind user identity, authorize tools, consume approvals, call models, access memory, or enforce provider quotas at runtime.
+- PR #35 documentation branch CI run #43583637976 was later observed CANCELLED, not SUCCESS. Its earlier source head had no successful exact-head validation after the documentation update; keep PR #35 Draft and re-run/obtain a green exact-head GitHub CI before any release decision.
+- PR #32 screenshot-reported CI #1023 uses a SHA not matching the currently reported PR head. The current PR head remains `dfea9b296647ed257915932998700ce0fbe4ac39`, whose GitHub Actions CI #1039 is SUCCESS; Vercel reports a build-rate-limit failure, so do not claim a Preview deployment for that commit.
+- No merge, production migration/deployment, account change, billing change, provider activation or external action occurred.
+
