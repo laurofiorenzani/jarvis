@@ -1932,3 +1932,12 @@ J. Next conversation: Continue from this checkpoint. PR #31 exact-head CI #1014 
 5. Continue iOS/web integration and preserve current PWA/HUD; physical iPhone/Keychain verification remains a user-device validation step.
 6. Recheck Observer and provider-policy exact heads incrementally; avoid repeating successful CI.
 
+
+
+## 2026-11-14 — follow-up from user-provided CFO screenshot and exact-head reconciliation
+
+- The supplied screenshot reports a CFO follow-up: CI #1022 failed before CFO SQL tests because optional Inbucket startup collided on host port 54324; the stated correction excludes both optional Inbucket and Mailpit containers, and a new CI #1023 is shown running on commit `12dca0e99df045f4efcd745e440952b772fec61`. It also reports removal of authenticated-user read grants from the currency registry, leaving `service_role` as the reader, with changes isolated to PR #32.
+- Independently queried GitHub after receiving the screenshot. Current PR #32 metadata still reports head `dfea9b296647ed257915932998700ce0fbe4ac39`; its exact-head CI #1039 (`43505906597`) is SUCCESS. The screenshot SHA was not returned by commit search or the PR's current head metadata, so CI #1023 and its security change are recorded as screenshot-reported, not independently verified against the current PR head. Do not conflate CI #1039 with screenshot CI #1023.
+- Current PR #35 head is `b21b4d2548f3947f7208bcb0700bf4fe109246d7`; its documentation-update CI #43583637976 remains IN_PROGRESS at this check. PR #34 exact head `68dade670cb49a652cebcc0bc842aab92c50503b` remains CI SUCCESS. PR #32 remains Draft/open and non-mergeable; do not merge or apply migrations.
+- User reiterated: continue across independent workstreams and preserve a handoff at the end of every session. No user intervention is required for the source/CI review currently underway.
+
